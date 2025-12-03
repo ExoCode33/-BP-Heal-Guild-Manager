@@ -1,5 +1,5 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { GAME_DATA, getRoleFromClass, getTimezoneCountries, getTimezonesForCountry, getGuildsForRole } from '../config/gameData.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { GAME_DATA, getRoleFromClass, getTimezoneRegions, getCountriesInRegion, getTimezonesForCountry, getGuildsForRole } from '../config/gameData.js';
 import { queries } from '../database/queries.js';
 import googleSheets from '../services/googleSheets.js';
 
@@ -8,6 +8,22 @@ const syncInBackground = () => {
   queries.getAllCharacters()
     .then(chars => queries.getAllAlts().then(alts => googleSheets.fullSync(chars, alts)))
     .catch(err => console.error('Background sync failed:', err.message));
+};
+
+// Smart timezone suggestions
+const SMART_TIMEZONE_SUGGESTIONS = {
+  'United States': 'America/New_York',
+  'Canada': 'America/Toronto',
+  'Mexico': 'America/Mexico_City',
+  'United Kingdom': 'Europe/London',
+  'Australia': 'Australia/Sydney',
+  'Germany': 'Europe/Berlin',
+  'France': 'Europe/Paris',
+  'Brazil': 'America/Sao_Paulo',
+  'Japan': 'Asia/Tokyo',
+  'China': 'Asia/Shanghai',
+  'India': 'Asia/Kolkata',
+  'Russia': 'Europe/Moscow',
 };
 
 export default {
@@ -94,8 +110,6 @@ export default {
   },
 
   async handleAbilityScoreUpdate(interaction) {
-    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
-    
     const modal = new ModalBuilder()
       .setCustomId('update_ability_score_modal')
       .setTitle('Update Ability Score');
@@ -137,23 +151,29 @@ export default {
   },
 
   async handleTimezoneUpdate(interaction) {
-    const countries = getTimezoneCountries();
+    const regions = getTimezoneRegions();
     
-    const countryMenu = new StringSelectMenuBuilder()
-      .setCustomId('update_timezone_country_select')
-      .setPlaceholder('Select your country/region')
+    const regionMenu = new StringSelectMenuBuilder()
+      .setCustomId('update_timezone_region_select')
+      .setPlaceholder('Select your region')
       .addOptions(
-        countries.slice(0, 25).map(country => ({
-          label: country,
-          value: country
+        regions.map(region => ({
+          label: region,
+          value: region
         }))
       );
 
-    const row = new ActionRowBuilder().addComponents(countryMenu);
+    const searchButton = new ButtonBuilder()
+      .setCustomId('update_timezone_search')
+      .setLabel('🔍 Search for Timezone')
+      .setStyle(ButtonStyle.Primary);
+
+    const row1 = new ActionRowBuilder().addComponents(regionMenu);
+    const row2 = new ActionRowBuilder().addComponents(searchButton);
 
     await interaction.reply({
-      content: '🔄 **Updating Timezone**\n\nStep 1: Select your country/region:',
-      components: [row],
+      content: '🔄 **Updating Timezone**\n\nSelect your region or search:',
+      components: [row1, row2],
       ephemeral: true
     });
   },
@@ -213,7 +233,7 @@ export default {
 
       state.newSubclass = selectedSubclass;
 
-      // Check if role changed - if so, need to select new guild
+      // Check if role changed
       if (state.newRole !== state.currentValue.role) {
         const guildMenu = new StringSelectMenuBuilder()
           .setCustomId('update_guild_after_class_select')
@@ -234,16 +254,13 @@ export default {
           components: [row]
         });
       } else {
-        // Role didn't change, just update
         await queries.updateCharacter(state.discordId, state.mainCharIGN, {
           class: state.newClass,
           subclass: selectedSubclass,
           role: state.newRole
         });
 
-        // Sync to Google Sheets (background)
         syncInBackground();
-
         interaction.client.updateStates.delete(interaction.user.id);
 
         await interaction.update({
@@ -275,7 +292,6 @@ export default {
         });
       }
 
-      // Update with new class, subclass, role, and guild
       await queries.updateCharacter(state.discordId, state.mainCharIGN, {
         class: state.newClass,
         subclass: state.newSubclass,
@@ -283,9 +299,7 @@ export default {
         guild: selectedGuild
       });
 
-      // Sync to Google Sheets (background)
       syncInBackground();
-
       interaction.client.updateStates.delete(interaction.user.id);
 
       await interaction.update({
@@ -321,9 +335,7 @@ export default {
         guild: selectedGuild
       });
 
-      // Sync to Google Sheets (background)
       syncInBackground();
-
       interaction.client.updateStates.delete(interaction.user.id);
 
       await interaction.update({
@@ -335,6 +347,48 @@ export default {
       console.error('Error handling guild update:', error);
       await interaction.update({
         content: '❌ An error occurred while updating. Please try again.',
+        components: []
+      });
+    }
+  },
+
+  async handleUpdateTimezoneRegionSelect(interaction) {
+    try {
+      const selectedRegion = interaction.values[0];
+      const state = interaction.client.updateStates.get(interaction.user.id);
+      
+      if (!state) {
+        return interaction.update({
+          content: '❌ Update session expired. Please use `/update` again.',
+          components: []
+        });
+      }
+
+      state.timezoneRegion = selectedRegion;
+      
+      const countries = getCountriesInRegion(selectedRegion);
+      
+      const countryMenu = new StringSelectMenuBuilder()
+        .setCustomId('update_timezone_country_select')
+        .setPlaceholder('Select your country')
+        .addOptions(
+          countries.map(country => ({
+            label: country,
+            value: country
+          }))
+        );
+
+      const row = new ActionRowBuilder().addComponents(countryMenu);
+
+      await interaction.update({
+        content: `✅ Region: **${selectedRegion}**\n\nSelect your country:`,
+        components: [row]
+      });
+
+    } catch (error) {
+      console.error('Error handling region selection:', error);
+      await interaction.update({
+        content: '❌ An error occurred. Please try again.',
         components: []
       });
     }
@@ -354,12 +408,89 @@ export default {
 
       state.timezoneCountry = selectedCountry;
       
-      // Get timezones for selected country
       const timezones = getTimezonesForCountry(selectedCountry);
+      const suggestedTimezoneValue = SMART_TIMEZONE_SUGGESTIONS[selectedCountry];
+      const suggestedTimezone = timezones.find(tz => tz.value === suggestedTimezoneValue) || timezones[0];
+      
+      state.suggestedTimezone = suggestedTimezone.value;
+
+      if (timezones.length === 1) {
+        state.timezone = timezones[0].value;
+        await this.completeTimezoneUpdate(interaction, state);
+        return;
+      }
+
+      const acceptButton = new ButtonBuilder()
+        .setCustomId('update_accept_suggested_timezone')
+        .setLabel(`✓ Use ${suggestedTimezone.label.split('(')[0].trim()}`)
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🌍');
+      
+      const chooseDifferentButton = new ButtonBuilder()
+        .setCustomId('update_choose_different_timezone')
+        .setLabel('Choose Different')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔍');
+
+      const row = new ActionRowBuilder().addComponents(acceptButton, chooseDifferentButton);
+
+      await interaction.update({
+        content: `✅ Country: **${selectedCountry}**\n\n` +
+          `**Suggested timezone:**\n` +
+          `🌍 **${suggestedTimezone.label}**\n` +
+          `${suggestedTimezone.utc}\n\n` +
+          `Is this correct?`,
+        components: [row]
+      });
+
+    } catch (error) {
+      console.error('Error handling timezone country update:', error);
+      await interaction.update({
+        content: '❌ An error occurred. Please try again.',
+        components: []
+      });
+    }
+  },
+
+  async handleUpdateAcceptSuggestedTimezone(interaction) {
+    try {
+      const state = interaction.client.updateStates.get(interaction.user.id);
+      
+      if (!state) {
+        return interaction.update({
+          content: '❌ Update session expired. Please use `/update` again.',
+          components: []
+        });
+      }
+
+      state.timezone = state.suggestedTimezone;
+      await this.completeTimezoneUpdate(interaction, state);
+
+    } catch (error) {
+      console.error('Error accepting suggested timezone:', error);
+      await interaction.update({
+        content: '❌ An error occurred. Please try again.',
+        components: []
+      });
+    }
+  },
+
+  async handleUpdateChooseDifferentTimezone(interaction) {
+    try {
+      const state = interaction.client.updateStates.get(interaction.user.id);
+      
+      if (!state) {
+        return interaction.update({
+          content: '❌ Update session expired. Please use `/update` again.',
+          components: []
+        });
+      }
+
+      const timezones = getTimezonesForCountry(state.timezoneCountry);
       
       const timezoneMenu = new StringSelectMenuBuilder()
         .setCustomId('update_timezone_select')
-        .setPlaceholder('Select your timezone/city')
+        .setPlaceholder('Select your timezone')
         .addOptions(
           timezones.map(tz => ({
             label: tz.label,
@@ -371,12 +502,12 @@ export default {
       const row = new ActionRowBuilder().addComponents(timezoneMenu);
 
       await interaction.update({
-        content: `🔄 **Updating Timezone**\n\n✅ Country: **${selectedCountry}**\n\nStep 2: Select your specific timezone/city:`,
+        content: `Select your timezone from the list:`,
         components: [row]
       });
 
     } catch (error) {
-      console.error('Error handling timezone country update:', error);
+      console.error('Error showing timezone list:', error);
       await interaction.update({
         content: '❌ An error occurred. Please try again.',
         components: []
@@ -396,26 +527,166 @@ export default {
         });
       }
 
-      await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-        timezone: selectedTimezone
-      });
-
-      // Sync to Google Sheets (background)
-      syncInBackground();
-
-      interaction.client.updateStates.delete(interaction.user.id);
-
-      await interaction.update({
-        content: `✅ **Timezone Updated!**\n\n🌍 **New Timezone:** ${selectedTimezone}`,
-        components: []
-      });
+      state.timezone = selectedTimezone;
+      await this.completeTimezoneUpdate(interaction, state);
 
     } catch (error) {
       console.error('Error handling timezone update:', error);
       await interaction.update({
-        content: '❌ An error occurred while updating. Please try again.',
+        content: '❌ An error occurred. Please try again.',
         components: []
       });
+    }
+  },
+
+  async handleUpdateTimezoneSearch(interaction) {
+    try {
+      const modal = new ModalBuilder()
+        .setCustomId('update_timezone_search_modal')
+        .setTitle('Search for Timezone');
+
+      const searchInput = new TextInputBuilder()
+        .setCustomId('timezone_search_input')
+        .setLabel('City or Country Name')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('e.g., Tokyo, London, New York')
+        .setRequired(true)
+        .setMaxLength(50);
+
+      const row = new ActionRowBuilder().addComponents(searchInput);
+      modal.addComponents(row);
+
+      await interaction.showModal(modal);
+
+    } catch (error) {
+      console.error('Error showing search modal:', error);
+      await interaction.update({
+        content: '❌ An error occurred. Please try again.',
+        components: []
+      });
+    }
+  },
+
+  async handleUpdateTimezoneSearchSubmit(interaction) {
+    try {
+      const state = interaction.client.updateStates.get(interaction.user.id);
+      
+      if (!state) {
+        return interaction.reply({
+          content: '❌ Update session expired. Please use `/update` again.',
+          ephemeral: true
+        });
+      }
+
+      const searchQuery = interaction.fields.getTextInputValue('timezone_search_input').toLowerCase();
+      
+      const allCountries = Object.keys(GAME_DATA.timezonesByCountry);
+      const results = [];
+      
+      for (const country of allCountries) {
+        const timezones = GAME_DATA.timezonesByCountry[country].timezones;
+        
+        if (country.toLowerCase().includes(searchQuery)) {
+          results.push(...timezones.map(tz => ({
+            ...tz,
+            country: country
+          })));
+        } else {
+          for (const tz of timezones) {
+            if (tz.label.toLowerCase().includes(searchQuery) || 
+                tz.value.toLowerCase().includes(searchQuery)) {
+              results.push({
+                ...tz,
+                country: country
+              });
+            }
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        return interaction.reply({
+          content: `❌ No timezones found for "${searchQuery}". Try:\n` +
+            `• A major city name (e.g., "Tokyo", "London")\n` +
+            `• A country name (e.g., "Japan", "United Kingdom")`,
+          ephemeral: true
+        });
+      }
+
+      const limitedResults = results.slice(0, 25);
+      
+      const resultMenu = new StringSelectMenuBuilder()
+        .setCustomId('update_timezone_search_result_select')
+        .setPlaceholder(`Found ${results.length} result(s)`)
+        .addOptions(
+          limitedResults.map(tz => ({
+            label: `${tz.country}: ${tz.label.substring(0, 80)}`,
+            description: tz.utc,
+            value: tz.value
+          }))
+        );
+
+      const row = new ActionRowBuilder().addComponents(resultMenu);
+
+      await interaction.reply({
+        content: `🔍 Found **${results.length}** result(s) for "${searchQuery}"${results.length > 25 ? ' (showing first 25)' : ''}:`,
+        components: [row],
+        ephemeral: true
+      });
+
+    } catch (error) {
+      console.error('Error handling timezone search:', error);
+      await interaction.reply({
+        content: '❌ An error occurred during search. Please try again.',
+        ephemeral: true
+      });
+    }
+  },
+
+  async handleUpdateTimezoneSearchResultSelect(interaction) {
+    try {
+      const selectedTimezone = interaction.values[0];
+      const state = interaction.client.updateStates.get(interaction.user.id);
+      
+      if (!state) {
+        return interaction.update({
+          content: '❌ Update session expired. Please use `/update` again.',
+          components: []
+        });
+      }
+
+      state.timezone = selectedTimezone;
+      
+      await interaction.message.delete().catch(() => {});
+      
+      await this.completeTimezoneUpdate(interaction, state);
+
+    } catch (error) {
+      console.error('Error handling search result selection:', error);
+      await interaction.update({
+        content: '❌ An error occurred. Please try again.',
+        components: []
+      });
+    }
+  },
+
+  async completeTimezoneUpdate(interaction, state) {
+    await queries.updateCharacter(state.discordId, state.mainCharIGN, {
+      timezone: state.timezone
+    });
+
+    syncInBackground();
+    interaction.client.updateStates.delete(interaction.user.id);
+
+    const message = {
+      content: `✅ **Timezone Updated!**\n\n🌍 **New Timezone:** ${state.timezone}`,
+      components: []
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply(message);
+    } else {
+      await interaction.update(message);
     }
   },
 
@@ -444,9 +715,7 @@ export default {
         ability_score: abilityScore
       });
 
-      // Sync to Google Sheets (background)
       syncInBackground();
-
       interaction.client.updateStates.delete(interaction.user.id);
 
       await interaction.reply({
