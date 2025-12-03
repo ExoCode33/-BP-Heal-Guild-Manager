@@ -62,7 +62,8 @@ client.once(Events.ClientReady, async (c) => {
   try {
     await googleSheets.initialize();
   } catch (error) {
-    console.error('❌ Failed to initialize Google Sheets:', error.message);
+    console.error('⚠️  Google Sheets not configured (this is optional)');
+    console.error('   Commands will work, but data won\'t sync to sheets.');
   }
 
   console.log('\n═══════════════════════════════════════════════════');
