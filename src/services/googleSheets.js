@@ -36,45 +36,52 @@ class GoogleSheetsService {
     }
   }
 
-  // 🎨 Ultra-vibrant color palette for classes
+  // 🎨 Ultra-professional and cute color palette for classes (pastel tones)
   getClassColor(className) {
     const colors = {
-      'Beat Performer': { red: 1, green: 0.2, blue: 0.6 },
-      'Frost Mage': { red: 0.2, green: 0.6, blue: 1 },
-      'Heavy Guardian': { red: 0.6, green: 0.4, blue: 0.2 },
-      'Marksman': { red: 0.4, green: 0.9, blue: 0.2 },
-      'Shield Knight': { red: 1, green: 0.84, blue: 0 },
-      'Stormblade': { red: 0.6, green: 0.2, blue: 1 },
-      'Verdant Oracle': { red: 0.2, green: 0.9, blue: 0.4 },
-      'Wind Knight': { red: 0.2, green: 0.9, blue: 0.9 }
+      'Beat Performer': { red: 1, green: 0.75, blue: 0.85 },      // Soft pink
+      'Frost Mage': { red: 0.8, green: 0.9, blue: 1 },           // Ice blue
+      'Heavy Guardian': { red: 0.85, green: 0.75, blue: 0.65 },  // Warm tan
+      'Marksman': { red: 0.85, green: 0.95, blue: 0.75 },        // Soft lime
+      'Shield Knight': { red: 1, green: 0.95, blue: 0.7 },       // Soft gold
+      'Stormblade': { red: 0.85, green: 0.8, blue: 1 },          // Soft purple
+      'Verdant Oracle': { red: 0.8, green: 0.95, blue: 0.85 },   // Mint green
+      'Wind Knight': { red: 0.75, green: 0.95, blue: 0.95 }      // Sky blue
     };
     return colors[className] || { red: 0.95, green: 0.95, blue: 0.95 };
   }
 
-  // 🌟 Ability score color tiers
+  // 🌟 Cute gradient ability score colors with emojis
   getAbilityScoreColor(score) {
-    if (!score || score === '') return { red: 0.95, green: 0.95, blue: 0.95 };
+    if (!score || score === '') return { red: 0.98, green: 0.98, blue: 0.98 };
     
     const numScore = parseInt(score);
     
-    if (numScore >= 30000) return { red: 0.5, green: 0, blue: 0.8 };
-    if (numScore >= 27000) return { red: 1, green: 0, blue: 0.8 };
-    if (numScore >= 24000) return { red: 1, green: 0.2, blue: 0.4 };
-    if (numScore >= 21000) return { red: 1, green: 0.5, blue: 0 };
-    if (numScore >= 18000) return { red: 1, green: 0.84, blue: 0 };
-    if (numScore >= 15000) return { red: 0.3, green: 0.8, blue: 1 };
-    if (numScore >= 10000) return { red: 0.5, green: 0.9, blue: 0.5 };
-    return { red: 0.9, green: 0.9, blue: 0.9 };
+    // Legendary tier - Deep purple gradient
+    if (numScore >= 30000) return { red: 0.7, green: 0.6, blue: 0.9 };
+    // Epic tier - Pink/Purple
+    if (numScore >= 27000) return { red: 0.95, green: 0.7, blue: 0.9 };
+    // Rare tier - Rose
+    if (numScore >= 24000) return { red: 1, green: 0.8, blue: 0.85 };
+    // Uncommon tier - Peach
+    if (numScore >= 21000) return { red: 1, green: 0.85, blue: 0.7 };
+    // Common tier - Soft yellow
+    if (numScore >= 18000) return { red: 1, green: 0.95, blue: 0.75 };
+    // Beginner tier - Light blue
+    if (numScore >= 15000) return { red: 0.8, green: 0.9, blue: 1 };
+    // Starter tier - Mint
+    if (numScore >= 10000) return { red: 0.85, green: 0.95, blue: 0.9 };
+    return { red: 0.95, green: 0.95, blue: 0.95 };
   }
 
-  // 🎭 Role colors
+  // 🎭 Professional role colors with better contrast
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.3, green: 0.5, blue: 0.7 },
-      'DPS': { red: 0.9, green: 0.3, blue: 0.3 },
-      'Support': { red: 0.4, green: 0.8, blue: 0.4 }
+      'Tank': { red: 0.6, green: 0.75, blue: 0.9 },      // Soft blue
+      'DPS': { red: 1, green: 0.75, blue: 0.75 },        // Soft red
+      'Support': { red: 0.75, green: 0.9, blue: 0.75 }   // Soft green
     };
-    return roleColors[role] || { red: 0.8, green: 0.8, blue: 0.8 };
+    return roleColors[role] || { red: 0.9, green: 0.9, blue: 0.9 };
   }
 
   async formatProfessionalSheet(sheetName, headerCount, dataRowCount) {
@@ -102,9 +109,9 @@ class GoogleSheetsService {
                 hideGridlines: false
               },
               tabColor: {
-                red: 0.4,
-                green: 0.2,
-                blue: 0.9
+                red: 0.7,
+                green: 0.5,
+                blue: 0.95
               }
             },
             fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines,tabColor'
@@ -122,9 +129,9 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: {
-                  red: 0.4,
-                  green: 0.2,
-                  blue: 0.9
+                  red: 0.7,
+                  green: 0.6,
+                  blue: 0.95
                 },
                 textFormat: {
                   foregroundColor: {
@@ -132,15 +139,15 @@ class GoogleSheetsService {
                     green: 1,
                     blue: 1
                   },
-                  fontSize: 14,
+                  fontSize: 12,
                   bold: true,
-                  fontFamily: 'Montserrat'
+                  fontFamily: 'Google Sans'
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
                 padding: {
-                  top: 10,
-                  bottom: 10,
+                  top: 12,
+                  bottom: 12,
                   left: 10,
                   right: 10
                 }
@@ -161,16 +168,16 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 textFormat: {
-                  fontSize: 11,
-                  fontFamily: 'Roboto'
+                  fontSize: 10,
+                  fontFamily: 'Google Sans'
                 },
                 horizontalAlignment: 'LEFT',
                 verticalAlignment: 'MIDDLE',
                 padding: {
-                  top: 6,
-                  bottom: 6,
-                  left: 8,
-                  right: 8
+                  top: 8,
+                  bottom: 8,
+                  left: 10,
+                  right: 10
                 }
               }
             },
@@ -188,39 +195,39 @@ class GoogleSheetsService {
             },
             top: {
               style: 'SOLID',
-              width: 3,
-              color: { red: 0.4, green: 0.2, blue: 0.9 }
+              width: 2,
+              color: { red: 0.7, green: 0.6, blue: 0.95 }
             },
             bottom: {
               style: 'SOLID',
-              width: 3,
-              color: { red: 0.4, green: 0.2, blue: 0.9 }
+              width: 2,
+              color: { red: 0.7, green: 0.6, blue: 0.95 }
             },
             left: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.8, green: 0.8, blue: 0.8 }
+              color: { red: 0.9, green: 0.9, blue: 0.95 }
             },
             right: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.8, green: 0.8, blue: 0.8 }
+              color: { red: 0.9, green: 0.9, blue: 0.95 }
             },
             innerHorizontal: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.9, green: 0.9, blue: 0.9 }
+              color: { red: 0.95, green: 0.95, blue: 0.98 }
             },
             innerVertical: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.9, green: 0.9, blue: 0.9 }
+              color: { red: 0.95, green: 0.95, blue: 0.98 }
             }
           }
         }
       ];
 
-      // Alternating row colors
+      // Alternating row colors with cute pastel scheme
       for (let i = 1; i <= dataRowCount; i++) {
         const isEvenRow = i % 2 === 0;
         requests.push({
@@ -235,8 +242,8 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: isEvenRow 
-                  ? { red: 0.96, green: 0.96, blue: 1 }
-                  : { red: 1, green: 1, blue: 1 }
+                  ? { red: 0.98, green: 0.97, blue: 1 }      // Very light lavender
+                  : { red: 1, green: 1, blue: 1 }            // Pure white
               }
             },
             fields: 'userEnteredFormat.backgroundColor'
@@ -403,10 +410,14 @@ class GoogleSheetsService {
         const roleColor = this.getRoleColor(member.role);
         const abilityColor = member.ability_score ? this.getAbilityScoreColor(member.ability_score) : { red: 0.95, green: 0.95, blue: 0.95 };
         
-        // Type column (Main/Alt) with distinct colors
+        // Type column (Main/Alt) with cute pastel colors
         const typeColor = member.isMain 
-          ? { red: 0.2, green: 0.7, blue: 0.3 }  // Green for Main
-          : { red: 0.9, green: 0.6, blue: 0.2 };  // Orange for Alt
+          ? { red: 0.7, green: 0.9, blue: 0.75 }   // Soft mint green for Main
+          : { red: 1, green: 0.85, blue: 0.7 };     // Soft peach for Alt
+        
+        const typeTextColor = member.isMain
+          ? { red: 0.2, green: 0.5, blue: 0.3 }    // Dark green text
+          : { red: 0.7, green: 0.4, blue: 0.2 };    // Dark orange text
         
         requests.push({
           repeatCell: {
@@ -422,8 +433,8 @@ class GoogleSheetsService {
                 backgroundColor: typeColor,
                 textFormat: {
                   bold: true,
-                  fontSize: 11,
-                  foregroundColor: { red: 1, green: 1, blue: 1 }
+                  fontSize: 10,
+                  foregroundColor: typeTextColor
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -433,7 +444,7 @@ class GoogleSheetsService {
           }
         });
 
-        // Class column
+        // Class column with cute pastel background
         requests.push({
           repeatCell: {
             range: {
@@ -448,8 +459,8 @@ class GoogleSheetsService {
                 backgroundColor: classColor,
                 textFormat: {
                   bold: true,
-                  fontSize: 12,
-                  foregroundColor: { red: 0, green: 0, blue: 0 }
+                  fontSize: 11,
+                  foregroundColor: { red: 0.2, green: 0.2, blue: 0.3 }  // Dark text for readability
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
@@ -460,11 +471,11 @@ class GoogleSheetsService {
           }
         });
 
-        // Subclass column
+        // Subclass column with even lighter pastel
         const lighterColor = {
-          red: Math.min(classColor.red + 0.2, 1),
-          green: Math.min(classColor.green + 0.2, 1),
-          blue: Math.min(classColor.blue + 0.2, 1)
+          red: Math.min(classColor.red + 0.1, 0.98),
+          green: Math.min(classColor.green + 0.1, 0.98),
+          blue: Math.min(classColor.blue + 0.1, 0.98)
         };
         
         requests.push({
@@ -482,7 +493,7 @@ class GoogleSheetsService {
                 textFormat: {
                   fontSize: 10,
                   italic: true,
-                  foregroundColor: { red: 0, green: 0, blue: 0 }
+                  foregroundColor: { red: 0.3, green: 0.3, blue: 0.4 }  // Soft gray text
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -492,7 +503,7 @@ class GoogleSheetsService {
           }
         });
 
-        // Role column
+        // Role column with cute pastel colors and dark text
         requests.push({
           repeatCell: {
             range: {
@@ -508,7 +519,7 @@ class GoogleSheetsService {
                 textFormat: {
                   bold: true,
                   fontSize: 10,
-                  foregroundColor: { red: 1, green: 1, blue: 1 }
+                  foregroundColor: { red: 0.2, green: 0.2, blue: 0.3 }  // Dark text for readability
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -518,7 +529,7 @@ class GoogleSheetsService {
           }
         });
 
-        // Ability Score column (only for main characters)
+        // Ability Score column with gradient tiers (only for main characters)
         if (member.ability_score && member.ability_score !== '') {
           requests.push({
             repeatCell: {
@@ -534,8 +545,8 @@ class GoogleSheetsService {
                   backgroundColor: abilityColor,
                   textFormat: {
                     bold: true,
-                    fontSize: 12,
-                    foregroundColor: { red: 0, green: 0, blue: 0 }
+                    fontSize: 11,
+                    foregroundColor: { red: 0.25, green: 0.25, blue: 0.35 }  // Dark purple-gray text
                   },
                   horizontalAlignment: 'CENTER',
                   verticalAlignment: 'MIDDLE',
@@ -550,7 +561,7 @@ class GoogleSheetsService {
           });
         }
 
-        // Guild column (only for main characters)
+        // Guild column with soft lavender (only for main characters)
         if (member.guild && member.guild !== '') {
           requests.push({
             repeatCell: {
@@ -563,11 +574,12 @@ class GoogleSheetsService {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: { red: 0.93, green: 0.93, blue: 0.98 },
+                  backgroundColor: { red: 0.95, green: 0.93, blue: 0.98 },  // Soft lavender
                   textFormat: {
                     fontSize: 10,
                     bold: true,
-                    fontFamily: 'Roboto'
+                    fontFamily: 'Google Sans',
+                    foregroundColor: { red: 0.4, green: 0.3, blue: 0.6 }   // Purple text
                   },
                   horizontalAlignment: 'CENTER',
                   verticalAlignment: 'MIDDLE'
@@ -578,7 +590,7 @@ class GoogleSheetsService {
           });
         }
         
-        // Timezone column (only for main characters)
+        // Timezone column with soft yellow (only for main characters)
         if (member.timezone && member.timezone !== '') {
           requests.push({
             repeatCell: {
@@ -591,10 +603,11 @@ class GoogleSheetsService {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: { red: 0.98, green: 0.98, blue: 0.93 },
+                  backgroundColor: { red: 1, green: 0.98, blue: 0.9 },      // Soft cream
                   textFormat: {
                     fontSize: 9,
-                    fontFamily: 'Courier New'
+                    fontFamily: 'Google Sans',
+                    foregroundColor: { red: 0.5, green: 0.4, blue: 0.2 }   // Brown text
                   },
                   horizontalAlignment: 'CENTER',
                   verticalAlignment: 'MIDDLE'
@@ -605,7 +618,7 @@ class GoogleSheetsService {
           });
         }
         
-        // Registered column
+        // Registered column with soft gray
         requests.push({
           repeatCell: {
             range: {
@@ -617,10 +630,11 @@ class GoogleSheetsService {
             },
             cell: {
               userEnteredFormat: {
-                backgroundColor: { red: 0.96, green: 0.96, blue: 0.96 },
+                backgroundColor: { red: 0.97, green: 0.97, blue: 0.98 },   // Very light gray
                 textFormat: {
                   fontSize: 9,
-                  italic: true
+                  italic: true,
+                  foregroundColor: { red: 0.5, green: 0.5, blue: 0.55 }   // Medium gray text
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
