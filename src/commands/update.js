@@ -1,201 +1,112 @@
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { GAME_DATA, getRoleFromClass, getTimezoneRegions, getCountriesInRegion, getTimezonesForCountry, getGuildsForRole } from '../config/gameData.js';
+import { GAME_DATA, getRoleFromClass, getTimezoneRegions, getCountriesInRegion, getTimezonesForCountry } from '../config/gameData.js';
 import { queries } from '../database/queries.js';
 import googleSheets from '../services/googleSheets.js';
 
-// Helper function to sync in background
-const syncInBackground = () => {
-  queries.getAllCharacters()
-    .then(chars => queries.getAllAlts().then(alts => googleSheets.fullSync(chars, alts)))
-    .catch(err => console.error('Background sync failed:', err.message));
-};
-
-// Smart timezone suggestions
+// Smart timezone suggestions based on country
 const SMART_TIMEZONE_SUGGESTIONS = {
-  'United States': 'America/New_York',
-  'Canada': 'America/Toronto',
-  'Mexico': 'America/Mexico_City',
-  'United Kingdom': 'Europe/London',
-  'Australia': 'Australia/Sydney',
-  'Germany': 'Europe/Berlin',
-  'France': 'Europe/Paris',
-  'Brazil': 'America/Sao_Paulo',
-  'Japan': 'Asia/Tokyo',
-  'China': 'Asia/Shanghai',
-  'India': 'Asia/Kolkata',
-  'Russia': 'Europe/Moscow',
+  'United States': 'America/New_York',      // Eastern Time (40% of US population)
+  'Canada': 'America/Toronto',              // Eastern Time (most populous)
+  'Mexico': 'America/Mexico_City',          // Central Mexico (largest metro)
+  'United Kingdom': 'Europe/London',        // Only option
+  'Australia': 'Australia/Sydney',          // Most populous city
+  'Germany': 'Europe/Berlin',               // Only option
+  'France': 'Europe/Paris',                 // Only option
+  'Brazil': 'America/Sao_Paulo',            // Most populous
+  'Japan': 'Asia/Tokyo',                    // Only option
+  'China': 'Asia/Shanghai',                 // Most populous
+  'India': 'Asia/Kolkata',                  // Only option
+  'Russia': 'Europe/Moscow',                // Most populous
+  'South Korea': 'Asia/Seoul',              // Only option
+  'Spain': 'Europe/Madrid',                 // Most populous
+  'Italy': 'Europe/Rome',                   // Only option
+  'Netherlands': 'Europe/Amsterdam',        // Only option
+  'Poland': 'Europe/Warsaw',                // Only option
+  'Argentina': 'America/Argentina/Buenos_Aires', // Only option
+  'Colombia': 'America/Bogota',             // Only option
+  'Indonesia': 'Asia/Jakarta',              // Most populous (WIB)
+  'Turkey': 'Europe/Istanbul',              // Only option
 };
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('update')
-    .setDescription('Update your main character information')
-    .addStringOption(option =>
-      option.setName('field')
-        .setDescription('What do you want to update?')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Class/Subclass', value: 'class' },
-          { name: 'Ability Score', value: 'ability_score' },
-          { name: 'Guild', value: 'guild' },
-          { name: 'Timezone', value: 'timezone' }
-        )
-    ),
+    .setName('register')
+    .setDescription('Register your main character'),
 
   async execute(interaction) {
+    console.log(`🔍 [REGISTER] Starting execution for user: ${interaction.user.tag}`);
+    
     try {
-      const mainChar = await queries.getMainCharacter(interaction.user.id);
+      console.log(`🔍 [REGISTER] Checking for existing character...`);
+      const existingChar = await queries.getMainCharacter(interaction.user.id);
+      console.log(`🔍 [REGISTER] Existing character check result:`, existingChar ? 'Found' : 'None');
       
-      if (!mainChar) {
+      if (existingChar) {
+        console.log(`⚠️  [REGISTER] User already has character, sending warning`);
         return interaction.reply({
-          content: '❌ You need to register a main character first! Use `/register` to get started.',
+          content: '⚠️ You already have a main character registered! Use `/update` to modify your character or `/viewchar` to see your current registration.',
           ephemeral: true
         });
       }
 
-      const field = interaction.options.getString('field');
+      console.log(`🔍 [REGISTER] Building class selection menu...`);
+      const classMenu = new StringSelectMenuBuilder()
+        .setCustomId('class_select')
+        .setPlaceholder('Select your main class')
+        .addOptions(
+          Object.keys(GAME_DATA.classes).map(className => ({
+            label: className,
+            description: `Role: ${GAME_DATA.classes[className].role}`,
+            value: className
+          }))
+        );
 
-      // Initialize update state
-      interaction.client.updateStates = interaction.client.updateStates || new Map();
-      interaction.client.updateStates.set(interaction.user.id, {
-        field,
-        discordId: interaction.user.id,
-        mainCharIGN: mainChar.ign,
-        currentValue: mainChar
-      });
+      const row = new ActionRowBuilder().addComponents(classMenu);
 
-      switch (field) {
-        case 'class':
-          await this.handleClassUpdate(interaction);
-          break;
-        case 'ability_score':
-          await this.handleAbilityScoreUpdate(interaction);
-          break;
-        case 'guild':
-          await this.handleGuildUpdate(interaction);
-          break;
-        case 'timezone':
-          await this.handleTimezoneUpdate(interaction);
-          break;
-      }
-
-    } catch (error) {
-      console.error('Error in update command:', error);
+      console.log(`🔍 [REGISTER] Sending reply with class menu...`);
       await interaction.reply({
-        content: '❌ An error occurred. Please try again.',
+        content: '🎮 **Character Registration**\n\nStep 1: Select your main class',
+        components: [row],
         ephemeral: true
       });
+      console.log(`✅ [REGISTER] Reply sent successfully`);
+
+      console.log(`🔍 [REGISTER] Storing registration state...`);
+      interaction.client.registrationStates = interaction.client.registrationStates || new Map();
+      interaction.client.registrationStates.set(interaction.user.id, {
+        step: 'class_selected',
+        discordId: interaction.user.id,
+        discordName: interaction.user.tag
+      });
+
+    } catch (error) {
+      console.error('❌ [REGISTER] Error in register command:', error);
+      console.error('❌ [REGISTER] Error stack:', error.stack);
+      await interaction.reply({
+        content: '❌ An error occurred during registration. Please try again.',
+        ephemeral: true
+      }).catch(err => console.error('❌ [REGISTER] Failed to send error message:', err));
     }
   },
 
-  async handleClassUpdate(interaction) {
-    const classMenu = new StringSelectMenuBuilder()
-      .setCustomId('update_class_select')
-      .setPlaceholder('Select your new class')
-      .addOptions(
-        Object.keys(GAME_DATA.classes).map(className => ({
-          label: className,
-          description: `Role: ${GAME_DATA.classes[className].role}`,
-          value: className
-        }))
-      );
-
-    const row = new ActionRowBuilder().addComponents(classMenu);
-
-    await interaction.reply({
-      content: '🔄 **Updating Class**\n\nSelect your new class:',
-      components: [row],
-      ephemeral: true
-    });
-  },
-
-  async handleAbilityScoreUpdate(interaction) {
-    const modal = new ModalBuilder()
-      .setCustomId('update_ability_score_modal')
-      .setTitle('Update Ability Score');
-
-    const abilityScoreInput = new TextInputBuilder()
-      .setCustomId('ability_score_input')
-      .setLabel('New Ability Score')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setPlaceholder('e.g., 5000');
-
-    const row = new ActionRowBuilder().addComponents(abilityScoreInput);
-    modal.addComponents(row);
-
-    await interaction.showModal(modal);
-  },
-
-  async handleGuildUpdate(interaction) {
-    const state = interaction.client.updateStates.get(interaction.user.id);
-    const role = state.currentValue.role;
-    
-    const guildMenu = new StringSelectMenuBuilder()
-      .setCustomId('update_guild_select')
-      .setPlaceholder('Select your new guild')
-      .addOptions(
-        getGuildsForRole(role).map(guild => ({
-          label: guild,
-          value: guild
-        }))
-      );
-
-    const row = new ActionRowBuilder().addComponents(guildMenu);
-
-    await interaction.reply({
-      content: '🔄 **Updating Guild**\n\nSelect your new guild:',
-      components: [row],
-      ephemeral: true
-    });
-  },
-
-  async handleTimezoneUpdate(interaction) {
-    const regions = getTimezoneRegions();
-    
-    const regionMenu = new StringSelectMenuBuilder()
-      .setCustomId('update_timezone_region_select')
-      .setPlaceholder('Select your region')
-      .addOptions(
-        regions.map(region => ({
-          label: region,
-          value: region
-        }))
-      );
-
-    const searchButton = new ButtonBuilder()
-      .setCustomId('update_timezone_search')
-      .setLabel('🔍 Search for Timezone')
-      .setStyle(ButtonStyle.Primary);
-
-    const row1 = new ActionRowBuilder().addComponents(regionMenu);
-    const row2 = new ActionRowBuilder().addComponents(searchButton);
-
-    await interaction.reply({
-      content: '🔄 **Updating Timezone**\n\nSelect your region or search:',
-      components: [row1, row2],
-      ephemeral: true
-    });
-  },
-
-  async handleUpdateClassSelect(interaction) {
+  async handleClassSelect(interaction) {
     try {
       const selectedClass = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
-      state.newClass = selectedClass;
-      state.newRole = getRoleFromClass(selectedClass);
+      state.className = selectedClass;
+      state.role = getRoleFromClass(selectedClass);
 
       const subclassMenu = new StringSelectMenuBuilder()
-        .setCustomId('update_subclass_select')
-        .setPlaceholder('Select your new subclass')
+        .setCustomId('subclass_select')
+        .setPlaceholder('Select your subclass')
         .addOptions(
           GAME_DATA.classes[selectedClass].subclasses.map(subclass => ({
             label: subclass,
@@ -206,12 +117,12 @@ export default {
       const row = new ActionRowBuilder().addComponents(subclassMenu);
 
       await interaction.update({
-        content: `✅ New Class: **${selectedClass}** (${state.newRole})\n\nSelect your new subclass:`,
+        content: `✅ Class: **${selectedClass}** (${state.role})\n\nStep 2: Select your subclass`,
         components: [row]
       });
 
     } catch (error) {
-      console.error('Error handling update class selection:', error);
+      console.error('Error handling class selection:', error);
       await interaction.update({
         content: '❌ An error occurred. Please try again.',
         components: []
@@ -219,147 +130,104 @@ export default {
     }
   },
 
-  async handleUpdateSubclassSelect(interaction) {
+  async handleSubclassSelect(interaction) {
     try {
       const selectedSubclass = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
-      state.newSubclass = selectedSubclass;
+      state.subclass = selectedSubclass;
 
-      // Check if role changed
-      if (state.newRole !== state.currentValue.role) {
-        const guildMenu = new StringSelectMenuBuilder()
-          .setCustomId('update_guild_after_class_select')
-          .setPlaceholder('Select your new guild (role changed)')
-          .addOptions(
-            getGuildsForRole(state.newRole).map(guild => ({
-              label: guild,
-              value: guild
-            }))
-          );
+      const guildMenu = new StringSelectMenuBuilder()
+        .setCustomId('guild_select')
+        .setPlaceholder('Select your guild')
+        .addOptions(
+          GAME_DATA.guilds[state.role].map(guild => ({
+            label: guild,
+            value: guild
+          }))
+        );
 
-        const row = new ActionRowBuilder().addComponents(guildMenu);
+      const row = new ActionRowBuilder().addComponents(guildMenu);
 
-        await interaction.update({
-          content: `✅ New Class: **${state.newClass}** (${selectedSubclass})\n` +
-            `⚠️ Your role changed from **${state.currentValue.role}** to **${state.newRole}**\n\n` +
-            `Please select a new guild for your role:`,
-          components: [row]
-        });
-      } else {
-        await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-          class: state.newClass,
-          subclass: selectedSubclass,
-          role: state.newRole
-        });
-
-        syncInBackground();
-        interaction.client.updateStates.delete(interaction.user.id);
-
-        await interaction.update({
-          content: `✅ **Character Updated!**\n\n` +
-            `⚔️ **New Class:** ${state.newClass} (${selectedSubclass})\n` +
-            `🛡️ **Role:** ${state.newRole}`,
-          components: []
-        });
-      }
+      await interaction.update({
+        content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${selectedSubclass}**\n\nStep 3: Select your guild`,
+        components: [row]
+      });
 
     } catch (error) {
-      console.error('Error handling update subclass selection:', error);
+      console.error('Error handling subclass selection:', error);
       await interaction.update({
-        content: '❌ An error occurred while updating. Please try again.',
+        content: '❌ An error occurred. Please try again.',
         components: []
       });
     }
   },
 
-  async handleUpdateGuildAfterClassSelect(interaction) {
+  async handleGuildSelect(interaction) {
     try {
       const selectedGuild = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
-      await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-        class: state.newClass,
-        subclass: state.newSubclass,
-        role: state.newRole,
-        guild: selectedGuild
-      });
+      state.guild = selectedGuild;
 
-      syncInBackground();
-      interaction.client.updateStates.delete(interaction.user.id);
+      // Show region selection for timezone
+      const regions = getTimezoneRegions();
+      
+      const regionMenu = new StringSelectMenuBuilder()
+        .setCustomId('timezone_region_select')
+        .setPlaceholder('Select your region')
+        .addOptions(
+          regions.map(region => ({
+            label: region,
+            value: region
+          }))
+        );
+
+      // Add search button
+      const searchButton = new ButtonBuilder()
+        .setCustomId('timezone_search')
+        .setLabel('🔍 Search for Timezone')
+        .setStyle(ButtonStyle.Primary);
+
+      const row1 = new ActionRowBuilder().addComponents(regionMenu);
+      const row2 = new ActionRowBuilder().addComponents(searchButton);
 
       await interaction.update({
-        content: `✅ **Character Updated!**\n\n` +
-          `⚔️ **New Class:** ${state.newClass} (${state.newSubclass})\n` +
-          `🛡️ **New Role:** ${state.newRole}\n` +
-          `🏰 **New Guild:** ${selectedGuild}`,
-        components: []
+        content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${state.subclass}**\n✅ Guild: **${selectedGuild}**\n\nStep 4: Select your region or search for your timezone`,
+        components: [row1, row2]
       });
 
     } catch (error) {
-      console.error('Error handling guild update after class change:', error);
+      console.error('Error handling guild selection:', error);
       await interaction.update({
-        content: '❌ An error occurred while updating. Please try again.',
+        content: '❌ An error occurred. Please try again.',
         components: []
       });
     }
   },
 
-  async handleUpdateGuildSelect(interaction) {
-    try {
-      const selectedGuild = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
-      
-      if (!state) {
-        return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
-          components: []
-        });
-      }
-
-      await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-        guild: selectedGuild
-      });
-
-      syncInBackground();
-      interaction.client.updateStates.delete(interaction.user.id);
-
-      await interaction.update({
-        content: `✅ **Guild Updated!**\n\n🏰 **New Guild:** ${selectedGuild}`,
-        components: []
-      });
-
-    } catch (error) {
-      console.error('Error handling guild update:', error);
-      await interaction.update({
-        content: '❌ An error occurred while updating. Please try again.',
-        components: []
-      });
-    }
-  },
-
-  async handleUpdateTimezoneRegionSelect(interaction) {
+  async handleTimezoneRegionSelect(interaction) {
     try {
       const selectedRegion = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
@@ -369,7 +237,7 @@ export default {
       const countries = getCountriesInRegion(selectedRegion);
       
       const countryMenu = new StringSelectMenuBuilder()
-        .setCustomId('update_timezone_country_select')
+        .setCustomId('timezone_country_select')
         .setPlaceholder('Select your country')
         .addOptions(
           countries.map(country => ({
@@ -378,11 +246,18 @@ export default {
           }))
         );
 
-      const row = new ActionRowBuilder().addComponents(countryMenu);
+      // Back button
+      const backButton = new ButtonBuilder()
+        .setCustomId('timezone_back_to_region')
+        .setLabel('← Back to Regions')
+        .setStyle(ButtonStyle.Secondary);
+
+      const row1 = new ActionRowBuilder().addComponents(countryMenu);
+      const row2 = new ActionRowBuilder().addComponents(backButton);
 
       await interaction.update({
         content: `✅ Region: **${selectedRegion}**\n\nSelect your country:`,
-        components: [row]
+        components: [row1, row2]
       });
 
     } catch (error) {
@@ -394,45 +269,56 @@ export default {
     }
   },
 
-  async handleUpdateTimezoneCountrySelect(interaction) {
+  async handleTimezoneCountrySelect(interaction) {
     try {
       const selectedCountry = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
       state.timezoneCountry = selectedCountry;
       
+      // Get timezones for country
       const timezones = getTimezonesForCountry(selectedCountry);
+      
+      // Get smart suggestion
       const suggestedTimezoneValue = SMART_TIMEZONE_SUGGESTIONS[selectedCountry];
       const suggestedTimezone = timezones.find(tz => tz.value === suggestedTimezoneValue) || timezones[0];
       
       state.suggestedTimezone = suggestedTimezone.value;
 
+      // If only one timezone, use it automatically
       if (timezones.length === 1) {
         state.timezone = timezones[0].value;
-        await this.completeTimezoneUpdate(interaction, state);
+        await this.showFinalModal(interaction);
         return;
       }
 
+      // Show smart suggestion with quick accept
       const acceptButton = new ButtonBuilder()
-        .setCustomId('update_accept_suggested_timezone')
+        .setCustomId('accept_suggested_timezone')
         .setLabel(`✓ Use ${suggestedTimezone.label.split('(')[0].trim()}`)
         .setStyle(ButtonStyle.Success)
         .setEmoji('🌍');
       
       const chooseDifferentButton = new ButtonBuilder()
-        .setCustomId('update_choose_different_timezone')
+        .setCustomId('choose_different_timezone')
         .setLabel('Choose Different')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🔍');
 
-      const row = new ActionRowBuilder().addComponents(acceptButton, chooseDifferentButton);
+      const backButton = new ButtonBuilder()
+        .setCustomId('timezone_back_to_country')
+        .setLabel('← Back')
+        .setStyle(ButtonStyle.Secondary);
+
+      const row1 = new ActionRowBuilder().addComponents(acceptButton, chooseDifferentButton);
+      const row2 = new ActionRowBuilder().addComponents(backButton);
 
       await interaction.update({
         content: `✅ Country: **${selectedCountry}**\n\n` +
@@ -440,11 +326,11 @@ export default {
           `🌍 **${suggestedTimezone.label}**\n` +
           `${suggestedTimezone.utc}\n\n` +
           `Is this correct?`,
-        components: [row]
+        components: [row1, row2]
       });
 
     } catch (error) {
-      console.error('Error handling timezone country update:', error);
+      console.error('Error handling timezone country selection:', error);
       await interaction.update({
         content: '❌ An error occurred. Please try again.',
         components: []
@@ -452,19 +338,19 @@ export default {
     }
   },
 
-  async handleUpdateAcceptSuggestedTimezone(interaction) {
+  async handleAcceptSuggestedTimezone(interaction) {
     try {
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
       state.timezone = state.suggestedTimezone;
-      await this.completeTimezoneUpdate(interaction, state);
+      await this.showFinalModal(interaction);
 
     } catch (error) {
       console.error('Error accepting suggested timezone:', error);
@@ -475,13 +361,13 @@ export default {
     }
   },
 
-  async handleUpdateChooseDifferentTimezone(interaction) {
+  async handleChooseDifferentTimezone(interaction) {
     try {
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
@@ -489,7 +375,7 @@ export default {
       const timezones = getTimezonesForCountry(state.timezoneCountry);
       
       const timezoneMenu = new StringSelectMenuBuilder()
-        .setCustomId('update_timezone_select')
+        .setCustomId('timezone_select')
         .setPlaceholder('Select your timezone')
         .addOptions(
           timezones.map(tz => ({
@@ -499,11 +385,17 @@ export default {
           }))
         );
 
-      const row = new ActionRowBuilder().addComponents(timezoneMenu);
+      const backButton = new ButtonBuilder()
+        .setCustomId('timezone_back_to_suggestion')
+        .setLabel('← Back to Suggestion')
+        .setStyle(ButtonStyle.Secondary);
+
+      const row1 = new ActionRowBuilder().addComponents(timezoneMenu);
+      const row2 = new ActionRowBuilder().addComponents(backButton);
 
       await interaction.update({
         content: `Select your timezone from the list:`,
-        components: [row]
+        components: [row1, row2]
       });
 
     } catch (error) {
@@ -515,23 +407,23 @@ export default {
     }
   },
 
-  async handleUpdateTimezoneSelect(interaction) {
+  async handleTimezoneSelect(interaction) {
     try {
       const selectedTimezone = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
       state.timezone = selectedTimezone;
-      await this.completeTimezoneUpdate(interaction, state);
+      await this.showFinalModal(interaction);
 
     } catch (error) {
-      console.error('Error handling timezone update:', error);
+      console.error('Error handling timezone selection:', error);
       await interaction.update({
         content: '❌ An error occurred. Please try again.',
         components: []
@@ -539,10 +431,10 @@ export default {
     }
   },
 
-  async handleUpdateTimezoneSearch(interaction) {
+  async handleTimezoneSearch(interaction) {
     try {
       const modal = new ModalBuilder()
-        .setCustomId('update_timezone_search_modal')
+        .setCustomId('timezone_search_modal')
         .setTitle('Search for Timezone');
 
       const searchInput = new TextInputBuilder()
@@ -567,31 +459,34 @@ export default {
     }
   },
 
-  async handleUpdateTimezoneSearchSubmit(interaction) {
+  async handleTimezoneSearchSubmit(interaction) {
     try {
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.reply({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           ephemeral: true
         });
       }
 
       const searchQuery = interaction.fields.getTextInputValue('timezone_search_input').toLowerCase();
       
+      // Search through all countries and timezones
       const allCountries = Object.keys(GAME_DATA.timezonesByCountry);
       const results = [];
       
       for (const country of allCountries) {
         const timezones = GAME_DATA.timezonesByCountry[country].timezones;
         
+        // Check if country name matches
         if (country.toLowerCase().includes(searchQuery)) {
           results.push(...timezones.map(tz => ({
             ...tz,
             country: country
           })));
         } else {
+          // Check if any timezone label matches
           for (const tz of timezones) {
             if (tz.label.toLowerCase().includes(searchQuery) || 
                 tz.value.toLowerCase().includes(searchQuery)) {
@@ -608,15 +503,17 @@ export default {
         return interaction.reply({
           content: `❌ No timezones found for "${searchQuery}". Try:\n` +
             `• A major city name (e.g., "Tokyo", "London")\n` +
-            `• A country name (e.g., "Japan", "United Kingdom")`,
+            `• A country name (e.g., "Japan", "United Kingdom")\n` +
+            `• Use the region selector instead`,
           ephemeral: true
         });
       }
 
+      // Limit to 25 results (Discord limit)
       const limitedResults = results.slice(0, 25);
       
       const resultMenu = new StringSelectMenuBuilder()
-        .setCustomId('update_timezone_search_result_select')
+        .setCustomId('timezone_search_result_select')
         .setPlaceholder(`Found ${results.length} result(s)`)
         .addOptions(
           limitedResults.map(tz => ({
@@ -626,11 +523,17 @@ export default {
           }))
         );
 
-      const row = new ActionRowBuilder().addComponents(resultMenu);
+      const backButton = new ButtonBuilder()
+        .setCustomId('timezone_search_back')
+        .setLabel('← Search Again')
+        .setStyle(ButtonStyle.Secondary);
+
+      const row1 = new ActionRowBuilder().addComponents(resultMenu);
+      const row2 = new ActionRowBuilder().addComponents(backButton);
 
       await interaction.reply({
         content: `🔍 Found **${results.length}** result(s) for "${searchQuery}"${results.length > 25 ? ' (showing first 25)' : ''}:`,
-        components: [row],
+        components: [row1, row2],
         ephemeral: true
       });
 
@@ -643,23 +546,24 @@ export default {
     }
   },
 
-  async handleUpdateTimezoneSearchResultSelect(interaction) {
+  async handleTimezoneSearchResultSelect(interaction) {
     try {
       const selectedTimezone = interaction.values[0];
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
         return interaction.update({
-          content: '❌ Update session expired. Please use `/update` again.',
+          content: '❌ Registration session expired. Please use `/register` again.',
           components: []
         });
       }
 
       state.timezone = selectedTimezone;
       
+      // Delete the search result message
       await interaction.message.delete().catch(() => {});
       
-      await this.completeTimezoneUpdate(interaction, state);
+      await this.showFinalModal(interaction);
 
     } catch (error) {
       console.error('Error handling search result selection:', error);
@@ -670,65 +574,120 @@ export default {
     }
   },
 
-  async completeTimezoneUpdate(interaction, state) {
-    await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-      timezone: state.timezone
-    });
+  async showFinalModal(interaction) {
+    const modal = new ModalBuilder()
+      .setCustomId('register_modal')
+      .setTitle('Final Registration Details');
 
-    syncInBackground();
-    interaction.client.updateStates.delete(interaction.user.id);
+    const ignInput = new TextInputBuilder()
+      .setCustomId('ign_input')
+      .setLabel('In-Game Name (IGN)')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(100);
 
-    const message = {
-      content: `✅ **Timezone Updated!**\n\n🌍 **New Timezone:** ${state.timezone}`,
-      components: []
-    };
+    const abilityScoreInput = new TextInputBuilder()
+      .setCustomId('ability_score_input')
+      .setLabel('Ability Score (Total CP/GS)')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false)
+      .setPlaceholder('e.g., 5000');
 
-    if (interaction.replied || interaction.deferred) {
-      await interaction.editReply(message);
-    } else {
-      await interaction.update(message);
-    }
+    const ignRow = new ActionRowBuilder().addComponents(ignInput);
+    const abilityRow = new ActionRowBuilder().addComponents(abilityScoreInput);
+
+    modal.addComponents(ignRow, abilityRow);
+
+    await interaction.showModal(modal);
   },
 
-  async handleAbilityScoreModalSubmit(interaction) {
+  async handleModalSubmit(interaction) {
+    console.log(`🔍 [REGISTER-MODAL] Starting modal submission for user: ${interaction.user.tag}`);
+    
+    await interaction.deferReply({ ephemeral: true });
+    console.log(`🔍 [REGISTER-MODAL] Reply deferred`);
+    
     try {
-      const state = interaction.client.updateStates.get(interaction.user.id);
+      const state = interaction.client.registrationStates.get(interaction.user.id);
+      console.log(`🔍 [REGISTER-MODAL] Registration state:`, state ? 'Found' : 'Missing');
       
       if (!state) {
-        return interaction.reply({
-          content: '❌ Update session expired. Please use `/update` again.',
-          ephemeral: true
+        console.log(`⚠️  [REGISTER-MODAL] State expired`);
+        return interaction.editReply({
+          content: '❌ Registration session expired. Please use `/register` again.'
         });
       }
 
+      console.log(`🔍 [REGISTER-MODAL] Extracting form data...`);
+      const ign = interaction.fields.getTextInputValue('ign_input');
       const abilityScoreStr = interaction.fields.getTextInputValue('ability_score_input');
-      const abilityScore = parseInt(abilityScoreStr);
+      const abilityScore = abilityScoreStr ? parseInt(abilityScoreStr) : null;
+      console.log(`🔍 [REGISTER-MODAL] IGN: ${ign}, Ability Score: ${abilityScore}`);
 
-      if (isNaN(abilityScore)) {
-        return interaction.reply({
-          content: '❌ Please enter a valid number for ability score.',
-          ephemeral: true
-        });
+      console.log(`🔍 [REGISTER-MODAL] Saving to database...`);
+      const character = await queries.createCharacter({
+        discordId: state.discordId,
+        discordName: state.discordName,
+        ign,
+        role: state.role,
+        className: state.className,
+        subclass: state.subclass,
+        abilityScore,
+        timezone: state.timezone,
+        guild: state.guild
+      });
+      console.log(`✅ [REGISTER-MODAL] Character saved to database`);
+
+      console.log(`🔍 [REGISTER-MODAL] Attempting to update nickname...`);
+      try {
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        await member.setNickname(ign);
+        console.log(`✅ [REGISTER-MODAL] Nickname updated successfully`);
+      } catch (nickError) {
+        console.error('⚠️  [REGISTER-MODAL] Could not update nickname:', nickError.message);
       }
 
-      await queries.updateCharacter(state.discordId, state.mainCharIGN, {
-        ability_score: abilityScore
-      });
+      console.log(`🔍 [REGISTER-MODAL] Triggering background sync...`);
+      queries.getAllCharacters()
+        .then(chars => {
+          console.log(`🔍 [SYNC] Got ${chars.length} characters for sync`);
+          return queries.getAllAlts().then(alts => {
+            console.log(`🔍 [SYNC] Got ${alts.length} alts for sync`);
+            return googleSheets.fullSync(chars, alts);
+          });
+        })
+        .then(() => console.log(`✅ [SYNC] Background sync completed`))
+        .catch(err => console.error('⚠️  [SYNC] Background sync failed:', err.message));
 
-      syncInBackground();
-      interaction.client.updateStates.delete(interaction.user.id);
+      console.log(`🔍 [REGISTER-MODAL] Cleaning up state...`);
+      interaction.client.registrationStates.delete(interaction.user.id);
 
-      await interaction.reply({
-        content: `✅ **Ability Score Updated!**\n\n💪 **New Ability Score:** ${abilityScore}`,
-        ephemeral: true
+      console.log(`🔍 [REGISTER-MODAL] Sending success reply...`);
+      await interaction.editReply({
+        content: `✅ **Registration Complete!**\n\n` +
+          `👤 **Discord:** ${state.discordName}\n` +
+          `🎮 **IGN:** ${ign}\n` +
+          `⚔️ **Class:** ${state.className} (${state.subclass})\n` +
+          `🛡️ **Role:** ${state.role}\n` +
+          `💪 **Ability Score:** ${abilityScore || 'Not provided'}\n` +
+          `🌍 **Timezone:** ${state.timezone}\n` +
+          `🏰 **Guild:** ${state.guild}\n\n` +
+          `Your nickname has been updated to your IGN!\n` +
+          `Use \`/addalt\` to register alt characters.`
       });
+      console.log(`✅ [REGISTER-MODAL] Success reply sent!`);
 
     } catch (error) {
-      console.error('Error handling ability score update:', error);
-      await interaction.reply({
-        content: '❌ An error occurred while updating. Please try again.',
-        ephemeral: true
-      });
+      console.error('❌ [REGISTER-MODAL] Error handling modal submission:', error);
+      console.error('❌ [REGISTER-MODAL] Error stack:', error.stack);
+      
+      try {
+        await interaction.editReply({
+          content: '❌ An error occurred while saving your character. Please try again.'
+        });
+      } catch (replyError) {
+        console.error('❌ [REGISTER-MODAL] Failed to send error reply:', replyError);
+      }
     }
   }
 };
