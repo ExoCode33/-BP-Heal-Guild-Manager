@@ -220,21 +220,6 @@ class GoogleSheetsService {
         }
       ];
 
-      // Set column widths for Main Characters
-      if (sheetName === 'Main Characters') {
-        requests.push(
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 160 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 }, properties: { pixelSize: 150 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 100 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 5, endIndex: 6 }, properties: { pixelSize: 130 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 6, endIndex: 7 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 7, endIndex: 8 }, properties: { pixelSize: 200 }, fields: 'pixelSize' } },
-          { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 8, endIndex: 9 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } }
-        );
-      }
-
       // Alternating row colors
       for (let i = 1; i <= dataRowCount; i++) {
         const isEvenRow = i % 2 === 0;
@@ -270,11 +255,121 @@ class GoogleSheetsService {
     }
   }
 
-  async applyDataColors(sheetName, characters) {
-    if (!this.sheets || characters.length === 0) return;
+  async syncMemberList(mainCharacters, altCharacters) {
+    if (!this.sheets) return;
 
     try {
-      console.log(`🎨 [SHEETS] Applying colorful class and ability score colors...`);
+      const totalMembers = mainCharacters.length + altCharacters.length;
+      console.log(`📊 [SHEETS] Starting sync for ${totalMembers} total members (${mainCharacters.length} main + ${altCharacters.length} alts)...`);
+      
+      const headers = [
+        'Discord Name',
+        'IGN',
+        'Type',
+        'Class',
+        'Subclass',
+        'Role',
+        'Ability Score',
+        'Guild',
+        'Timezone',
+        'Registered'
+      ];
+
+      // Combine main and alt characters into one array
+      const allMembers = [];
+      
+      // Add main characters
+      mainCharacters.forEach(char => {
+        allMembers.push({
+          type: 'Main',
+          discord_name: char.discord_name,
+          ign: char.ign,
+          class: char.class,
+          subclass: char.subclass,
+          role: char.role,
+          ability_score: char.ability_score || '',
+          guild: char.guild || '',
+          timezone: char.timezone || '',
+          created_at: char.created_at,
+          isMain: true
+        });
+      });
+      
+      // Add alt characters
+      altCharacters.forEach(alt => {
+        allMembers.push({
+          type: 'Alt',
+          discord_name: alt.discord_name || 'Unknown',
+          ign: alt.ign,
+          class: alt.class,
+          subclass: alt.subclass,
+          role: alt.role,
+          ability_score: '',
+          guild: '',
+          timezone: '',
+          created_at: alt.created_at,
+          isMain: false
+        });
+      });
+
+      // Sort: Main characters first, then alts, both sorted by Discord name
+      allMembers.sort((a, b) => {
+        if (a.isMain !== b.isMain) {
+          return a.isMain ? -1 : 1; // Mains first
+        }
+        return a.discord_name.localeCompare(b.discord_name);
+      });
+
+      const rows = allMembers.map(member => [
+        member.discord_name,
+        member.ign,
+        member.type,
+        member.class,
+        member.subclass,
+        member.role,
+        member.ability_score,
+        member.guild,
+        member.timezone,
+        new Date(member.created_at).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        })
+      ]);
+
+      console.log(`📊 [SHEETS] Clearing Member List sheet...`);
+      await this.sheets.spreadsheets.values.clear({
+        spreadsheetId: this.spreadsheetId,
+        range: 'Member List!A:J',
+      });
+
+      console.log(`📊 [SHEETS] Writing ${rows.length} rows to Member List...`);
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: 'Member List!A1',
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [headers, ...rows],
+        },
+      });
+
+      console.log(`📊 [SHEETS] Applying professional formatting...`);
+      await this.formatProfessionalSheet('Member List', headers.length, rows.length);
+
+      console.log(`📊 [SHEETS] Applying colors to all members...`);
+      await this.applyMemberListColors('Member List', allMembers);
+
+      console.log(`✅ [SHEETS] Member List synced successfully! (${mainCharacters.length} main + ${altCharacters.length} alts = ${totalMembers} total)`);
+    } catch (error) {
+      console.error('❌ [SHEETS] Error syncing member list:', error.message);
+    }
+  }
+
+  async applyMemberListColors(sheetName, members) {
+    if (!this.sheets || members.length === 0) return;
+
+    try {
+      console.log(`🎨 [SHEETS] Applying colorful formatting to ${members.length} members...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -286,15 +381,33 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      for (let i = 0; i < characters.length; i++) {
-        const char = characters[i];
+      // Set column widths for Member List
+      requests.push(
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 160 }, fields: 'pixelSize' } },  // Discord Name
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },  // IGN
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 80 }, fields: 'pixelSize' } },   // Type
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 }, properties: { pixelSize: 150 }, fields: 'pixelSize' } },  // Class
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 130 }, fields: 'pixelSize' } },  // Subclass
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 5, endIndex: 6 }, properties: { pixelSize: 100 }, fields: 'pixelSize' } },  // Role
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 6, endIndex: 7 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },  // Ability Score
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 7, endIndex: 8 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } },  // Guild
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 8, endIndex: 9 }, properties: { pixelSize: 200 }, fields: 'pixelSize' } },  // Timezone
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 9, endIndex: 10 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } }  // Registered
+      );
+
+      for (let i = 0; i < members.length; i++) {
+        const member = members[i];
         const rowIndex = i + 1;
         
-        const classColor = this.getClassColor(char.class);
-        const roleColor = this.getRoleColor(char.role);
-        const abilityColor = this.getAbilityScoreColor(char.ability_score);
-
-        // Main Class column
+        const classColor = this.getClassColor(member.class);
+        const roleColor = this.getRoleColor(member.role);
+        const abilityColor = member.ability_score ? this.getAbilityScoreColor(member.ability_score) : { red: 0.95, green: 0.95, blue: 0.95 };
+        
+        // Type column (Main/Alt) with distinct colors
+        const typeColor = member.isMain 
+          ? { red: 0.2, green: 0.7, blue: 0.3 }  // Green for Main
+          : { red: 0.9, green: 0.6, blue: 0.2 };  // Orange for Alt
+        
         requests.push({
           repeatCell: {
             range: {
@@ -303,6 +416,32 @@ class GoogleSheetsService {
               endRowIndex: rowIndex + 1,
               startColumnIndex: 2,
               endColumnIndex: 3
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: typeColor,
+                textFormat: {
+                  bold: true,
+                  fontSize: 11,
+                  foregroundColor: { red: 1, green: 1, blue: 1 }
+                },
+                horizontalAlignment: 'CENTER',
+                verticalAlignment: 'MIDDLE'
+              }
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+          }
+        });
+
+        // Class column
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 3,
+              endColumnIndex: 4
             },
             cell: {
               userEnteredFormat: {
@@ -334,8 +473,8 @@ class GoogleSheetsService {
               sheetId: sheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
-              startColumnIndex: 3,
-              endColumnIndex: 4
+              startColumnIndex: 4,
+              endColumnIndex: 5
             },
             cell: {
               userEnteredFormat: {
@@ -360,8 +499,8 @@ class GoogleSheetsService {
               sheetId: sheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
-              startColumnIndex: 4,
-              endColumnIndex: 5
+              startColumnIndex: 5,
+              endColumnIndex: 6
             },
             cell: {
               userEnteredFormat: {
@@ -379,16 +518,16 @@ class GoogleSheetsService {
           }
         });
 
-        // Ability Score column
-        if (char.ability_score) {
+        // Ability Score column (only for main characters)
+        if (member.ability_score && member.ability_score !== '') {
           requests.push({
             repeatCell: {
               range: {
                 sheetId: sheetId,
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
-                startColumnIndex: 5,
-                endColumnIndex: 6
+                startColumnIndex: 6,
+                endColumnIndex: 7
               },
               cell: {
                 userEnteredFormat: {
@@ -411,56 +550,60 @@ class GoogleSheetsService {
           });
         }
 
-        // Guild column
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 6,
-              endColumnIndex: 7
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: { red: 0.93, green: 0.93, blue: 0.98 },
-                textFormat: {
-                  fontSize: 10,
-                  bold: true,
-                  fontFamily: 'Roboto'
-                },
-                horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
-          }
-        });
+        // Guild column (only for main characters)
+        if (member.guild && member.guild !== '') {
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 7,
+                endColumnIndex: 8
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: { red: 0.93, green: 0.93, blue: 0.98 },
+                  textFormat: {
+                    fontSize: 10,
+                    bold: true,
+                    fontFamily: 'Roboto'
+                  },
+                  horizontalAlignment: 'CENTER',
+                  verticalAlignment: 'MIDDLE'
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+            }
+          });
+        }
         
-        // Timezone column
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 7,
-              endColumnIndex: 8
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: { red: 0.98, green: 0.98, blue: 0.93 },
-                textFormat: {
-                  fontSize: 9,
-                  fontFamily: 'Courier New'
-                },
-                horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
-          }
-        });
+        // Timezone column (only for main characters)
+        if (member.timezone && member.timezone !== '') {
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 8,
+                endColumnIndex: 9
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: { red: 0.98, green: 0.98, blue: 0.93 },
+                  textFormat: {
+                    fontSize: 9,
+                    fontFamily: 'Courier New'
+                  },
+                  horizontalAlignment: 'CENTER',
+                  verticalAlignment: 'MIDDLE'
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+            }
+          });
+        }
         
         // Registered column
         requests.push({
@@ -469,8 +612,8 @@ class GoogleSheetsService {
               sheetId: sheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
-              startColumnIndex: 8,
-              endColumnIndex: 9
+              startColumnIndex: 9,
+              endColumnIndex: 10
             },
             cell: {
               userEnteredFormat: {
@@ -497,248 +640,10 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
         }
-        console.log(`✅ [SHEETS] Applied ${requests.length} color formats`);
+        console.log(`✅ [SHEETS] Applied ${requests.length} color formats to Member List`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error applying data colors:', error.message);
-    }
-  }
-
-  async syncMainCharacters(characters) {
-    if (!this.sheets) return;
-
-    try {
-      console.log(`📊 [SHEETS] Starting sync for ${characters.length} main characters...`);
-      
-      const headers = [
-        'Name',
-        'Discord Name',
-        'Main Class',
-        'Subclass',
-        'Role',
-        'Ability Score',
-        'Guild',
-        'Timezone',
-        'Registered'
-      ];
-
-      const rows = characters.map(char => [
-        char.ign,
-        char.discord_name,
-        char.class,
-        char.subclass,
-        char.role,
-        char.ability_score || '',
-        char.guild || '',
-        char.timezone || '',
-        new Date(char.created_at).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric',
-          year: 'numeric'
-        })
-      ]);
-
-      console.log(`📊 [SHEETS] Clearing Main Characters sheet...`);
-      await this.sheets.spreadsheets.values.clear({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Main Characters!A:I',
-      });
-
-      console.log(`📊 [SHEETS] Writing ${rows.length} rows to Main Characters...`);
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Main Characters!A1',
-        valueInputOption: 'USER_ENTERED',
-        resource: {
-          values: [headers, ...rows],
-        },
-      });
-
-      console.log(`📊 [SHEETS] Applying professional formatting...`);
-      await this.formatProfessionalSheet('Main Characters', headers.length, rows.length);
-
-      console.log(`📊 [SHEETS] Applying class and ability score colors...`);
-      await this.applyDataColors('Main Characters', characters);
-
-      console.log(`✅ [SHEETS] Main Characters synced successfully! (${characters.length} characters)`);
-    } catch (error) {
-      console.error('❌ [SHEETS] Error syncing main characters:', error.message);
-    }
-  }
-
-  async applyAltColors(sheetName, alts) {
-    if (!this.sheets || alts.length === 0) return;
-
-    try {
-      const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId,
-      });
-
-      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
-      if (!sheet) return;
-
-      const sheetId = sheet.properties.sheetId;
-      const requests = [];
-      
-      // Column widths
-      requests.push(
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 160 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 }, properties: { pixelSize: 150 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 100 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 5, endIndex: 6 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } }
-      );
-
-      alts.forEach((alt, index) => {
-        const rowIndex = index + 1;
-        const classColor = this.getClassColor(alt.class);
-        const roleColor = this.getRoleColor(alt.role);
-
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 2,
-              endColumnIndex: 3
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: classColor,
-                textFormat: {
-                  bold: true,
-                  fontSize: 12,
-                  foregroundColor: { red: 0, green: 0, blue: 0 }
-                },
-                horizontalAlignment: 'CENTER',
-                wrapStrategy: 'WRAP'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,wrapStrategy)'
-          }
-        });
-
-        const lighterColor = {
-          red: Math.min(classColor.red + 0.2, 1),
-          green: Math.min(classColor.green + 0.2, 1),
-          blue: Math.min(classColor.blue + 0.2, 1)
-        };
-
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 3,
-              endColumnIndex: 4
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: lighterColor,
-                textFormat: {
-                  fontSize: 11,
-                  italic: true,
-                  foregroundColor: { red: 0, green: 0, blue: 0 }
-                },
-                horizontalAlignment: 'CENTER'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
-          }
-        });
-
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 4,
-              endColumnIndex: 5
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: roleColor,
-                textFormat: {
-                  bold: true,
-                  fontSize: 11,
-                  foregroundColor: { red: 1, green: 1, blue: 1 }
-                },
-                horizontalAlignment: 'CENTER'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
-          }
-        });
-      });
-
-      if (requests.length > 0) {
-        await this.sheets.spreadsheets.batchUpdate({
-          spreadsheetId: this.spreadsheetId,
-          requestBody: { requests }
-        });
-      }
-    } catch (error) {
-      console.error('❌ [SHEETS] Error applying alt colors:', error.message);
-    }
-  }
-
-  async syncAltCharacters(alts) {
-    if (!this.sheets) return;
-
-    try {
-      console.log(`📊 [SHEETS] Starting sync for ${alts.length} alt characters...`);
-      
-      const headers = [
-        'Discord Name',
-        'Alt IGN',
-        'Class',
-        'Subclass',
-        'Role',
-        'Registered'
-      ];
-
-      const rows = alts.map(alt => [
-        alt.discord_name || 'Unknown',
-        alt.ign,
-        alt.class,
-        alt.subclass,
-        alt.role,
-        new Date(alt.created_at).toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      ]);
-
-      console.log(`📊 [SHEETS] Clearing Alt Characters sheet...`);
-      await this.sheets.spreadsheets.values.clear({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Alt Characters!A:F',
-      });
-
-      console.log(`📊 [SHEETS] Writing ${rows.length} rows to Alt Characters...`);
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Alt Characters!A1',
-        valueInputOption: 'RAW',
-        resource: {
-          values: [headers, ...rows],
-        },
-      });
-
-      console.log(`📊 [SHEETS] Applying professional formatting...`);
-      await this.formatProfessionalSheet('Alt Characters', headers.length, rows.length);
-      
-      console.log(`📊 [SHEETS] Applying colors to alt characters...`);
-      await this.applyAltColors('Alt Characters', alts);
-
-      console.log(`✅ [SHEETS] Alt Characters synced successfully! (${alts.length} alts)`);
-    } catch (error) {
-      console.error('❌ [SHEETS] Error syncing alt characters:', error.message);
+      console.error('❌ [SHEETS] Error applying member list colors:', error.message);
     }
   }
 
@@ -752,8 +657,7 @@ class GoogleSheetsService {
     });
     console.log(`\n🔄 [SHEETS] ========== FULL SYNC STARTED (${timestamp}) ==========`);
     
-    await this.syncMainCharacters(mainCharacters);
-    await this.syncAltCharacters(altCharacters);
+    await this.syncMemberList(mainCharacters, altCharacters);
     
     console.log(`✅ [SHEETS] ========== FULL SYNC COMPLETE (${timestamp}) ==========\n`);
   }
