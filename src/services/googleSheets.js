@@ -38,10 +38,29 @@ class GoogleSheetsService {
     }
   }
 
-  async formatSheet(sheetName, headerCount) {
+  // Color mapping for classes
+  getClassColor(className) {
+    const colors = {
+      'Mage': { red: 0.26, green: 0.52, blue: 0.96 }, // Blue
+      'Frost Mage': { red: 0.26, green: 0.52, blue: 0.96 }, // Blue
+      'Windknight': { red: 0, green: 0.9, blue: 0.9 }, // Cyan
+      'Wind Knight': { red: 0, green: 0.9, blue: 0.9 }, // Cyan
+      'Marksman': { red: 1, green: 1, blue: 0 }, // Yellow
+      'Stormblade': { red: 0.8, green: 0.4, blue: 0.8 }, // Purple
+      'Beat Performer': { red: 1, green: 0.65, blue: 0 }, // Orange
+      'Verdant Oracle': { red: 0.6, green: 0.8, blue: 0.2 }, // Green
+      'Shield Knight': { red: 1, green: 0.6, blue: 0 }, // Orange
+      'Heavy Guardian': { red: 0.5, green: 0.3, blue: 0.1 } // Brown
+    };
+    return colors[className] || { red: 0.9, green: 0.9, blue: 0.9 };
+  }
+
+  async formatColorfulSheet(sheetName, headerCount, dataRowCount) {
     if (!this.sheets) return;
 
     try {
+      console.log(`📊 [SHEETS] Applying colorful formatting to ${sheetName}...`);
+      
       // Get sheet ID
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -65,7 +84,7 @@ class GoogleSheetsService {
             fields: 'gridProperties.frozenRowCount'
           }
         },
-        // Format header row (bold, dark background, white text, centered)
+        // Format header row (pink/magenta background, black bold text)
         {
           repeatCell: {
             range: {
@@ -78,15 +97,15 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: {
-                  red: 0.26,
-                  green: 0.52,
-                  blue: 0.96
+                  red: 1.0,
+                  green: 0.0,
+                  blue: 1.0
                 },
                 textFormat: {
                   foregroundColor: {
-                    red: 1.0,
-                    green: 1.0,
-                    blue: 1.0
+                    red: 0.0,
+                    green: 0.0,
+                    blue: 0.0
                   },
                   fontSize: 11,
                   bold: true
@@ -104,38 +123,39 @@ class GoogleSheetsService {
             range: {
               sheetId: sheetId,
               startRowIndex: 0,
+              endRowIndex: dataRowCount + 1,
               startColumnIndex: 0,
               endColumnIndex: headerCount
             },
             top: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             },
             bottom: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             },
             left: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             },
             right: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             },
             innerHorizontal: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             },
             innerVertical: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.7, green: 0.7, blue: 0.7 }
+              color: { red: 0, green: 0, blue: 0 }
             }
           }
         },
@@ -148,35 +168,6 @@ class GoogleSheetsService {
               startIndex: 0,
               endIndex: headerCount
             }
-          }
-        },
-        // Alternate row colors (zebra striping)
-        {
-          addConditionalFormatRule: {
-            rule: {
-              ranges: [{
-                sheetId: sheetId,
-                startRowIndex: 1,
-                startColumnIndex: 0,
-                endColumnIndex: headerCount
-              }],
-              booleanRule: {
-                condition: {
-                  type: 'CUSTOM_FORMULA',
-                  values: [{
-                    userEnteredValue: '=MOD(ROW(),2)=0'
-                  }]
-                },
-                format: {
-                  backgroundColor: {
-                    red: 0.95,
-                    green: 0.95,
-                    blue: 0.95
-                  }
-                }
-              }
-            },
-            index: 0
           }
         }
       ];
@@ -201,29 +192,27 @@ class GoogleSheetsService {
     try {
       console.log(`📊 [SHEETS] Starting sync for ${characters.length} main characters...`);
       
-      // Prepare headers
+      // Prepare headers - matching your desired format
       const headers = [
-        'Discord Name',
-        'IGN',
-        'Class',
+        'Name',
+        'Main Class',
         'Subclass',
-        'Role',
         'Ability Score',
         'Guild',
         'Timezone',
+        'Role',
         'Registered'
       ];
 
-      // Prepare data rows with formatted dates
+      // Prepare data rows
       const rows = characters.map(char => [
-        char.discord_name,
         char.ign,
         char.class,
         char.subclass,
+        char.ability_score || '',
+        char.guild || '',
+        char.timezone || '',
         char.role,
-        char.ability_score || 'N/A',
-        char.guild || 'None',
-        char.timezone || 'N/A',
         new Date(char.created_at).toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'short', 
@@ -232,13 +221,14 @@ class GoogleSheetsService {
       ]);
 
       console.log(`📊 [SHEETS] Clearing Main Characters sheet...`);
-      // Clear and update the sheet
+      // Clear the sheet
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Main Characters!A:I',
+        range: 'Main Characters!A:H',
       });
 
       console.log(`📊 [SHEETS] Writing ${rows.length} rows to Main Characters...`);
+      // Write data
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: 'Main Characters!A1',
@@ -248,13 +238,70 @@ class GoogleSheetsService {
         },
       });
 
-      console.log(`📊 [SHEETS] Applying formatting to Main Characters...`);
-      // Apply formatting
-      await this.formatSheet('Main Characters', headers.length);
+      console.log(`📊 [SHEETS] Applying colorful formatting...`);
+      // Apply base formatting
+      await this.formatColorfulSheet('Main Characters', headers.length, rows.length);
+
+      // Apply class-based colors
+      await this.applyClassColors('Main Characters', characters);
 
       console.log(`✅ [SHEETS] Main Characters synced successfully! (${characters.length} characters)`);
     } catch (error) {
       console.error('❌ [SHEETS] Error syncing main characters:', error.message);
+    }
+  }
+
+  async applyClassColors(sheetName, characters) {
+    if (!this.sheets) return;
+
+    try {
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      if (!sheet) return;
+
+      const sheetId = sheet.properties.sheetId;
+
+      const requests = [];
+
+      // Color code the Main Class column (column B, index 1)
+      characters.forEach((char, index) => {
+        const color = this.getClassColor(char.class);
+        const rowIndex = index + 1; // +1 because row 0 is header
+
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 1, // Main Class column
+              endColumnIndex: 2
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: color,
+                textFormat: {
+                  bold: true,
+                  foregroundColor: { red: 0, green: 0, blue: 0 }
+                }
+              }
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)'
+          }
+        });
+      });
+
+      if (requests.length > 0) {
+        await this.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests }
+        });
+      }
+    } catch (error) {
+      console.error('Error applying class colors:', error.message);
     }
   }
 
@@ -291,7 +338,6 @@ class GoogleSheetsService {
       ]);
 
       console.log(`📊 [SHEETS] Clearing Alt Characters sheet...`);
-      // Clear and update the sheet
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
         range: 'Alt Characters!A:F',
@@ -307,9 +353,53 @@ class GoogleSheetsService {
         },
       });
 
-      console.log(`📊 [SHEETS] Applying formatting to Alt Characters...`);
-      // Apply formatting
-      await this.formatSheet('Alt Characters', headers.length);
+      console.log(`📊 [SHEETS] Applying colorful formatting...`);
+      await this.formatColorfulSheet('Alt Characters', headers.length, rows.length);
+
+      // Apply class colors to Alt Characters
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === 'Alt Characters');
+      if (sheet) {
+        const sheetId = sheet.properties.sheetId;
+        const requests = [];
+
+        alts.forEach((alt, index) => {
+          const color = this.getClassColor(alt.class);
+          const rowIndex = index + 1;
+
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 2, // Class column in Alt Characters
+                endColumnIndex: 3
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: color,
+                  textFormat: {
+                    bold: true,
+                    foregroundColor: { red: 0, green: 0, blue: 0 }
+                  }
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor,textFormat)'
+            }
+          });
+        });
+
+        if (requests.length > 0) {
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            requestBody: { requests }
+          });
+        }
+      }
 
       console.log(`✅ [SHEETS] Alt Characters synced successfully! (${alts.length} alts)`);
     } catch (error) {
