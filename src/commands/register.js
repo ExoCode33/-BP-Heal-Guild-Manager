@@ -9,17 +9,23 @@ export default {
     .setDescription('Register your main character'),
 
   async execute(interaction) {
+    console.log(`🔍 [REGISTER] Starting execution for user: ${interaction.user.tag}`);
+    
     try {
+      console.log(`🔍 [REGISTER] Checking for existing character...`);
       // Check if user already has a main character
       const existingChar = await queries.getMainCharacter(interaction.user.id);
+      console.log(`🔍 [REGISTER] Existing character check result:`, existingChar ? 'Found' : 'None');
       
       if (existingChar) {
+        console.log(`⚠️  [REGISTER] User already has character, sending warning`);
         return interaction.reply({
           content: '⚠️ You already have a main character registered! Use `/update` to modify your character or `/viewchar` to see your current registration.',
           ephemeral: true
         });
       }
 
+      console.log(`🔍 [REGISTER] Building class selection menu...`);
       // Show class selection menu
       const classMenu = new StringSelectMenuBuilder()
         .setCustomId('class_select')
@@ -34,12 +40,15 @@ export default {
 
       const row = new ActionRowBuilder().addComponents(classMenu);
 
+      console.log(`🔍 [REGISTER] Sending reply with class menu...`);
       await interaction.reply({
         content: '🎮 **Character Registration**\n\nStep 1: Select your main class',
         components: [row],
         ephemeral: true
       });
+      console.log(`✅ [REGISTER] Reply sent successfully`);
 
+      console.log(`🔍 [REGISTER] Storing registration state...`);
       // Store registration state
       interaction.client.registrationStates = interaction.client.registrationStates || new Map();
       interaction.client.registrationStates.set(interaction.user.id, {
@@ -49,11 +58,12 @@ export default {
       });
 
     } catch (error) {
-      console.error('Error in register command:', error);
+      console.error('❌ [REGISTER] Error in register command:', error);
+      console.error('❌ [REGISTER] Error stack:', error.stack);
       await interaction.reply({
         content: '❌ An error occurred during registration. Please try again.',
         ephemeral: true
-      });
+      }).catch(err => console.error('❌ [REGISTER] Failed to send error message:', err));
     }
   },
 
@@ -231,20 +241,30 @@ export default {
   },
 
   async handleModalSubmit(interaction) {
+    console.log(`🔍 [REGISTER-MODAL] Starting modal submission for user: ${interaction.user.tag}`);
+    
+    // Defer reply immediately to prevent timeout
+    await interaction.deferReply({ ephemeral: true });
+    console.log(`🔍 [REGISTER-MODAL] Reply deferred`);
+    
     try {
       const state = interaction.client.registrationStates.get(interaction.user.id);
+      console.log(`🔍 [REGISTER-MODAL] Registration state:`, state ? 'Found' : 'Missing');
       
       if (!state) {
-        return interaction.reply({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          ephemeral: true
+        console.log(`⚠️  [REGISTER-MODAL] State expired`);
+        return interaction.editReply({
+          content: '❌ Registration session expired. Please use `/register` again.'
         });
       }
 
+      console.log(`🔍 [REGISTER-MODAL] Extracting form data...`);
       const ign = interaction.fields.getTextInputValue('ign_input');
       const abilityScoreStr = interaction.fields.getTextInputValue('ability_score_input');
       const abilityScore = abilityScoreStr ? parseInt(abilityScoreStr) : null;
+      console.log(`🔍 [REGISTER-MODAL] IGN: ${ign}, Ability Score: ${abilityScore}`);
 
+      console.log(`🔍 [REGISTER-MODAL] Saving to database...`);
       // Save to database
       const character = await queries.createCharacter({
         discordId: state.discordId,
@@ -257,24 +277,37 @@ export default {
         timezone: state.timezone,
         guild: state.guild
       });
+      console.log(`✅ [REGISTER-MODAL] Character saved to database`);
 
+      console.log(`🔍 [REGISTER-MODAL] Attempting to update nickname...`);
       // Update nickname
       try {
         const member = await interaction.guild.members.fetch(interaction.user.id);
         await member.setNickname(ign);
+        console.log(`✅ [REGISTER-MODAL] Nickname updated successfully`);
       } catch (nickError) {
-        console.error('Could not update nickname:', nickError);
+        console.error('⚠️  [REGISTER-MODAL] Could not update nickname:', nickError.message);
       }
 
+      console.log(`🔍 [REGISTER-MODAL] Triggering background sync...`);
       // Sync to Google Sheets (background task - don't wait)
       queries.getAllCharacters()
-        .then(chars => queries.getAllAlts().then(alts => googleSheets.fullSync(chars, alts)))
-        .catch(err => console.error('Background sync failed:', err.message));
+        .then(chars => {
+          console.log(`🔍 [SYNC] Got ${chars.length} characters for sync`);
+          return queries.getAllAlts().then(alts => {
+            console.log(`🔍 [SYNC] Got ${alts.length} alts for sync`);
+            return googleSheets.fullSync(chars, alts);
+          });
+        })
+        .then(() => console.log(`✅ [SYNC] Background sync completed`))
+        .catch(err => console.error('⚠️  [SYNC] Background sync failed:', err.message));
 
+      console.log(`🔍 [REGISTER-MODAL] Cleaning up state...`);
       // Clean up registration state
       interaction.client.registrationStates.delete(interaction.user.id);
 
-      await interaction.reply({
+      console.log(`🔍 [REGISTER-MODAL] Sending success reply...`);
+      await interaction.editReply({
         content: `✅ **Registration Complete!**\n\n` +
           `👤 **Discord:** ${state.discordName}\n` +
           `🎮 **IGN:** ${ign}\n` +
@@ -284,16 +317,21 @@ export default {
           `🌍 **Timezone:** ${state.timezone}\n` +
           `🏰 **Guild:** ${state.guild}\n\n` +
           `Your nickname has been updated to your IGN!\n` +
-          `Use \`/addalt\` to register alt characters.`,
-        ephemeral: true
+          `Use \`/addalt\` to register alt characters.`
       });
+      console.log(`✅ [REGISTER-MODAL] Success reply sent!`);
 
     } catch (error) {
-      console.error('Error handling modal submission:', error);
-      await interaction.reply({
-        content: '❌ An error occurred while saving your character. Please try again.',
-        ephemeral: true
-      });
+      console.error('❌ [REGISTER-MODAL] Error handling modal submission:', error);
+      console.error('❌ [REGISTER-MODAL] Error stack:', error.stack);
+      
+      try {
+        await interaction.editReply({
+          content: '❌ An error occurred while saving your character. Please try again.'
+        });
+      } catch (replyError) {
+        console.error('❌ [REGISTER-MODAL] Failed to send error reply:', replyError);
+      }
     }
   }
 };
