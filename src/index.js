@@ -1,9 +1,10 @@
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { queries } from './database/queries.js';
 import googleSheets from './services/googleSheets.js';
+import { GAME_DATA } from './config/gameData.js';
 
 // Commands
 import register from './commands/register.js';
@@ -182,7 +183,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (interaction.customId === 'choose_different_timezone') {
         await register.handleChooseDifferentTimezone(interaction);
       } else if (interaction.customId === 'timezone_back_to_region') {
-        await register.handleGuildSelect(interaction);
+        // Show guild selection again
+        const state = client.registrationStates?.get(interaction.user.id);
+        if (state) {
+          const guildMenu = new StringSelectMenuBuilder()
+            .setCustomId('guild_select')
+            .setPlaceholder('Select your guild')
+            .addOptions(
+              GAME_DATA.guilds[state.role].map(guild => ({
+                label: guild,
+                value: guild
+              }))
+            );
+
+          const row = new ActionRowBuilder().addComponents(guildMenu);
+
+          await interaction.update({
+            content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${state.subclass}**\n\nStep 3: Select your guild`,
+            components: [row]
+          });
+        }
+      }
       } else if (interaction.customId === 'timezone_back_to_country') {
         const state = client.registrationStates?.get(interaction.user.id);
         if (state) {
