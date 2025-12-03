@@ -12,6 +12,12 @@ class GoogleSheetsService {
 
   async initialize() {
     try {
+      // Check if credentials are provided
+      if (!process.env.GOOGLE_SHEETS_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+        console.log('⚠️  Google Sheets credentials not configured - skipping');
+        return false;
+      }
+
       // Parse the private key (handle escaped newlines)
       const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
@@ -25,16 +31,16 @@ class GoogleSheetsService {
 
       this.sheets = google.sheets({ version: 'v4', auth: this.auth });
       console.log('✅ Google Sheets API initialized');
+      return true;
     } catch (error) {
-      console.error('❌ Error initializing Google Sheets:', error);
-      throw error;
+      console.error('⚠️  Google Sheets initialization failed:', error.message);
+      return false;
     }
   }
 
   async syncMainCharacters(characters) {
     if (!this.sheets) {
-      console.error('Google Sheets not initialized');
-      return;
+      return; // Skip if not initialized
     }
 
     try {
@@ -89,8 +95,7 @@ class GoogleSheetsService {
 
   async syncAltCharacters(alts) {
     if (!this.sheets) {
-      console.error('Google Sheets not initialized');
-      return;
+      return; // Skip if not initialized
     }
 
     try {
