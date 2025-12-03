@@ -41,18 +41,37 @@ class GoogleSheetsService {
   // Color mapping for classes
   getClassColor(className) {
     const colors = {
-      'Mage': { red: 0.26, green: 0.52, blue: 0.96 }, // Blue
-      'Frost Mage': { red: 0.26, green: 0.52, blue: 0.96 }, // Blue
-      'Windknight': { red: 0, green: 0.9, blue: 0.9 }, // Cyan
-      'Wind Knight': { red: 0, green: 0.9, blue: 0.9 }, // Cyan
-      'Marksman': { red: 1, green: 1, blue: 0 }, // Yellow
-      'Stormblade': { red: 0.8, green: 0.4, blue: 0.8 }, // Purple
       'Beat Performer': { red: 1, green: 0.65, blue: 0 }, // Orange
-      'Verdant Oracle': { red: 0.6, green: 0.8, blue: 0.2 }, // Green
-      'Shield Knight': { red: 1, green: 0.6, blue: 0 }, // Orange
-      'Heavy Guardian': { red: 0.5, green: 0.3, blue: 0.1 } // Brown
+      'Frost Mage': { red: 0.4, green: 0.7, blue: 1 }, // Light Blue
+      'Heavy Guardian': { red: 0.6, green: 0.4, blue: 0.2 }, // Brown
+      'Marksman': { red: 1, green: 1, blue: 0 }, // Yellow
+      'Shield Knight': { red: 1, green: 0.5, blue: 0 }, // Orange
+      'Stormblade': { red: 0.7, green: 0.4, blue: 0.9 }, // Purple
+      'Verdant Oracle': { red: 0.5, green: 0.9, blue: 0.3 }, // Green
+      'Wind Knight': { red: 0.3, green: 0.9, blue: 0.9 } // Cyan
     };
     return colors[className] || { red: 0.9, green: 0.9, blue: 0.9 };
+  }
+
+  // Color mapping for ability scores
+  getAbilityScoreColor(score) {
+    if (!score || score === '') return { red: 1, green: 1, blue: 1 }; // White for empty
+    
+    const numScore = parseInt(score);
+    
+    if (numScore >= 30000) {
+      return { red: 0.5, green: 0, blue: 0.5 }; // Dark Purple (30k+)
+    } else if (numScore >= 25000) {
+      return { red: 0.8, green: 0, blue: 0.8 }; // Magenta (25k-30k)
+    } else if (numScore >= 21000) {
+      return { red: 0.4, green: 0.7, blue: 1 }; // Light Blue (21k-25k)
+    } else if (numScore >= 18000) {
+      return { red: 1, green: 0.4, blue: 0.8 }; // Pink (18k-21k)
+    } else if (numScore >= 15000) {
+      return { red: 1, green: 0.6, blue: 0.2 }; // Orange (15k-18k)
+    } else {
+      return { red: 1, green: 1, blue: 1 }; // White for below 15k
+    }
   }
 
   async formatColorfulSheet(sheetName, headerCount, dataRowCount) {
@@ -192,27 +211,29 @@ class GoogleSheetsService {
     try {
       console.log(`📊 [SHEETS] Starting sync for ${characters.length} main characters...`);
       
-      // Prepare headers - matching your desired format
+      // Prepare headers - ALL database columns
       const headers = [
         'Name',
+        'Discord Name',
         'Main Class',
         'Subclass',
+        'Role',
         'Ability Score',
         'Guild',
         'Timezone',
-        'Role',
         'Registered'
       ];
 
       // Prepare data rows
       const rows = characters.map(char => [
         char.ign,
+        char.discord_name,
         char.class,
         char.subclass,
+        char.role,
         char.ability_score || '',
         char.guild || '',
         char.timezone || '',
-        char.role,
         new Date(char.created_at).toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'short', 
@@ -224,7 +245,7 @@ class GoogleSheetsService {
       // Clear the sheet
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Main Characters!A:H',
+        range: 'Main Characters!A:I',
       });
 
       console.log(`📊 [SHEETS] Writing ${rows.length} rows to Main Characters...`);
@@ -242,8 +263,8 @@ class GoogleSheetsService {
       // Apply base formatting
       await this.formatColorfulSheet('Main Characters', headers.length, rows.length);
 
-      // Apply class-based colors
-      await this.applyClassColors('Main Characters', characters);
+      // Apply class and ability score colors
+      await this.applyDataColors('Main Characters', characters);
 
       console.log(`✅ [SHEETS] Main Characters synced successfully! (${characters.length} characters)`);
     } catch (error) {
@@ -251,7 +272,7 @@ class GoogleSheetsService {
     }
   }
 
-  async applyClassColors(sheetName, characters) {
+  async applyDataColors(sheetName, characters) {
     if (!this.sheets) return;
 
     try {
@@ -266,23 +287,48 @@ class GoogleSheetsService {
 
       const requests = [];
 
-      // Color code the Main Class column (column B, index 1)
+      // Color code columns
       characters.forEach((char, index) => {
-        const color = this.getClassColor(char.class);
+        const classColor = this.getClassColor(char.class);
+        const abilityColor = this.getAbilityScoreColor(char.ability_score);
         const rowIndex = index + 1; // +1 because row 0 is header
 
+        // Color Main Class column (column C, index 2)
         requests.push({
           repeatCell: {
             range: {
               sheetId: sheetId,
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
-              startColumnIndex: 1, // Main Class column
-              endColumnIndex: 2
+              startColumnIndex: 2, // Main Class column
+              endColumnIndex: 3
             },
             cell: {
               userEnteredFormat: {
-                backgroundColor: color,
+                backgroundColor: classColor,
+                textFormat: {
+                  bold: true,
+                  foregroundColor: { red: 0, green: 0, blue: 0 }
+                }
+              }
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)'
+          }
+        });
+
+        // Color Ability Score column (column F, index 5)
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 5, // Ability Score column
+              endColumnIndex: 6
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: abilityColor,
                 textFormat: {
                   bold: true,
                   foregroundColor: { red: 0, green: 0, blue: 0 }
@@ -301,7 +347,7 @@ class GoogleSheetsService {
         });
       }
     } catch (error) {
-      console.error('Error applying class colors:', error.message);
+      console.error('Error applying data colors:', error.message);
     }
   }
 
