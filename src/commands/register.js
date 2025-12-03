@@ -266,14 +266,10 @@ export default {
         console.error('Could not update nickname:', nickError);
       }
 
-      // Sync to Google Sheets
-      try {
-        const allCharacters = await queries.getAllCharacters();
-        const allAlts = await queries.getAllAlts();
-        await googleSheets.fullSync(allCharacters, allAlts);
-      } catch (syncError) {
-        console.error('Error syncing to Google Sheets:', syncError);
-      }
+      // Sync to Google Sheets (background task - don't wait)
+      queries.getAllCharacters()
+        .then(chars => queries.getAllAlts().then(alts => googleSheets.fullSync(chars, alts)))
+        .catch(err => console.error('Background sync failed:', err.message));
 
       // Clean up registration state
       interaction.client.registrationStates.delete(interaction.user.id);
