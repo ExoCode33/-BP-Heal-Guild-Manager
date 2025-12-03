@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+// 🏰 Add gradient background to Guild column (Column G, index 6)import { google } from 'googleapis';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -149,10 +149,16 @@ class GoogleSheetsService {
             properties: {
               sheetId: sheetId,
               gridProperties: {
-                frozenRowCount: 1
+                frozenRowCount: 1,
+                hideGridlines: false
+              },
+              tabColor: {
+                red: 0.4,
+                green: 0.2,
+                blue: 0.9
               }
             },
-            fields: 'gridProperties.frozenRowCount'
+            fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines,tabColor'
           }
         },
         // 🎨 Beautiful gradient header (Purple to Pink to Blue)
@@ -178,9 +184,9 @@ class GoogleSheetsService {
                     green: 1,
                     blue: 1
                   },
-                  fontSize: 13,
+                  fontSize: 14,
                   bold: true,
-                  fontFamily: 'Google Sans'
+                  fontFamily: 'Montserrat'
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
@@ -208,8 +214,8 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 textFormat: {
-                  fontSize: 10,
-                  fontFamily: 'Google Sans'
+                  fontSize: 11,
+                  fontFamily: 'Roboto'
                 },
                 horizontalAlignment: 'LEFT',
                 verticalAlignment: 'MIDDLE',
@@ -266,15 +272,131 @@ class GoogleSheetsService {
             }
           }
         },
-        // 📐 Auto-resize columns
+        // 📐 Set specific column widths for perfect formatting
         {
-          autoResizeDimensions: {
-            dimensions: {
+          updateDimensionProperties: {
+            range: {
               sheetId: sheetId,
               dimension: 'COLUMNS',
               startIndex: 0,
-              endIndex: headerCount
-            }
+              endIndex: 1
+            },
+            properties: {
+              pixelSize: 160  // Name column - wider for IGNs
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 1,
+              endIndex: 2
+            },
+            properties: {
+              pixelSize: 180  // Discord Name - wider
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 2,
+              endIndex: 3
+            },
+            properties: {
+              pixelSize: 180  // Main Class - wider for full names
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 3,
+              endIndex: 4
+            },
+            properties: {
+              pixelSize: 150  // Subclass
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 4,
+              endIndex: 5
+            },
+            properties: {
+              pixelSize: 100  // Role
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 5,
+              endIndex: 6
+            },
+            properties: {
+              pixelSize: 130  // Ability Score
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 6,
+              endIndex: 7
+            },
+            properties: {
+              pixelSize: 140  // Guild
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 7,
+              endIndex: 8
+            },
+            properties: {
+              pixelSize: 200  // Timezone - wider for long names
+            },
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 8,
+              endIndex: 9
+            },
+            properties: {
+              pixelSize: 120  // Registered date
+            },
+            fields: 'pixelSize'
           }
         }
       ];
@@ -358,14 +480,15 @@ class GoogleSheetsService {
                 backgroundColor: classColor,
                 textFormat: {
                   bold: true,
-                  fontSize: 11,
+                  fontSize: 12,
                   foregroundColor: { red: 0, green: 0, blue: 0 }
                 },
                 horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE'
+                verticalAlignment: 'MIDDLE',
+                wrapStrategy: 'WRAP'
               }
             },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)'
           }
         });
 
@@ -461,7 +584,62 @@ class GoogleSheetsService {
           });
         }
 
-        // 🏰 Add gradient background to Guild column (Column G, index 6)
+        // 🌟 Add conditional formatting legend at the top (if first character)
+        if (i === 0) {
+          // Add a note/comment explaining the color coding
+          requests.push({
+            updateCells: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 0,
+                endRowIndex: 1,
+                startColumnIndex: 2,
+                endColumnIndex: 3
+              },
+              rows: [{
+                values: [{
+                  note: '🎨 Each class has a unique color!\n' +
+                        '💖 Beat Performer (Hot Pink)\n' +
+                        '⚡ Frost Mage (Electric Blue)\n' +
+                        '🥉 Heavy Guardian (Bronze)\n' +
+                        '🌿 Marksman (Neon Lime)\n' +
+                        '⭐ Shield Knight (Gold)\n' +
+                        '💜 Stormblade (Royal Purple)\n' +
+                        '💚 Verdant Oracle (Emerald)\n' +
+                        '🌊 Wind Knight (Cyan)'
+                }]
+              }],
+              fields: 'note'
+            }
+          });
+          
+          // Add note for ability scores
+          requests.push({
+            updateCells: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: 0,
+                endRowIndex: 1,
+                startColumnIndex: 5,
+                endColumnIndex: 6
+              },
+              rows: [{
+                values: [{
+                  note: '💪 Ability Score Tiers:\n' +
+                        '👑 30k+ (Divine Purple - LEGENDARY)\n' +
+                        '💎 27-30k (Hot Magenta - MYTHIC)\n' +
+                        '🔥 24-27k (Ruby Red - EPIC)\n' +
+                        '⭐ 21-24k (Orange - RARE)\n' +
+                        '✨ 18-21k (Gold - UNCOMMON)\n' +
+                        '🌟 15-18k (Sky Blue - COMMON)\n' +
+                        '🌱 10-15k (Green - STARTER)\n' +
+                        '🆕 <10k (Silver - BEGINNER)'
+                }]
+              }],
+              fields: 'note'
+            }
+          });
+        }
         requests.push({
           repeatCell: {
             range: {
@@ -477,7 +655,7 @@ class GoogleSheetsService {
                 textFormat: {
                   fontSize: 10,
                   bold: true,
-                  fontFamily: 'Google Sans'
+                  fontFamily: 'Roboto'
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -630,6 +808,82 @@ class GoogleSheetsService {
 
       const sheetId = sheet.properties.sheetId;
       const requests = [];
+      
+      // Set column widths for Alt Characters
+      requests.push(
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 0,
+              endIndex: 1
+            },
+            properties: { pixelSize: 180 },  // Discord Name
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 1,
+              endIndex: 2
+            },
+            properties: { pixelSize: 160 },  // Alt IGN
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 2,
+              endIndex: 3
+            },
+            properties: { pixelSize: 180 },  // Class
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 3,
+              endIndex: 4
+            },
+            properties: { pixelSize: 150 },  // Subclass
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 4,
+              endIndex: 5
+            },
+            properties: { pixelSize: 100 },  // Role
+            fields: 'pixelSize'
+          }
+        },
+        {
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: 5,
+              endIndex: 6
+            },
+            properties: { pixelSize: 120 },  // Registered
+            fields: 'pixelSize'
+          }
+        }
+      );
 
       alts.forEach((alt, index) => {
         const rowIndex = index + 1;
@@ -651,13 +905,14 @@ class GoogleSheetsService {
                 backgroundColor: classColor,
                 textFormat: {
                   bold: true,
-                  fontSize: 11,
+                  fontSize: 12,
                   foregroundColor: { red: 0, green: 0, blue: 0 }
                 },
-                horizontalAlignment: 'CENTER'
+                horizontalAlignment: 'CENTER',
+                wrapStrategy: 'WRAP'
               }
             },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,wrapStrategy)'
           }
         });
 
@@ -681,7 +936,7 @@ class GoogleSheetsService {
               userEnteredFormat: {
                 backgroundColor: lighterClassColor,
                 textFormat: {
-                  fontSize: 10,
+                  fontSize: 11,
                   italic: true,
                   foregroundColor: { red: 0, green: 0, blue: 0 }
                 },
@@ -707,7 +962,7 @@ class GoogleSheetsService {
                 backgroundColor: roleColor,
                 textFormat: {
                   bold: true,
-                  fontSize: 10,
+                  fontSize: 11,
                   foregroundColor: { red: 1, green: 1, blue: 1 }
                 },
                 horizontalAlignment: 'CENTER'
