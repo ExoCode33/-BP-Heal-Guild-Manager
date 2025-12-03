@@ -35,13 +35,40 @@ export const GAME_DATA = {
     }
   },
   
-  guilds: ['Guild 1', 'Guild 2', 'Guild 3'],
+  // Role-based guilds
+  guilds: {
+    Tank: ['Tank Guild 1', 'Tank Guild 2', 'Tank Guild 3'],
+    DPS: ['DPS Guild 1', 'DPS Guild 2', 'DPS Guild 3'],
+    Support: ['Support Guild 1', 'Support Guild 2', 'Support Guild 3']
+  },
   
+  // Timezones with better descriptions
   timezones: [
-    'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6',
-    'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1', 'UTC+0', 'UTC+1',
-    'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6', 'UTC+7', 'UTC+8',
-    'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
+    { value: 'UTC-12', label: 'UTC-12 (Baker Island)' },
+    { value: 'UTC-11', label: 'UTC-11 (American Samoa)' },
+    { value: 'UTC-10', label: 'UTC-10 (Hawaii)' },
+    { value: 'UTC-9', label: 'UTC-9 (Alaska)' },
+    { value: 'UTC-8', label: 'UTC-8 (Pacific Time - LA, Vancouver)' },
+    { value: 'UTC-7', label: 'UTC-7 (Mountain Time - Denver, Phoenix)' },
+    { value: 'UTC-6', label: 'UTC-6 (Central Time - Chicago, Mexico City)' },
+    { value: 'UTC-5', label: 'UTC-5 (Eastern Time - NYC, Toronto)' },
+    { value: 'UTC-4', label: 'UTC-4 (Atlantic Time - Halifax, Caracas)' },
+    { value: 'UTC-3', label: 'UTC-3 (Buenos Aires, São Paulo)' },
+    { value: 'UTC-2', label: 'UTC-2 (South Georgia)' },
+    { value: 'UTC-1', label: 'UTC-1 (Azores, Cape Verde)' },
+    { value: 'UTC+0', label: 'UTC+0 (London, Lisbon, Reykjavik)' },
+    { value: 'UTC+1', label: 'UTC+1 (Paris, Berlin, Rome)' },
+    { value: 'UTC+2', label: 'UTC+2 (Cairo, Athens, Helsinki)' },
+    { value: 'UTC+3', label: 'UTC+3 (Moscow, Istanbul, Riyadh)' },
+    { value: 'UTC+4', label: 'UTC+4 (Dubai, Baku)' },
+    { value: 'UTC+5', label: 'UTC+5 (Pakistan, Maldives)' },
+    { value: 'UTC+6', label: 'UTC+6 (Bangladesh, Kazakhstan)' },
+    { value: 'UTC+7', label: 'UTC+7 (Bangkok, Jakarta, Hanoi)' },
+    { value: 'UTC+8', label: 'UTC+8 (Beijing, Singapore, Perth)' },
+    { value: 'UTC+9', label: 'UTC+9 (Tokyo, Seoul, Pyongyang)' },
+    { value: 'UTC+10', label: 'UTC+10 (Sydney, Melbourne, Brisbane)' },
+    { value: 'UTC+11', label: 'UTC+11 (Solomon Islands, New Caledonia)' },
+    { value: 'UTC+12', label: 'UTC+12 (Auckland, Fiji)' }
   ]
 };
 
@@ -53,6 +80,11 @@ export function getRoleFromClass(className) {
 // Helper function to get subclasses for a class
 export function getSubclassesForClass(className) {
   return GAME_DATA.classes[className]?.subclasses || [];
+}
+
+// Helper function to get guilds for a role
+export function getGuildsForRole(role) {
+  return GAME_DATA.guilds[role] || [];
 }
 
 // Helper function to validate class and subclass combination
