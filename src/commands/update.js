@@ -3,6 +3,13 @@ import { GAME_DATA, getRoleFromClass } from '../config/gameData.js';
 import { queries } from '../database/queries.js';
 import googleSheets from '../services/googleSheets.js';
 
+// Helper function to sync in background
+const syncInBackground = () => {
+  queries.getAllCharacters()
+    .then(chars => queries.getAllAlts().then(alts => googleSheets.fullSync(chars, alts)))
+    .catch(err => console.error('Background sync failed:', err.message));
+};
+
 export default {
   data: new SlashCommandBuilder()
     .setName('update')
@@ -206,14 +213,8 @@ export default {
         role: state.newRole
       });
 
-      // Sync to Google Sheets
-      try {
-        const allCharacters = await queries.getAllCharacters();
-        const allAlts = await queries.getAllAlts();
-        await googleSheets.fullSync(allCharacters, allAlts);
-      } catch (syncError) {
-        console.error('Error syncing to Google Sheets:', syncError);
-      }
+      // Sync to Google Sheets (background)
+      syncInBackground();
 
       interaction.client.updateStates.delete(interaction.user.id);
 
@@ -249,14 +250,8 @@ export default {
         guild: selectedGuild
       });
 
-      // Sync to Google Sheets
-      try {
-        const allCharacters = await queries.getAllCharacters();
-        const allAlts = await queries.getAllAlts();
-        await googleSheets.fullSync(allCharacters, allAlts);
-      } catch (syncError) {
-        console.error('Error syncing to Google Sheets:', syncError);
-      }
+      // Sync to Google Sheets (background)
+      syncInBackground();
 
       interaction.client.updateStates.delete(interaction.user.id);
 
@@ -290,14 +285,8 @@ export default {
         timezone: selectedTimezone
       });
 
-      // Sync to Google Sheets
-      try {
-        const allCharacters = await queries.getAllCharacters();
-        const allAlts = await queries.getAllAlts();
-        await googleSheets.fullSync(allCharacters, allAlts);
-      } catch (syncError) {
-        console.error('Error syncing to Google Sheets:', syncError);
-      }
+      // Sync to Google Sheets (background)
+      syncInBackground();
 
       interaction.client.updateStates.delete(interaction.user.id);
 
@@ -340,14 +329,8 @@ export default {
         ability_score: abilityScore
       });
 
-      // Sync to Google Sheets
-      try {
-        const allCharacters = await queries.getAllCharacters();
-        const allAlts = await queries.getAllAlts();
-        await googleSheets.fullSync(allCharacters, allAlts);
-      } catch (syncError) {
-        console.error('Error syncing to Google Sheets:', syncError);
-      }
+      // Sync to Google Sheets (background)
+      syncInBackground();
 
       interaction.client.updateStates.delete(interaction.user.id);
 
