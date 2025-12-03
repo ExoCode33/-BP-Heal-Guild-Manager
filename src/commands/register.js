@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
 import { GAME_DATA, getRoleFromClass, getTimezoneRegions, getCountriesInRegion, getTimezonesForCountry, getGuilds } from '../config/gameData.js';
 import { queries } from '../database/queries.js';
 import googleSheets from '../services/googleSheets.js';
@@ -44,21 +44,40 @@ export default {
       
       if (existingChar) {
         console.log(`⚠️  [REGISTER] User already has character, sending warning`);
-        return interaction.reply({
-          content: '⚠️ You already have a main character registered! Use `/update` to modify your character or `/viewchar` to see your current registration.',
-          ephemeral: true
-        });
+        
+        const embed = new EmbedBuilder()
+          .setColor('#FFA500')
+          .setTitle('⚠️ Already Registered')
+          .setDescription('You already have a main character registered!')
+          .addFields(
+            { name: '📝 Update Character', value: 'Use `/update` to modify your character information', inline: false },
+            { name: '👀 View Character', value: 'Use `/viewchar` to see your current registration', inline: false }
+          )
+          .setFooter({ text: '💡 Tip: You can register alt characters with /addalt' })
+          .setTimestamp();
+        
+        return interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
       console.log(`🔍 [REGISTER] Building class selection menu...`);
+      
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🎮 Character Registration')
+        .setDescription('Welcome to character registration! Let\'s get started by selecting your main class.')
+        .addFields({ name: '📍 Step 1 of 4', value: 'Select your main class from the dropdown below', inline: false })
+        .setFooter({ text: '✨ Your journey begins here' })
+        .setTimestamp();
+      
       const classMenu = new StringSelectMenuBuilder()
         .setCustomId('class_select')
-        .setPlaceholder('Select your main class')
+        .setPlaceholder('🎯 Select your main class')
         .addOptions(
           Object.keys(GAME_DATA.classes).map(className => ({
             label: className,
             description: `Role: ${GAME_DATA.classes[className].role}`,
-            value: className
+            value: className,
+            emoji: this.getClassEmoji(className)
           }))
         );
 
@@ -66,7 +85,7 @@ export default {
 
       console.log(`🔍 [REGISTER] Sending reply with class menu...`);
       await interaction.reply({
-        content: '🎮 **Character Registration**\n\nStep 1: Select your main class',
+        embeds: [embed],
         components: [row],
         ephemeral: true
       });
@@ -83,11 +102,39 @@ export default {
     } catch (error) {
       console.error('❌ [REGISTER] Error in register command:', error);
       console.error('❌ [REGISTER] Error stack:', error.stack);
-      await interaction.reply({
-        content: '❌ An error occurred during registration. Please try again.',
-        ephemeral: true
-      }).catch(err => console.error('❌ [REGISTER] Failed to send error message:', err));
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Registration Error')
+        .setDescription('An error occurred during registration. Please try again.')
+        .setFooter({ text: 'If this persists, contact a moderator' })
+        .setTimestamp();
+      
+      await interaction.reply({ embeds: [errorEmbed], ephemeral: true }).catch(err => console.error('❌ [REGISTER] Failed to send error message:', err));
     }
+  },
+
+  getClassEmoji(className) {
+    const emojis = {
+      'Beat Performer': '🎵',
+      'Frost Mage': '❄️',
+      'Heavy Guardian': '🛡️',
+      'Marksman': '🏹',
+      'Shield Knight': '⚔️',
+      'Stormblade': '⚡',
+      'Verdant Oracle': '🌿',
+      'Wind Knight': '💨'
+    };
+    return emojis[className] || '⭐';
+  },
+
+  getRoleEmoji(role) {
+    const emojis = {
+      'Tank': '🛡️',
+      'DPS': '⚔️',
+      'Support': '💚'
+    };
+    return emojis[role] || '⭐';
   },
 
   async handleClassSelect(interaction) {
@@ -96,18 +143,34 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.className = selectedClass;
       state.role = getRoleFromClass(selectedClass);
 
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🎮 Character Registration')
+        .setDescription('Great choice! Now let\'s pick your subclass.')
+        .addFields(
+          { name: '✅ Class Selected', value: `${this.getClassEmoji(selectedClass)} **${selectedClass}**`, inline: true },
+          { name: '🎭 Role', value: `${this.getRoleEmoji(state.role)} **${state.role}**`, inline: true },
+          { name: '\u200B', value: '\u200B', inline: true },
+          { name: '📍 Step 2 of 4', value: 'Select your subclass from the dropdown below', inline: false }
+        )
+        .setFooter({ text: '✨ Building your character' })
+        .setTimestamp();
+
       const subclassMenu = new StringSelectMenuBuilder()
         .setCustomId('subclass_select')
-        .setPlaceholder('Select your subclass')
+        .setPlaceholder('🎯 Select your subclass')
         .addOptions(
           GAME_DATA.classes[selectedClass].subclasses.map(subclass => ({
             label: subclass,
@@ -117,17 +180,18 @@ export default {
 
       const row = new ActionRowBuilder().addComponents(subclassMenu);
 
-      await interaction.update({
-        content: `✅ Class: **${selectedClass}** (${state.role})\n\nStep 2: Select your subclass`,
-        components: [row]
-      });
+      await interaction.update({ embeds: [embed], components: [row] });
 
     } catch (error) {
       console.error('Error handling class selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -137,10 +201,13 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.subclass = selectedSubclass;
@@ -150,9 +217,22 @@ export default {
         // Skip guild selection, go straight to timezone
         const regions = getTimezoneRegions();
         
+        const embed = new EmbedBuilder()
+          .setColor('#6640D9')
+          .setTitle('🎮 Character Registration')
+          .setDescription('Excellent! Now let\'s set your timezone.')
+          .addFields(
+            { name: '✅ Class', value: `${this.getClassEmoji(state.className)} **${state.className}**`, inline: true },
+            { name: '✅ Subclass', value: `**${selectedSubclass}**`, inline: true },
+            { name: '🎭 Role', value: `${this.getRoleEmoji(state.role)} **${state.role}**`, inline: true },
+            { name: '📍 Step 3 of 4', value: 'Select your region or search for your timezone', inline: false }
+          )
+          .setFooter({ text: '🌍 Almost there!' })
+          .setTimestamp();
+        
         const regionMenu = new StringSelectMenuBuilder()
           .setCustomId('timezone_region_select')
-          .setPlaceholder('Select your region')
+          .setPlaceholder('🌍 Select your region')
           .addOptions(
             regions.map(region => ({
               label: region,
@@ -162,16 +242,14 @@ export default {
 
         const searchButton = new ButtonBuilder()
           .setCustomId('timezone_search')
-          .setLabel('🔍 Search for Timezone')
-          .setStyle(ButtonStyle.Primary);
+          .setLabel('Search for Timezone')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🔍');
 
         const row1 = new ActionRowBuilder().addComponents(regionMenu);
         const row2 = new ActionRowBuilder().addComponents(searchButton);
 
-        await interaction.update({
-          content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${selectedSubclass}**\n\nStep 3: Select your region or search for your timezone`,
-          components: [row1, row2]
-        });
+        await interaction.update({ embeds: [embed], components: [row1, row2] });
         
         return;
       }
@@ -179,9 +257,22 @@ export default {
       // Show guild selection
       const guilds = getGuilds();
       
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🎮 Character Registration')
+        .setDescription('Perfect! Now select your guild.')
+        .addFields(
+          { name: '✅ Class', value: `${this.getClassEmoji(state.className)} **${state.className}**`, inline: true },
+          { name: '✅ Subclass', value: `**${selectedSubclass}**`, inline: true },
+          { name: '🎭 Role', value: `${this.getRoleEmoji(state.role)} **${state.role}**`, inline: true },
+          { name: '📍 Step 3 of 4', value: 'Select your guild from the dropdown below', inline: false }
+        )
+        .setFooter({ text: '🏰 Choose your guild' })
+        .setTimestamp();
+      
       const guildMenu = new StringSelectMenuBuilder()
         .setCustomId('guild_select')
-        .setPlaceholder('Select your guild')
+        .setPlaceholder('🏰 Select your guild')
         .addOptions(
           guilds.map(guild => ({
             label: guild.name,
@@ -191,17 +282,18 @@ export default {
 
       const row = new ActionRowBuilder().addComponents(guildMenu);
 
-      await interaction.update({
-        content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${selectedSubclass}**\n\nStep 3: Select your guild`,
-        components: [row]
-      });
+      await interaction.update({ embeds: [embed], components: [row] });
 
     } catch (error) {
       console.error('Error handling subclass selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -211,10 +303,13 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.guild = selectedGuild;
@@ -222,9 +317,23 @@ export default {
       // Show region selection for timezone
       const regions = getTimezoneRegions();
       
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🎮 Character Registration')
+        .setDescription('Almost done! Let\'s set your timezone.')
+        .addFields(
+          { name: '✅ Class', value: `${this.getClassEmoji(state.className)} **${state.className}**`, inline: true },
+          { name: '✅ Subclass', value: `**${state.subclass}**`, inline: true },
+          { name: '🎭 Role', value: `${this.getRoleEmoji(state.role)} **${state.role}**`, inline: true },
+          { name: '✅ Guild', value: `🏰 **${selectedGuild}**`, inline: false },
+          { name: '📍 Step 4 of 4', value: 'Select your region or search for your timezone', inline: false }
+        )
+        .setFooter({ text: '🌍 Final step!' })
+        .setTimestamp();
+      
       const regionMenu = new StringSelectMenuBuilder()
         .setCustomId('timezone_region_select')
-        .setPlaceholder('Select your region')
+        .setPlaceholder('🌍 Select your region')
         .addOptions(
           regions.map(region => ({
             label: region,
@@ -232,26 +341,27 @@ export default {
           }))
         );
 
-      // Add search button
       const searchButton = new ButtonBuilder()
         .setCustomId('timezone_search')
-        .setLabel('🔍 Search for Timezone')
-        .setStyle(ButtonStyle.Primary);
+        .setLabel('Search for Timezone')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🔍');
 
       const row1 = new ActionRowBuilder().addComponents(regionMenu);
       const row2 = new ActionRowBuilder().addComponents(searchButton);
 
-      await interaction.update({
-        content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${state.subclass}**\n✅ Guild: **${selectedGuild}**\n\nStep 4: Select your region or search for your timezone`,
-        components: [row1, row2]
-      });
+      await interaction.update({ embeds: [embed], components: [row1, row2] });
 
     } catch (error) {
       console.error('Error handling guild selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -261,19 +371,29 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.timezoneRegion = selectedRegion;
       
       const countries = getCountriesInRegion(selectedRegion);
       
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🌍 Timezone Selection')
+        .setDescription(`Region: **${selectedRegion}**\n\nNow select your country.`)
+        .setFooter({ text: 'Almost there!' })
+        .setTimestamp();
+      
       const countryMenu = new StringSelectMenuBuilder()
         .setCustomId('timezone_country_select')
-        .setPlaceholder('Select your country')
+        .setPlaceholder('🗺️ Select your country')
         .addOptions(
           countries.map(country => ({
             label: country,
@@ -281,26 +401,27 @@ export default {
           }))
         );
 
-      // Back button
       const backButton = new ButtonBuilder()
         .setCustomId('timezone_back_to_region')
-        .setLabel('← Back to Regions')
-        .setStyle(ButtonStyle.Secondary);
+        .setLabel('Back to Regions')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('◀️');
 
       const row1 = new ActionRowBuilder().addComponents(countryMenu);
       const row2 = new ActionRowBuilder().addComponents(backButton);
 
-      await interaction.update({
-        content: `✅ Region: **${selectedRegion}**\n\nSelect your country:`,
-        components: [row1, row2]
-      });
+      await interaction.update({ embeds: [embed], components: [row1, row2] });
 
     } catch (error) {
       console.error('Error handling region selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -310,36 +431,42 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.timezoneCountry = selectedCountry;
       
-      // Get timezones for country
       const timezones = getTimezonesForCountry(selectedCountry);
-      
-      // Get smart suggestion
       const suggestedTimezoneValue = SMART_TIMEZONE_SUGGESTIONS[selectedCountry];
       const suggestedTimezone = timezones.find(tz => tz.value === suggestedTimezoneValue) || timezones[0];
       
       state.suggestedTimezone = suggestedTimezone.value;
 
-      // If only one timezone, use it automatically
       if (timezones.length === 1) {
         state.timezone = timezones[0].value;
         await this.showFinalModal(interaction);
         return;
       }
 
-      // Show smart suggestion with quick accept
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🌍 Timezone Selection')
+        .setDescription(`Country: **${selectedCountry}**\n\n**Suggested timezone:**\n🌍 ${suggestedTimezone.label}\n${suggestedTimezone.utc}`)
+        .addFields({ name: '❓ Is this correct?', value: 'Click the button below to confirm or choose a different timezone.', inline: false })
+        .setFooter({ text: 'We detected your timezone automatically' })
+        .setTimestamp();
+
       const acceptButton = new ButtonBuilder()
         .setCustomId('accept_suggested_timezone')
-        .setLabel(`✓ Use ${suggestedTimezone.label.split('(')[0].trim()}`)
+        .setLabel(`Use ${suggestedTimezone.label.split('(')[0].trim()}`)
         .setStyle(ButtonStyle.Success)
-        .setEmoji('🌍');
+        .setEmoji('✅');
       
       const chooseDifferentButton = new ButtonBuilder()
         .setCustomId('choose_different_timezone')
@@ -349,27 +476,25 @@ export default {
 
       const backButton = new ButtonBuilder()
         .setCustomId('timezone_back_to_country')
-        .setLabel('← Back')
-        .setStyle(ButtonStyle.Secondary);
+        .setLabel('Back')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('◀️');
 
       const row1 = new ActionRowBuilder().addComponents(acceptButton, chooseDifferentButton);
       const row2 = new ActionRowBuilder().addComponents(backButton);
 
-      await interaction.update({
-        content: `✅ Country: **${selectedCountry}**\n\n` +
-          `**Suggested timezone:**\n` +
-          `🌍 **${suggestedTimezone.label}**\n` +
-          `${suggestedTimezone.utc}\n\n` +
-          `Is this correct?`,
-        components: [row1, row2]
-      });
+      await interaction.update({ embeds: [embed], components: [row1, row2] });
 
     } catch (error) {
       console.error('Error handling timezone country selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -378,10 +503,13 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.timezone = state.suggestedTimezone;
@@ -389,10 +517,14 @@ export default {
 
     } catch (error) {
       console.error('Error accepting suggested timezone:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -401,17 +533,27 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       const timezones = getTimezonesForCountry(state.timezoneCountry);
       
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🌍 Timezone Selection')
+        .setDescription('Select your timezone from the list below.')
+        .setFooter({ text: 'Choose the timezone that matches your location' })
+        .setTimestamp();
+      
       const timezoneMenu = new StringSelectMenuBuilder()
         .setCustomId('timezone_select')
-        .setPlaceholder('Select your timezone')
+        .setPlaceholder('🕐 Select your timezone')
         .addOptions(
           timezones.map(tz => ({
             label: tz.label,
@@ -422,23 +564,25 @@ export default {
 
       const backButton = new ButtonBuilder()
         .setCustomId('timezone_back_to_suggestion')
-        .setLabel('← Back to Suggestion')
-        .setStyle(ButtonStyle.Secondary);
+        .setLabel('Back to Suggestion')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('◀️');
 
       const row1 = new ActionRowBuilder().addComponents(timezoneMenu);
       const row2 = new ActionRowBuilder().addComponents(backButton);
 
-      await interaction.update({
-        content: `Select your timezone from the list:`,
-        components: [row1, row2]
-      });
+      await interaction.update({ embeds: [embed], components: [row1, row2] });
 
     } catch (error) {
       console.error('Error showing timezone list:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -448,10 +592,13 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.timezone = selectedTimezone;
@@ -459,10 +606,14 @@ export default {
 
     } catch (error) {
       console.error('Error handling timezone selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -487,10 +638,14 @@ export default {
 
     } catch (error) {
       console.error('Error showing search modal:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
@@ -499,29 +654,29 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.reply({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          ephemeral: true
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
       const searchQuery = interaction.fields.getTextInputValue('timezone_search_input').toLowerCase();
       
-      // Search through all countries and timezones
       const allCountries = Object.keys(GAME_DATA.timezonesByCountry);
       const results = [];
       
       for (const country of allCountries) {
         const timezones = GAME_DATA.timezonesByCountry[country].timezones;
         
-        // Check if country name matches
         if (country.toLowerCase().includes(searchQuery)) {
           results.push(...timezones.map(tz => ({
             ...tz,
             country: country
           })));
         } else {
-          // Check if any timezone label matches
           for (const tz of timezones) {
             if (tz.label.toLowerCase().includes(searchQuery) || 
                 tz.value.toLowerCase().includes(searchQuery)) {
@@ -535,21 +690,30 @@ export default {
       }
 
       if (results.length === 0) {
-        return interaction.reply({
-          content: `❌ No timezones found for "${searchQuery}". Try:\n` +
-            `• A major city name (e.g., "Tokyo", "London")\n` +
-            `• A country name (e.g., "Japan", "United Kingdom")\n` +
-            `• Use the region selector instead`,
-          ephemeral: true
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FFA500')
+          .setTitle('🔍 No Results Found')
+          .setDescription(`No timezones found for **"${searchQuery}"**`)
+          .addFields(
+            { name: '💡 Try:', value: '• A major city name (e.g., "Tokyo", "London")\n• A country name (e.g., "Japan", "United Kingdom")\n• Use the region selector instead', inline: false }
+          )
+          .setTimestamp();
+        
+        return interaction.reply({ embeds: [embed], ephemeral: true });
       }
 
-      // Limit to 25 results (Discord limit)
       const limitedResults = results.slice(0, 25);
+      
+      const embed = new EmbedBuilder()
+        .setColor('#6640D9')
+        .setTitle('🔍 Search Results')
+        .setDescription(`Found **${results.length}** result(s) for **"${searchQuery}"**${results.length > 25 ? ' (showing first 25)' : ''}`)
+        .setFooter({ text: 'Select your timezone from the dropdown' })
+        .setTimestamp();
       
       const resultMenu = new StringSelectMenuBuilder()
         .setCustomId('timezone_search_result_select')
-        .setPlaceholder(`Found ${results.length} result(s)`)
+        .setPlaceholder(`${results.length} result(s) found`)
         .addOptions(
           limitedResults.map(tz => ({
             label: `${tz.country}: ${tz.label.substring(0, 80)}`,
@@ -560,24 +724,25 @@ export default {
 
       const backButton = new ButtonBuilder()
         .setCustomId('timezone_search_back')
-        .setLabel('← Search Again')
-        .setStyle(ButtonStyle.Secondary);
+        .setLabel('Search Again')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('◀️');
 
       const row1 = new ActionRowBuilder().addComponents(resultMenu);
       const row2 = new ActionRowBuilder().addComponents(backButton);
 
-      await interaction.reply({
-        content: `🔍 Found **${results.length}** result(s) for "${searchQuery}"${results.length > 25 ? ' (showing first 25)' : ''}:`,
-        components: [row1, row2],
-        ephemeral: true
-      });
+      await interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: true });
 
     } catch (error) {
       console.error('Error handling timezone search:', error);
-      await interaction.reply({
-        content: '❌ An error occurred during search. Please try again.',
-        ephemeral: true
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred during search. Please try again.')
+        .setTimestamp();
+      
+      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
     }
   },
 
@@ -587,43 +752,50 @@ export default {
       const state = interaction.client.registrationStates.get(interaction.user.id);
       
       if (!state) {
-        return interaction.update({
-          content: '❌ Registration session expired. Please use `/register` again.',
-          components: []
-        });
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.update({ embeds: [embed], components: [] });
       }
 
       state.timezone = selectedTimezone;
       
-      // Delete the search result message
       await interaction.message.delete().catch(() => {});
       
       await this.showFinalModal(interaction);
 
     } catch (error) {
       console.error('Error handling search result selection:', error);
-      await interaction.update({
-        content: '❌ An error occurred. Please try again.',
-        components: []
-      });
+      
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred. Please try again.')
+        .setTimestamp();
+      
+      await interaction.update({ embeds: [errorEmbed], components: [] });
     }
   },
 
   async showFinalModal(interaction) {
     const modal = new ModalBuilder()
       .setCustomId('register_modal')
-      .setTitle('Final Registration Details');
+      .setTitle('📝 Final Registration Details');
 
     const ignInput = new TextInputBuilder()
       .setCustomId('ign_input')
       .setLabel('In-Game Name (IGN)')
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
-      .setMaxLength(100);
+      .setMaxLength(100)
+      .setPlaceholder('Enter your character name');
 
     const abilityScoreInput = new TextInputBuilder()
       .setCustomId('ability_score_input')
-      .setLabel('Ability Score (Total CP/GS)')
+      .setLabel('Ability Score (Total CP/GS) - Optional')
       .setStyle(TextInputStyle.Short)
       .setRequired(false)
       .setPlaceholder('e.g., 5000');
@@ -648,9 +820,14 @@ export default {
       
       if (!state) {
         console.log(`⚠️  [REGISTER-MODAL] State expired`);
-        return interaction.editReply({
-          content: '❌ Registration session expired. Please use `/register` again.'
-        });
+        
+        const embed = new EmbedBuilder()
+          .setColor('#FF0000')
+          .setTitle('⏱️ Session Expired')
+          .setDescription('Your registration session has expired. Please use `/register` to start again.')
+          .setTimestamp();
+        
+        return interaction.editReply({ embeds: [embed] });
       }
 
       console.log(`🔍 [REGISTER-MODAL] Extracting form data...`);
@@ -684,7 +861,6 @@ export default {
           if (!verification.hasRole) {
             console.log(`⚠️  [REGISTER-MODAL] User does not have required guild role`);
             
-            // Notify moderators
             await notifyModerators(
               interaction.client,
               member,
@@ -693,7 +869,7 @@ export default {
               ign
             );
             
-            roleWarning = `\n\n${getGuildVerificationWarning(state.guild)}`;
+            roleWarning = `\n\n⚠️ **Note:** You selected **${state.guild}** but you don't have the required guild role. A moderator has been notified to verify your guild membership.`;
           } else {
             console.log(`✅ [REGISTER-MODAL] User has required guild role`);
           }
@@ -728,31 +904,47 @@ export default {
 
       console.log(`🔍 [REGISTER-MODAL] Sending success reply...`);
       
-      const guildText = state.guild ? `🏰 **Guild:** ${state.guild}\n` : '';
+      const embed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('✅ Registration Complete!')
+        .setDescription(`Welcome to the guild, ${ign}! Your character has been registered successfully.`)
+        .addFields(
+          { name: '👤 Discord', value: state.discordName, inline: true },
+          { name: '🎮 IGN', value: ign, inline: true },
+          { name: '\u200B', value: '\u200B', inline: true },
+          { name: `${this.getClassEmoji(state.className)} Class`, value: `**${state.className}**\n${state.subclass}`, inline: true },
+          { name: `${this.getRoleEmoji(state.role)} Role`, value: state.role, inline: true },
+          { name: '💪 Ability Score', value: abilityScore ? abilityScore.toLocaleString() : 'Not provided', inline: true }
+        )
+        .setFooter({ text: '💡 Use /addalt to register alt characters' })
+        .setTimestamp();
+
+      if (state.guild) {
+        embed.addFields({ name: '🏰 Guild', value: state.guild, inline: true });
+      }
       
-      await interaction.editReply({
-        content: `✅ **Registration Complete!**\n\n` +
-          `👤 **Discord:** ${state.discordName}\n` +
-          `🎮 **IGN:** ${ign}\n` +
-          `⚔️ **Class:** ${state.className} (${state.subclass})\n` +
-          `🛡️ **Role:** ${state.role}\n` +
-          `💪 **Ability Score:** ${abilityScore || 'Not provided'}\n` +
-          `🌍 **Timezone:** ${state.timezone}\n` +
-          guildText +
-          `\nYour nickname has been updated to your IGN!\n` +
-          `Use \`/addalt\` to register alt characters.` +
-          roleWarning
-      });
+      embed.addFields({ name: '🌍 Timezone', value: state.timezone, inline: true });
+
+      if (roleWarning) {
+        embed.addFields({ name: '⚠️ Notice', value: roleWarning.replace('\n\n⚠️ **Note:** ', ''), inline: false });
+      }
+      
+      await interaction.editReply({ embeds: [embed] });
       console.log(`✅ [REGISTER-MODAL] Success reply sent!`);
 
     } catch (error) {
       console.error('❌ [REGISTER-MODAL] Error handling modal submission:', error);
       console.error('❌ [REGISTER-MODAL] Error stack:', error.stack);
       
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Registration Failed')
+        .setDescription('An error occurred while saving your character. Please try again.')
+        .setFooter({ text: 'If this persists, contact a moderator' })
+        .setTimestamp();
+      
       try {
-        await interaction.editReply({
-          content: '❌ An error occurred while saving your character. Please try again.'
-        });
+        await interaction.editReply({ embeds: [errorEmbed] });
       } catch (replyError) {
         console.error('❌ [REGISTER-MODAL] Failed to send error reply:', replyError);
       }
