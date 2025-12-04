@@ -1,22 +1,23 @@
-import { Client, Collection, Events, GatewayIntentBits, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { queries } from './database/queries.js';
 import googleSheets from './services/googleSheets.js';
-import { GAME_DATA } from './config/gameData.js';
+import pool from './database/db.js';
 
 // Commands
-import register from './commands/register.js';
-import addalt from './commands/addalt.js';
-import viewchar from './commands/viewchar.js';
-import update from './commands/update.js';
-import sync from './commands/sync.js';
+import editMemberDetails from './commands/edit-member-details.js';
+import admin from './commands/admin.js';
+import viewChar from './commands/view-char.js';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Configuration constants
+const AUTO_SYNC_INTERVAL = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000; // 5 minutes
 
 console.log('🚀 Starting Guild Manager Bot...\n');
 
@@ -32,7 +33,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // Load commands
-const commands = [register, addalt, viewchar, update, sync];
+const commands = [editMemberDetails, admin, viewChar];
 commands.forEach(command => {
   client.commands.set(command.data.name, command);
   console.log(`📝 Loaded command: /${command.data.name}`);
@@ -40,7 +41,7 @@ commands.forEach(command => {
 
 console.log(`\n✅ Loaded ${commands.length} commands total\n`);
 
-// Auto-sync interval (1 minute)
+// Auto-sync interval
 let autoSyncInterval = null;
 
 async function performAutoSync() {
@@ -86,9 +87,9 @@ client.once(Events.ClientReady, async (c) => {
       console.log('📊 Performing initial sync...');
       await performAutoSync();
       
-      // Start auto-sync every 1 minute (60000 ms)
-      console.log('⏰ Starting auto-sync (every 1 minute)...');
-      autoSyncInterval = setInterval(performAutoSync, 60000);
+      // Start auto-sync
+      console.log(`⏰ Starting auto-sync (every ${AUTO_SYNC_INTERVAL / 60000} minutes)...`);
+      autoSyncInterval = setInterval(performAutoSync, AUTO_SYNC_INTERVAL);
       console.log('✅ Auto-sync enabled!\n');
     } else {
       console.log('⚠️  Google Sheets not configured - auto-sync disabled\n');
@@ -143,57 +144,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Handle select menu interactions
-  if (interaction.isStringSelectMenu()) {
-    console.log(`🔽 ${interaction.user.tag} selected: ${interaction.customId}`);
+  // Handle button interactions
+  if (interaction.isButton()) {
+    console.log(`🔘 ${interaction.user.tag} clicked button: ${interaction.customId}`);
     
     try {
-      // Register command select menus
-      if (interaction.customId === 'class_select') {
-        await register.handleClassSelect(interaction);
-      } else if (interaction.customId === 'subclass_select') {
-        await register.handleSubclassSelect(interaction);
-      } else if (interaction.customId === 'guild_select') {
-        await register.handleGuildSelect(interaction);
-      } else if (interaction.customId === 'timezone_region_select') {
-        await register.handleTimezoneRegionSelect(interaction);
-      } else if (interaction.customId === 'timezone_country_select') {
-        await register.handleTimezoneCountrySelect(interaction);
-      } else if (interaction.customId === 'timezone_select') {
-        await register.handleTimezoneSelect(interaction);
-      } else if (interaction.customId === 'timezone_search_result_select') {
-        await register.handleTimezoneSearchResultSelect(interaction);
+      // Edit Member Details buttons
+      if (interaction.customId.startsWith('edit_view_chars_')) {
+        await editMemberDetails.handleViewChars(interaction);
+      }
+      else if (interaction.customId.startsWith('edit_back_to_menu_')) {
+        await editMemberDetails.handleBackToMenu(interaction);
+      }
+      else if (interaction.customId.startsWith('edit_close_')) {
+        await editMemberDetails.handleClose(interaction);
       }
       
-      // Addalt command select menus
-      else if (interaction.customId === 'alt_class_select') {
-        await addalt.handleAltClassSelect(interaction);
-      } else if (interaction.customId === 'alt_subclass_select') {
-        await addalt.handleAltSubclassSelect(interaction);
+      // Admin buttons
+      else if (interaction.customId.startsWith('admin_refresh_')) {
+        const userId = interaction.customId.split('_')[2];
+        await admin.handleRefresh(interaction, userId);
+      }
+      else if (interaction.customId.startsWith('admin_close_')) {
+        await admin.handleClose(interaction);
       }
       
-      // Update command select menus
-      else if (interaction.customId === 'update_class_select') {
-        await update.handleUpdateClassSelect(interaction);
-      } else if (interaction.customId === 'update_subclass_select') {
-        await update.handleUpdateSubclassSelect(interaction);
-      } else if (interaction.customId === 'update_guild_select') {
-        await update.handleUpdateGuildSelect(interaction);
-      } else if (interaction.customId === 'update_guild_after_class_select') {
-        await update.handleUpdateGuildAfterClassSelect(interaction);
-      } else if (interaction.customId === 'update_timezone_region_select') {
-        await update.handleUpdateTimezoneRegionSelect(interaction);
-      } else if (interaction.customId === 'update_timezone_country_select') {
-        await update.handleUpdateTimezoneCountrySelect(interaction);
-      } else if (interaction.customId === 'update_timezone_select') {
-        await update.handleUpdateTimezoneSelect(interaction);
-      } else if (interaction.customId === 'update_timezone_search_result_select') {
-        await update.handleUpdateTimezoneSearchResultSelect(interaction);
-      }
+      // TODO: Add handlers for other buttons when handler files are created:
+      // - edit_add_main_
+      // - edit_update_main_
+      // - edit_remove_main_
+      // - edit_add_alt_
+      // - edit_remove_alt_
+      // - admin_add_main_
+      // - admin_remove_main_
+      // - admin_add_alt_
+      // - admin_remove_alt_
       
-      console.log(`✅ Select menu handled: ${interaction.customId}`);
+      console.log(`✅ Button handled: ${interaction.customId}`);
     } catch (error) {
-      console.error(`❌ Error handling select menu ${interaction.customId}:`, error);
+      console.error(`❌ Error handling button ${interaction.customId}:`, error);
       
       const errorMessage = { 
         content: '❌ An error occurred!', 
@@ -208,71 +197,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Handle button interactions
-  if (interaction.isButton()) {
-    console.log(`🔘 ${interaction.user.tag} clicked button: ${interaction.customId}`);
+  // Handle select menu interactions
+  if (interaction.isStringSelectMenu()) {
+    console.log(`🔽 ${interaction.user.tag} selected: ${interaction.customId}`);
     
     try {
-      // Register timezone buttons
-      if (interaction.customId === 'timezone_search') {
-        await register.handleTimezoneSearch(interaction);
-      } else if (interaction.customId === 'accept_suggested_timezone') {
-        await register.handleAcceptSuggestedTimezone(interaction);
-      } else if (interaction.customId === 'choose_different_timezone') {
-        await register.handleChooseDifferentTimezone(interaction);
-      } else if (interaction.customId === 'timezone_back_to_region') {
-        // Show guild selection again
-        const state = client.registrationStates?.get(interaction.user.id);
-        if (state) {
-          const guildMenu = new StringSelectMenuBuilder()
-            .setCustomId('guild_select')
-            .setPlaceholder('Select your guild')
-            .addOptions(
-              GAME_DATA.guilds[state.role].map(guild => ({
-                label: guild,
-                value: guild
-              }))
-            );
-
-          const row = new ActionRowBuilder().addComponents(guildMenu);
-
-          await interaction.update({
-            content: `✅ Class: **${state.className}** (${state.role})\n✅ Subclass: **${state.subclass}**\n\nStep 3: Select your guild`,
-            components: [row]
-          });
-        }
-      } else if (interaction.customId === 'timezone_back_to_country') {
-        const state = client.registrationStates?.get(interaction.user.id);
-        if (state) {
-          await register.handleTimezoneRegionSelect({
-            ...interaction,
-            values: [state.timezoneRegion]
-          });
-        }
-      } else if (interaction.customId === 'timezone_back_to_suggestion') {
-        const state = client.registrationStates?.get(interaction.user.id);
-        if (state) {
-          await register.handleTimezoneCountrySelect({
-            ...interaction,
-            values: [state.timezoneCountry]
-          });
-        }
-      } else if (interaction.customId === 'timezone_search_back') {
-        await register.handleTimezoneSearch(interaction);
-      }
+      // TODO: Add handlers when handler files are created
       
-      // Update timezone buttons
-      else if (interaction.customId === 'update_timezone_search') {
-        await update.handleUpdateTimezoneSearch(interaction);
-      } else if (interaction.customId === 'update_accept_suggested_timezone') {
-        await update.handleUpdateAcceptSuggestedTimezone(interaction);
-      } else if (interaction.customId === 'update_choose_different_timezone') {
-        await update.handleUpdateChooseDifferentTimezone(interaction);
-      }
-      
-      console.log(`✅ Button handled: ${interaction.customId}`);
+      console.log(`✅ Select menu handled: ${interaction.customId}`);
     } catch (error) {
-      console.error(`❌ Error handling button ${interaction.customId}:`, error);
+      console.error(`❌ Error handling select menu ${interaction.customId}:`, error);
       
       const errorMessage = { 
         content: '❌ An error occurred!', 
@@ -292,17 +226,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.log(`📝 ${interaction.user.tag} submitted modal: ${interaction.customId}`);
     
     try {
-      if (interaction.customId === 'register_modal') {
-        await register.handleModalSubmit(interaction);
-      } else if (interaction.customId === 'alt_register_modal') {
-        await addalt.handleAltModalSubmit(interaction);
-      } else if (interaction.customId === 'update_ability_score_modal') {
-        await update.handleAbilityScoreModalSubmit(interaction);
-      } else if (interaction.customId === 'timezone_search_modal') {
-        await register.handleTimezoneSearchSubmit(interaction);
-      } else if (interaction.customId === 'update_timezone_search_modal') {
-        await update.handleUpdateTimezoneSearchSubmit(interaction);
-      }
+      // TODO: Add handlers when handler files are created
       
       console.log(`✅ Modal handled: ${interaction.customId}`);
     } catch (error) {
@@ -328,13 +252,21 @@ process.on('unhandledRejection', error => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n\n🛑 Shutting down bot...');
   
   // Clear auto-sync interval
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
     console.log('⏰ Auto-sync stopped');
+  }
+  
+  // Close database pool
+  try {
+    await pool.end();
+    console.log('💾 Database pool closed');
+  } catch (error) {
+    console.error('❌ Error closing database pool:', error);
   }
   
   client.destroy();
