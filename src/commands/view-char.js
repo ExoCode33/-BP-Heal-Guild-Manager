@@ -13,7 +13,8 @@ export default {
 
   async execute(interaction) {
     try {
-      const targetUser = interaction.options.getUser('user') || interaction.user;
+      // ✅ FIXED: Handle both slash command and button interactions
+      const targetUser = interaction.options?.getUser('user') || interaction.user;
       const isOwnProfile = targetUser.id === interaction.user.id;
 
       // Get main character
