@@ -275,22 +275,36 @@ async function showTimezoneRegionSelection(interaction, userId, state) {
   
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_timezone_region_${userId}`)
-    .setPlaceholder('🌍 Select your region')
+    .setPlaceholder('🌍 Select your region (or skip)')
     .addOptions(
-      regions.map(region => ({
-        label: region,
-        value: region,
-        emoji: getRegionEmoji(region)
-      }))
+      [
+        {
+          label: '⏭️ Skip Timezone',
+          value: 'SKIP_TIMEZONE',
+          description: 'Continue without setting a timezone'
+        },
+        ...regions.map(region => ({
+          label: region,
+          value: region,
+          emoji: getRegionEmoji(region)
+        }))
+      ]
     );
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_from_timezone_${userId}`)
+    .setLabel('Back')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
 
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
     .setTitle('⭐ Register Main Character')
-    .setDescription('**Step 3a:** Select your region for timezone')
-    .setFooter({ text: '💡 Choose your geographic region' })
+    .setDescription('**Step 3 (Optional):** Select your timezone region\n\n💡 You can skip this step or select a region below.')
+    .setFooter({ text: '🌍 Timezone helps coordinate with guild members' })
     .setTimestamp();
   
   // Only add fields if they exist
@@ -304,7 +318,7 @@ async function showTimezoneRegionSelection(interaction, userId, state) {
     embed.addFields({ name: '🎮 IGN', value: state.ign, inline: true });
   }
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.reply({ embeds: [embed], components: [row1, row2], ephemeral: true });
 }
 
 // ✅ NEW: Handle timezone region selection
@@ -321,6 +335,16 @@ export async function handleTimezoneRegionSelection(interaction) {
       });
     }
 
+    // Check if user wants to skip timezone
+    if (selectedRegion === 'SKIP_TIMEZONE') {
+      stateManager.setRegistrationState(userId, {
+        ...state,
+        timezone: null
+      });
+      await showGuildSelection(interaction, userId, state);
+      return;
+    }
+
     const countries = getCountriesInRegion(selectedRegion);
     
     const selectMenu = new StringSelectMenuBuilder()
@@ -333,7 +357,14 @@ export async function handleTimezoneRegionSelection(interaction) {
         }))
       );
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_region_${userId}`)
+      .setLabel('Back to Regions')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
 
     const embed = new EmbedBuilder()
       .setColor('#6640D9')
@@ -342,10 +373,10 @@ export async function handleTimezoneRegionSelection(interaction) {
       .addFields(
         { name: '🌍 Region', value: selectedRegion, inline: true }
       )
-      .setFooter({ text: '💡 Choose your country' })
+      .setFooter({ text: '💡 Choose your country or go back' })
       .setTimestamp();
 
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
     
     stateManager.setRegistrationState(userId, {
       ...state,
@@ -385,7 +416,14 @@ export async function handleTimezoneCountrySelection(interaction) {
         }))
       );
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_country_${userId}`)
+      .setLabel('Back to Countries')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
 
     const embed = new EmbedBuilder()
       .setColor('#6640D9')
@@ -394,10 +432,10 @@ export async function handleTimezoneCountrySelection(interaction) {
       .addFields(
         { name: '🌍 Country', value: selectedCountry, inline: true }
       )
-      .setFooter({ text: '💡 Choose your timezone' })
+      .setFooter({ text: '💡 Choose your timezone or go back' })
       .setTimestamp();
 
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
     
     stateManager.setRegistrationState(userId, {
       ...state,
@@ -637,6 +675,192 @@ async function saveAltCharacter(interaction, userId, state, ign) {
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed] });
+  }
+}
+
+// ✅ NEW: Back button handlers
+export async function handleBackFromTimezone(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Re-show region selection
+    const regions = getTimezoneRegions();
+  
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_timezone_region_${userId}`)
+      .setPlaceholder('🌍 Select your region (or skip)')
+      .addOptions(
+        [
+          {
+            label: '⏭️ Skip Timezone',
+            value: 'SKIP_TIMEZONE',
+            description: 'Continue without setting a timezone'
+          },
+          ...regions.map(region => ({
+            label: region,
+            value: region,
+            emoji: getRegionEmoji(region)
+          }))
+        ]
+      );
+
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_from_timezone_${userId}`)
+      .setLabel('Back')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️')
+      .setDisabled(true); // Can't go further back
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('⭐ Register Main Character')
+      .setDescription('**Step 3 (Optional):** Select your timezone region\n\n💡 You can skip this step or select a region below.')
+      .setFooter({ text: '🌍 Timezone helps coordinate with guild members' })
+      .setTimestamp();
+    
+    if (state.class) {
+      embed.addFields({ name: '🎭 Class', value: state.class, inline: true });
+    }
+    if (state.subclass) {
+      embed.addFields({ name: '🎯 Subclass', value: state.subclass, inline: true });
+    }
+    if (state.ign) {
+      embed.addFields({ name: '🎮 IGN', value: state.ign, inline: true });
+    }
+
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    
+  } catch (error) {
+    console.error('Error in handleBackFromTimezone:', error);
+  }
+}
+
+export async function handleBackToRegion(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Show region selection again
+    const regions = getTimezoneRegions();
+  
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_timezone_region_${userId}`)
+      .setPlaceholder('🌍 Select your region (or skip)')
+      .addOptions(
+        [
+          {
+            label: '⏭️ Skip Timezone',
+            value: 'SKIP_TIMEZONE',
+            description: 'Continue without setting a timezone'
+          },
+          ...regions.map(region => ({
+            label: region,
+            value: region,
+            emoji: getRegionEmoji(region)
+          }))
+        ]
+      );
+
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_from_timezone_${userId}`)
+      .setLabel('Back')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️')
+      .setDisabled(true);
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('⭐ Register Main Character')
+      .setDescription('**Step 3 (Optional):** Select your timezone region\n\n💡 You can skip this step or select a region below.')
+      .setFooter({ text: '🌍 Timezone helps coordinate with guild members' })
+      .setTimestamp();
+    
+    if (state.class) {
+      embed.addFields({ name: '🎭 Class', value: state.class, inline: true });
+    }
+    if (state.subclass) {
+      embed.addFields({ name: '🎯 Subclass', value: state.subclass, inline: true });
+    }
+    if (state.ign) {
+      embed.addFields({ name: '🎮 IGN', value: state.ign, inline: true });
+    }
+
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    
+  } catch (error) {
+    console.error('Error in handleBackToRegion:', error);
+  }
+}
+
+export async function handleBackToCountry(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state || !state.selectedRegion) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Show country selection again
+    const countries = getCountriesInRegion(state.selectedRegion);
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_timezone_country_${userId}`)
+      .setPlaceholder('🌍 Select your country')
+      .addOptions(
+        countries.map(country => ({
+          label: country,
+          value: country
+        }))
+      );
+
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_region_${userId}`)
+      .setLabel('Back to Regions')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('⭐ Register Main Character')
+      .setDescription('**Step 3b:** Select your country')
+      .addFields(
+        { name: '🌍 Region', value: state.selectedRegion, inline: true }
+      )
+      .setFooter({ text: '💡 Choose your country or go back' })
+      .setTimestamp();
+
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    
+  } catch (error) {
+    console.error('Error in handleBackToCountry:', error);
   }
 }
 
