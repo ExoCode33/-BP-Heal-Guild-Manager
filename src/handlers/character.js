@@ -23,7 +23,10 @@ export async function handleAddMain(interaction) {
         })
         .setTimestamp();
       
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ 
+        embeds: [embed], 
+        flags: 64 // MessageFlags.Ephemeral
+      });
     }
 
     // Initialize state and show class selection
@@ -39,7 +42,7 @@ export async function handleAddMain(interaction) {
     console.error('Error in handleAddMain:', error);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      ephemeral: true
+      flags: 64
     });
   }
 }
@@ -64,7 +67,10 @@ export async function handleAddAlt(interaction) {
         })
         .setTimestamp();
       
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ 
+        embeds: [embed], 
+        flags: 64
+      });
     }
 
     // Initialize state and show class selection
@@ -80,7 +86,7 @@ export async function handleAddAlt(interaction) {
     console.error('Error in handleAddAlt:', error);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      ephemeral: true
+      flags: 64
     });
   }
 }
@@ -131,7 +137,7 @@ export async function handleClassSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -150,7 +156,7 @@ export async function handleClassSelection(interaction) {
     stateManager.clearRegistrationState(interaction.user.id);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      ephemeral: true
+      flags: 64
     });
   }
 }
@@ -205,29 +211,31 @@ export async function handleSubclassSelection(interaction) {
     if (!state || !state.class) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
     const role = getRoleFromClass(state.class);
     
-    // Update state
-    stateManager.setRegistrationState(userId, {
+    // Update state with new values
+    const updatedState = {
       ...state,
       subclass: selectedSubclass,
       role: role,
       step: 'ability_score'
-    });
+    };
+    
+    stateManager.setRegistrationState(userId, updatedState);
 
-    // Show ability score selection
-    await showAbilityScoreSelection(interaction, userId, state);
+    // Show ability score selection with updated state
+    await showAbilityScoreSelection(interaction, userId, updatedState);
     
   } catch (error) {
     console.error('Error in handleSubclassSelection:', error);
     stateManager.clearRegistrationState(interaction.user.id);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      ephemeral: true
+      flags: 64
     });
   }
 }
@@ -302,7 +310,7 @@ export async function handleAbilityScoreSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -389,7 +397,7 @@ export async function handleGuildSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -473,7 +481,7 @@ export async function handleTimezoneRegionSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -544,7 +552,7 @@ export async function handleTimezoneCountrySelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -604,7 +612,7 @@ export async function handleTimezoneSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -654,7 +662,7 @@ export async function handleIGNModal(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -672,7 +680,7 @@ export async function handleIGNModal(interaction) {
     stateManager.clearRegistrationState(interaction.user.id);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      ephemeral: true
+      flags: 64
     });
   }
 }
@@ -681,7 +689,7 @@ export async function handleIGNModal(interaction) {
 
 async function saveMainCharacter(interaction, userId, state, ign) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     // Save main character
     const characterData = {
@@ -759,7 +767,7 @@ async function saveMainCharacter(interaction, userId, state, ign) {
 
 async function saveAltCharacter(interaction, userId, state, ign) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     // Save alt character
     const altData = {
@@ -838,7 +846,7 @@ export async function handleBackToClass(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -852,7 +860,7 @@ export async function handleBackToSubclass(interaction) {
   if (!state || !state.class) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -866,7 +874,7 @@ export async function handleBackToAbility(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -880,7 +888,7 @@ export async function handleBackToGuild(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -894,7 +902,7 @@ export async function handleBackToTimezoneRegion(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
@@ -908,7 +916,7 @@ export async function handleBackToTimezoneCountry(interaction) {
   if (!state || !state.selectedRegion) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      ephemeral: true
+      flags: 64
     });
   }
 
