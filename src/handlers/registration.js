@@ -378,11 +378,17 @@ async function showSmartTimezoneSelection(interaction, userId, state) {
   const timeOptions = [];
   for (let hour = 0; hour < 24; hour++) {
     const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
-    timeOptions.push({
+    const option = {
       label: timeLabel,
-      value: hour.toString(),
-      description: hour === currentHour ? '← Current hour' : ''
-    });
+      value: hour.toString()
+    };
+    
+    // Only add description if it's the current hour
+    if (hour === currentHour) {
+      option.description = '← Current hour';
+    }
+    
+    timeOptions.push(option);
   }
 
   const selectMenu = new StringSelectMenuBuilder()
