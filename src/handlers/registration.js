@@ -547,13 +547,9 @@ async function saveMainCharacter(interaction, userId, state, ign, guild, member)
     // Clear state
     stateManager.clearRegistrationState(userId);
     
-    // ✅ FIXED: Delete success message and show clean menu
+    // ✅ FIXED: Show menu as followUp (keeps success message visible briefly)
     setTimeout(async () => {
       try {
-        // Delete the success message
-        await interaction.deleteReply();
-        
-        // Show fresh menu
         const editMemberDetails = await import('../commands/edit-member-details.js');
         await editMemberDetails.default.showMainMenu(interaction, false);
       } catch (error) {
@@ -620,13 +616,9 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     // Clear state
     stateManager.clearRegistrationState(userId);
     
-    // ✅ FIXED: Delete success message and show clean menu
+    // ✅ FIXED: Show menu as followUp (keeps success message visible briefly)
     setTimeout(async () => {
       try {
-        // Delete the success message
-        await interaction.deleteReply();
-        
-        // Show fresh menu
         const editMemberDetails = await import('../commands/edit-member-details.js');
         await editMemberDetails.default.showMainMenu(interaction, false);
       } catch (error) {
