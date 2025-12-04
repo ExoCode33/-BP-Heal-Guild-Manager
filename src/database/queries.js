@@ -63,6 +63,7 @@ export const queries = {
     return result.rows[0];
   },
 
+  // ✅ ADDED: Missing function to delete main character
   async deleteMainCharacter(discordId) {
     const query = 'DELETE FROM characters WHERE discord_id = $1 AND is_main = true RETURNING *';
     const result = await pool.query(query, [discordId]);
