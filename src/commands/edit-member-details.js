@@ -173,10 +173,16 @@ export default {
     
     rows.push(row3);
 
+    // ✅ FIXED: Use followUp for new messages to avoid creating multiple ephemeral messages
     if (isUpdate) {
       await interaction.update({ embeds: [embed], components: rows });
     } else {
-      await interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+      // Check if we can reply or need to followUp
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ embeds: [embed], components: rows, ephemeral: true });
+      } else {
+        await interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
+      }
     }
   },
 
