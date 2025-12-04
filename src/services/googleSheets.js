@@ -36,61 +36,61 @@ class GoogleSheetsService {
     }
   }
 
-  // 🎨 Pill-style color palette for classes
+  // 🎨 Enhanced pill-style color palette with better saturation
   getClassColor(className) {
     const colors = {
-      'Beat Performer': { red: 1, green: 0.4, blue: 0.7 },       // Vibrant pink
-      'Frost Mage': { red: 0.4, green: 0.7, blue: 1 },          // Bright ice blue
-      'Heavy Guardian': { red: 0.8, green: 0.6, blue: 0.4 },    // Rich bronze
-      'Marksman': { red: 0.8, green: 0.9, blue: 0.3 },          // Yellow-green
-      'Shield Knight': { red: 1, green: 0.85, blue: 0.3 },      // Rich gold
-      'Stormblade': { red: 0.7, green: 0.4, blue: 1 },          // Vivid purple
-      'Verdant Oracle': { red: 0.4, green: 0.9, blue: 0.6 },    // Bright emerald
-      'Wind Knight': { red: 0.3, green: 0.85, blue: 0.95 }      // Bright cyan
+      'Beat Performer': { red: 0.95, green: 0.3, blue: 0.65 },   // Vibrant magenta-pink
+      'Frost Mage': { red: 0.2, green: 0.6, blue: 1 },           // Bright ice blue
+      'Heavy Guardian': { red: 0.75, green: 0.5, blue: 0.3 },    // Rich bronze
+      'Marksman': { red: 0.7, green: 0.85, blue: 0.2 },          // Lime yellow-green
+      'Shield Knight': { red: 1, green: 0.75, blue: 0.2 },       // Bright gold
+      'Stormblade': { red: 0.6, green: 0.3, blue: 0.95 },        // Vivid purple
+      'Verdant Oracle': { red: 0.3, green: 0.85, blue: 0.5 },    // Bright emerald
+      'Wind Knight': { red: 0.2, green: 0.8, blue: 0.95 }        // Bright cyan
     };
-    return colors[className] || { red: 0.9, green: 0.9, blue: 0.9 };
+    return colors[className] || { red: 0.85, green: 0.85, blue: 0.85 };
   }
 
-  // 🌟 Ability score gradient colors
+  // 🌟 Enhanced ability score gradient with better contrast
   getAbilityScoreColor(score) {
-    if (!score || score === '') return { red: 0.94, green: 0.94, blue: 0.94 };
+    if (!score || score === '') return { red: 0.92, green: 0.92, blue: 0.92 };
     
     const numScore = parseInt(score);
     
     // Legendary - Deep purple
-    if (numScore >= 30000) return { red: 0.6, green: 0.3, blue: 0.9 };
+    if (numScore >= 30000) return { red: 0.5, green: 0.2, blue: 0.85 };
     // Epic - Magenta
-    if (numScore >= 27000) return { red: 0.95, green: 0.4, blue: 0.85 };
+    if (numScore >= 27000) return { red: 0.9, green: 0.3, blue: 0.8 };
     // Rare - Hot pink
-    if (numScore >= 24000) return { red: 1, green: 0.5, blue: 0.7 };
+    if (numScore >= 24000) return { red: 0.95, green: 0.4, blue: 0.65 };
     // Uncommon - Orange
-    if (numScore >= 21000) return { red: 1, green: 0.6, blue: 0.3 };
+    if (numScore >= 21000) return { red: 1, green: 0.55, blue: 0.25 };
     // Common - Gold
-    if (numScore >= 18000) return { red: 1, green: 0.85, blue: 0.3 };
+    if (numScore >= 18000) return { red: 1, green: 0.8, blue: 0.2 };
     // Beginner - Sky blue
-    if (numScore >= 15000) return { red: 0.4, green: 0.75, blue: 1 };
+    if (numScore >= 15000) return { red: 0.3, green: 0.7, blue: 1 };
     // Starter - Mint
-    if (numScore >= 10000) return { red: 0.5, green: 0.9, blue: 0.7 };
-    return { red: 0.88, green: 0.88, blue: 0.88 };
+    if (numScore >= 10000) return { red: 0.4, green: 0.85, blue: 0.65 };
+    return { red: 0.8, green: 0.8, blue: 0.8 };
   }
 
-  // 🎭 Role colors
+  // 🎭 Enhanced role colors with better saturation
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.4, green: 0.6, blue: 0.9 },       // Bright blue
-      'DPS': { red: 1, green: 0.4, blue: 0.4 },          // Bright red
-      'Support': { red: 0.4, green: 0.85, blue: 0.5 }    // Bright green
+      'Tank': { red: 0.3, green: 0.55, blue: 0.9 },       // Bright blue
+      'DPS': { red: 0.95, green: 0.3, blue: 0.3 },        // Bright red
+      'Support': { red: 0.3, green: 0.8, blue: 0.45 }     // Bright green
     };
-    return roleColors[role] || { red: 0.8, green: 0.8, blue: 0.8 };
+    return roleColors[role] || { red: 0.7, green: 0.7, blue: 0.7 };
   }
 
-  // 🏰 Guild colors (generate from guild name for variety)
+  // 🏰 Enhanced guild colors
   getGuildColor(guildName) {
     const guildColors = {
-      'NA': { red: 0.5, green: 0.7, blue: 1 },
-      'EU': { red: 0.5, green: 0.9, blue: 0.5 },
-      'SEA': { red: 1, green: 0.7, blue: 0.4 },
-      'SA': { red: 1, green: 0.5, blue: 0.5 }
+      'NA': { red: 0.4, green: 0.65, blue: 1 },
+      'EU': { red: 0.4, green: 0.85, blue: 0.45 },
+      'SEA': { red: 1, green: 0.65, blue: 0.3 },
+      'SA': { red: 1, green: 0.45, blue: 0.45 }
     };
     
     // Check if it's a region code
@@ -105,7 +105,7 @@ class GoogleSheetsService {
     }
     
     const hue = Math.abs(hash % 360);
-    return this.hslToRgb(hue / 360, 0.7, 0.75);
+    return this.hslToRgb(hue / 360, 0.75, 0.65);  // Increased saturation
   }
 
   // Helper to convert HSL to RGB
@@ -150,23 +150,25 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
 
       const requests = [
+        // Sheet properties with frozen header and hidden gridlines for cleaner look
         {
           updateSheetProperties: {
             properties: {
               sheetId: sheetId,
               gridProperties: {
                 frozenRowCount: 1,
-                hideGridlines: false
+                hideGridlines: true  // Hide gridlines for modern, clean appearance
               },
               tabColor: {
-                red: 0.5,
-                green: 0.3,
-                blue: 0.95
+                red: 0.3,
+                green: 0.15,
+                blue: 0.7
               }
             },
             fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines,tabColor'
           }
         },
+        // Header row with darker, high-contrast background
         {
           repeatCell: {
             range: {
@@ -179,9 +181,9 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: {
-                  red: 0.4,
-                  green: 0.25,
-                  blue: 0.85
+                  red: 0.18,      // Much darker purple for better contrast
+                  green: 0.08,
+                  blue: 0.45
                 },
                 textFormat: {
                   foregroundColor: {
@@ -196,8 +198,8 @@ class GoogleSheetsService {
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
                 padding: {
-                  top: 12,
-                  bottom: 12,
+                  top: 14,
+                  bottom: 14,
                   left: 12,
                   right: 12
                 }
@@ -206,6 +208,7 @@ class GoogleSheetsService {
             fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
           }
         },
+        // Data rows base formatting
         {
           repeatCell: {
             range: {
@@ -234,6 +237,7 @@ class GoogleSheetsService {
             fields: 'userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,padding)'
           }
         },
+        // Strong header bottom border
         {
           updateBorders: {
             range: {
@@ -244,19 +248,18 @@ class GoogleSheetsService {
               endColumnIndex: headerCount
             },
             bottom: {
-              style: 'SOLID',
+              style: 'SOLID_MEDIUM',  // Thicker border for emphasis
               width: 3,
-              color: { red: 0.4, green: 0.25, blue: 0.85 }
+              color: { red: 0.18, green: 0.08, blue: 0.45 }
             }
           }
         }
       ];
 
-      // Alternating row colors with better contrast
+      // Subtle horizontal borders between rows for separation
       for (let i = 1; i <= dataRowCount; i++) {
-        const isEvenRow = i % 2 === 0;
         requests.push({
-          repeatCell: {
+          updateBorders: {
             range: {
               sheetId: sheetId,
               startRowIndex: i,
@@ -264,19 +267,16 @@ class GoogleSheetsService {
               startColumnIndex: 0,
               endColumnIndex: headerCount
             },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: isEvenRow 
-                  ? { red: 0.97, green: 0.97, blue: 0.98 }    // Light gray
-                  : { red: 1, green: 1, blue: 1 }              // Pure white
-              }
-            },
-            fields: 'userEnteredFormat.backgroundColor'
+            bottom: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.88, green: 0.88, blue: 0.9 }  // Very light gray border
+            }
           }
         });
       }
 
-      // Add bottom border to last row
+      // Add strong bottom border to last row
       requests.push({
         updateBorders: {
           range: {
@@ -287,9 +287,9 @@ class GoogleSheetsService {
             endColumnIndex: headerCount
           },
           bottom: {
-            style: 'SOLID',
-            width: 2,
-            color: { red: 0.4, green: 0.25, blue: 0.85 }
+            style: 'SOLID_MEDIUM',
+            width: 3,
+            color: { red: 0.18, green: 0.08, blue: 0.45 }
           }
         }
       });
@@ -404,7 +404,7 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Applying professional formatting...`);
       await this.formatProfessionalSheet('Member List', headers.length, rows.length);
 
-      console.log(`📊 [SHEETS] Applying pill-style colors...`);
+      console.log(`📊 [SHEETS] Applying enhanced pill-style colors...`);
       await this.applyPillStyleColors('Member List', allMembers);
 
       console.log(`✅ [SHEETS] Member List synced successfully! (${mainCharacters.length} main + ${altCharacters.length} alts = ${totalMembers} total)`);
@@ -417,7 +417,7 @@ class GoogleSheetsService {
     if (!this.sheets || members.length === 0) return;
 
     try {
-      console.log(`🎨 [SHEETS] Applying pill-style formatting to ${members.length} members...`);
+      console.log(`🎨 [SHEETS] Applying enhanced pill-style formatting to ${members.length} members...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -443,7 +443,7 @@ class GoogleSheetsService {
         { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 9, endIndex: 10 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } }
       );
 
-      // Increase row height for pill effect (32px like reference)
+      // Increase row height for better pill effect (34px)
       for (let i = 0; i < members.length; i++) {
         requests.push({
           updateDimensionProperties: {
@@ -454,7 +454,7 @@ class GoogleSheetsService {
               endIndex: i + 2
             },
             properties: {
-              pixelSize: 32
+              pixelSize: 34
             },
             fields: 'pixelSize'
           }
@@ -465,7 +465,7 @@ class GoogleSheetsService {
       for (let i = 0; i < members.length; i++) {
         const rowIndex = i + 1;
         
-        // Base white background for Discord Name and IGN
+        // Light background for Discord Name and IGN
         requests.push({
           repeatCell: {
             range: {
@@ -477,11 +477,11 @@ class GoogleSheetsService {
             },
             cell: {
               userEnteredFormat: {
-                backgroundColor: { red: 1, green: 1, blue: 1 },
+                backgroundColor: { red: 0.98, green: 0.98, blue: 0.99 },
                 textFormat: {
                   fontSize: 10,
                   fontFamily: 'Arial',
-                  foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 }
+                  foregroundColor: { red: 0.15, green: 0.15, blue: 0.2 }
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -491,7 +491,7 @@ class GoogleSheetsService {
           }
         });
 
-        // Light gray for Timezone and Registered
+        // Lighter gray for Timezone and Registered
         requests.push({
           repeatCell: {
             range: {
@@ -503,11 +503,11 @@ class GoogleSheetsService {
             },
             cell: {
               userEnteredFormat: {
-                backgroundColor: { red: 0.95, green: 0.95, blue: 0.96 },
+                backgroundColor: { red: 0.94, green: 0.94, blue: 0.95 },
                 textFormat: {
                   fontSize: 10,
                   fontFamily: 'Arial',
-                  foregroundColor: { red: 0.3, green: 0.3, blue: 0.35 }
+                  foregroundColor: { red: 0.35, green: 0.35, blue: 0.4 }
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -526,21 +526,21 @@ class GoogleSheetsService {
         const roleColor = this.getRoleColor(member.role);
         const abilityColor = member.ability_score ? this.getAbilityScoreColor(member.ability_score) : null;
         
-        // Type column - pill badge with white text
+        // Type column - pill badge with white text and shadow effect
         const typeColor = member.isMain 
-          ? { red: 0.4, green: 0.9, blue: 0.5 }
-          : { red: 1, green: 0.7, blue: 0.3 };
+          ? { red: 0.3, green: 0.85, blue: 0.45 }   // Brighter green
+          : { red: 1, green: 0.65, blue: 0.25 };    // Brighter orange
         
         this.addPillCell(requests, sheetId, rowIndex, 2, typeColor, true, 10);
         
         // Class column - bold pill with white text
         this.addPillCell(requests, sheetId, rowIndex, 3, classColor, true, 10);
         
-        // Subclass column - darker variant with white text
+        // Subclass column - darker variant with white text and better contrast
         const subclassColor = {
-          red: Math.max(classColor.red * 0.7, 0.2),
-          green: Math.max(classColor.green * 0.7, 0.2),
-          blue: Math.max(classColor.blue * 0.7, 0.2)
+          red: Math.max(classColor.red * 0.65, 0.15),
+          green: Math.max(classColor.green * 0.65, 0.15),
+          blue: Math.max(classColor.blue * 0.65, 0.15)
         };
         this.addPillCell(requests, sheetId, rowIndex, 4, subclassColor, true, 10);
         
@@ -558,7 +558,7 @@ class GoogleSheetsService {
           this.addPillCell(requests, sheetId, rowIndex, 7, guildColor, true, 10);
         }
         
-        // Add white borders between ALL pills for separation - spans entire row
+        // Add subtle borders between pills (light gray instead of white)
         requests.push({
           updateBorders: {
             range: {
@@ -571,22 +571,22 @@ class GoogleSheetsService {
             left: {
               style: 'SOLID',
               width: 2,
-              color: { red: 1, green: 1, blue: 1 }
+              color: { red: 0.92, green: 0.92, blue: 0.94 }  // Light gray for separation
             },
             right: {
               style: 'SOLID',
               width: 2,
-              color: { red: 1, green: 1, blue: 1 }
+              color: { red: 0.92, green: 0.92, blue: 0.94 }
             },
             top: {
               style: 'SOLID',
               width: 2,
-              color: { red: 1, green: 1, blue: 1 }
+              color: { red: 0.92, green: 0.92, blue: 0.94 }
             },
             bottom: {
               style: 'SOLID',
               width: 2,
-              color: { red: 1, green: 1, blue: 1 }
+              color: { red: 0.92, green: 0.92, blue: 0.94 }
             }
           }
         });
@@ -601,7 +601,7 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
         }
-        console.log(`✅ [SHEETS] Applied ${requests.length} pill-style formats`);
+        console.log(`✅ [SHEETS] Applied ${requests.length} enhanced pill-style formats`);
       }
     } catch (error) {
       console.error('❌ [SHEETS] Error applying pill-style colors:', error.message);
