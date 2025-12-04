@@ -12,7 +12,8 @@ import admin from './commands/admin.js';
 import viewChar from './commands/view-char.js';
 
 // Handlers
-import * as registrationHandlers from './handlers/registration.js';
+import * as characterHandlers from './handlers/character.js';
+import * as subclassHandlers from './handlers/subclass.js';
 import * as updateHandlers from './handlers/update.js';
 import * as removeHandlers from './handlers/remove.js';
 
@@ -52,14 +53,13 @@ let autoSyncInterval = null;
 async function performAutoSync() {
   try {
     if (!googleSheets.sheets) {
-      // Google Sheets not configured, skip
       return;
     }
 
     console.log(`⏰ [AUTO-SYNC] Starting automatic sync...`);
-    const allCharacters = await queries.getAllCharacters();
+    const allMainChars = await queries.getAllMainCharacters();
     const allAlts = await queries.getAllAlts();
-    await googleSheets.fullSync(allCharacters, allAlts);
+    await googleSheets.fullSync(allMainChars, allAlts);
   } catch (error) {
     console.error('❌ [AUTO-SYNC] Error during automatic sync:', error.message);
   }
@@ -90,7 +90,6 @@ client.once(Events.ClientReady, async (c) => {
     if (sheetsInitialized) {
       console.log('✅ Google Sheets initialized (auto-sync will run periodically)');
       
-      // Start periodic auto-sync
       console.log(`⏰ Starting auto-sync (every ${AUTO_SYNC_INTERVAL / 60000} minutes)...`);
       autoSyncInterval = setInterval(performAutoSync, AUTO_SYNC_INTERVAL);
       console.log('✅ Auto-sync enabled!\n');
@@ -126,7 +125,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await command.execute(interaction);
       console.log(`✅ Command /${interaction.commandName} executed successfully`);
       
-      // Trigger immediate sync after command execution (in background)
+      // Trigger immediate sync after command execution
       if (googleSheets.sheets) {
         console.log(`🔄 [INSTANT-SYNC] Triggering sync after command...`);
         performAutoSync().catch(err => console.error('❌ [INSTANT-SYNC] Failed:', err.message));
@@ -152,30 +151,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.log(`🔘 ${interaction.user.tag} clicked button: ${interaction.customId}`);
     
     try {
-      // Edit Member Details buttons
-      if (interaction.customId.startsWith('edit_add_main_')) {
-        await registrationHandlers.handleAddMain(interaction);
+      // Character handlers (main/alt)
+      if (interaction.customId.startsWith('char_add_main_')) {
+        await characterHandlers.handleAddMain(interaction);
       }
-      else if (interaction.customId.startsWith('edit_add_alt_')) {
-        await registrationHandlers.handleAddAlt(interaction);
+      else if (interaction.customId.startsWith('char_add_alt_')) {
+        await characterHandlers.handleAddAlt(interaction);
       }
-      else if (interaction.customId.startsWith('edit_update_main_')) {
+      else if (interaction.customId.startsWith('char_edit_main_')) {
         await updateHandlers.handleUpdateMain(interaction);
       }
-      else if (interaction.customId.startsWith('edit_remove_main_')) {
+      else if (interaction.customId.startsWith('char_remove_main_')) {
         await removeHandlers.handleRemoveMain(interaction);
       }
-      else if (interaction.customId.startsWith('edit_remove_alt_')) {
+      else if (interaction.customId.startsWith('char_remove_alt_')) {
         await removeHandlers.handleRemoveAlt(interaction);
       }
-      else if (interaction.customId.startsWith('edit_view_chars_')) {
-        await editMemberDetails.handleViewChars(interaction);
+      
+      // Subclass handlers
+      else if (interaction.customId.startsWith('subclass_add_to_main_')) {
+        await subclassHandlers.handleAddSubclassToMain(interaction);
       }
-      else if (interaction.customId.startsWith('edit_back_to_menu_')) {
-        await editMemberDetails.handleBackToMenu(interaction);
+      else if (interaction.customId.startsWith('subclass_add_to_alt_')) {
+        await subclassHandlers.handleAddSubclassToAlt(interaction);
       }
-      else if (interaction.customId.startsWith('edit_close_')) {
-        await editMemberDetails.handleClose(interaction);
+      else if (interaction.customId.startsWith('subclass_remove_')) {
+        await interaction.reply({ content: '🚧 Subclass removal coming soon!', ephemeral: true });
+      }
+      
+      // Back buttons
+      else if (interaction.customId.startsWith('back_to_menu_')) {
+        await characterHandlers.handleBackToMenu(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_class_')) {
+        await characterHandlers.handleBackToClass(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_subclass_')) {
+        await characterHandlers.handleBackToSubclass(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_ability_')) {
+        await characterHandlers.handleBackToAbility(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_guild_')) {
+        await characterHandlers.handleBackToGuild(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_timezone_region_')) {
+        await characterHandlers.handleBackToTimezoneRegion(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_timezone_country_')) {
+        await characterHandlers.handleBackToTimezoneCountry(interaction);
       }
       
       // Remove confirmation buttons
@@ -201,17 +225,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await admin.handleClose(interaction);
       }
       
-      // ✅ NEW: Timezone back buttons
-      else if (interaction.customId.startsWith('back_from_timezone_')) {
-        await registrationHandlers.handleBackFromTimezone(interaction);
-      }
-      else if (interaction.customId.startsWith('back_to_region_')) {
-        await registrationHandlers.handleBackToRegion(interaction);
-      }
-      else if (interaction.customId.startsWith('back_to_country_')) {
-        await registrationHandlers.handleBackToCountry(interaction);
-      }
-      
       console.log(`✅ Button handled: ${interaction.customId}`);
     } catch (error) {
       console.error(`❌ Error handling button ${interaction.customId}:`, error);
@@ -234,38 +247,46 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.log(`🔽 ${interaction.user.tag} selected: ${interaction.customId}`);
     
     try {
-      // Registration flow selects
+      // Character registration selects
       if (interaction.customId.startsWith('select_class_')) {
-        await registrationHandlers.handleClassSelection(interaction);
+        await characterHandlers.handleClassSelection(interaction);
       }
       else if (interaction.customId.startsWith('select_subclass_')) {
-        await registrationHandlers.handleSubclassSelection(interaction);
+        await characterHandlers.handleSubclassSelection(interaction);
       }
       else if (interaction.customId.startsWith('select_ability_score_')) {
-        await registrationHandlers.handleAbilityScoreSelection(interaction);
+        await characterHandlers.handleAbilityScoreSelection(interaction);
       }
-      else if (interaction.customId.startsWith('select_current_time_')) {
-        await registrationHandlers.handleCurrentTimeSelection(interaction);
-      }
-      else if (interaction.customId.startsWith('select_suggested_timezone_')) {
-        await registrationHandlers.handleSuggestedTimezoneSelection(interaction);
-      }
-      else if (interaction.customId.startsWith('select_guild_early_')) {
-        await registrationHandlers.handleGuildSelectionEarly(interaction);
+      else if (interaction.customId.startsWith('select_guild_')) {
+        await characterHandlers.handleGuildSelection(interaction);
       }
       
-      // ✅ Timezone selection handlers (ORDER MATTERS!)
+      // Timezone selects (ORDER MATTERS - most specific first!)
       else if (interaction.customId.startsWith('select_timezone_region_')) {
-        await registrationHandlers.handleTimezoneRegionSelection(interaction);
+        await characterHandlers.handleTimezoneRegionSelection(interaction);
       }
       else if (interaction.customId.startsWith('select_timezone_country_')) {
-        await registrationHandlers.handleTimezoneCountrySelection(interaction);
+        await characterHandlers.handleTimezoneCountrySelection(interaction);
       }
       else if (interaction.customId.startsWith('select_timezone_')) {
-        await registrationHandlers.handleTimezoneSelection(interaction);
+        await characterHandlers.handleTimezoneSelection(interaction);
       }
       
-      // Update flow selects
+      // Subclass selects
+      else if (interaction.customId.startsWith('select_subclass_class_')) {
+        await subclassHandlers.handleSubclassClassSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_subclass_subclass_')) {
+        await subclassHandlers.handleSubclassSubclassSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_subclass_ability_score_')) {
+        await subclassHandlers.handleSubclassAbilityScoreSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_alt_for_subclass_')) {
+        await subclassHandlers.handleAltSelectionForSubclass(interaction);
+      }
+      
+      // Update selects
       else if (interaction.customId.startsWith('update_option_')) {
         await updateHandlers.handleUpdateOptionSelection(interaction);
       }
@@ -279,7 +300,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await updateHandlers.handleUpdateGuildSelection(interaction);
       }
       
-      // Remove flow selects
+      // Remove selects
       else if (interaction.customId.startsWith('select_alt_remove_')) {
         await removeHandlers.handleAltSelectionForRemoval(interaction);
       }
@@ -306,12 +327,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.log(`📝 ${interaction.user.tag} submitted modal: ${interaction.customId}`);
     
     try {
-      // Registration modals
-      if (interaction.customId.startsWith('character_details_')) {
-        await registrationHandlers.handleCharacterDetailsModal(interaction);
-      }
-      else if (interaction.customId.startsWith('ign_modal_')) {
-        await registrationHandlers.handleIGNModal(interaction);
+      // IGN modals for character registration
+      if (interaction.customId.startsWith('ign_modal_')) {
+        await characterHandlers.handleIGNModal(interaction);
       }
       
       // Update modals
@@ -352,13 +370,11 @@ process.on('unhandledRejection', error => {
 process.on('SIGINT', async () => {
   console.log('\n\n🛑 Shutting down bot...');
   
-  // Clear auto-sync interval
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
     console.log('⏰ Auto-sync stopped');
   }
   
-  // Close database pool
   try {
     await pool.end();
     console.log('💾 Database pool closed');
