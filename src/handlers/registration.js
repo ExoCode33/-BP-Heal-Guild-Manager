@@ -175,44 +175,36 @@ export async function handleSubclassSelection(interaction) {
     const selectedClass = state.class;
     const role = getRoleFromClass(selectedClass);
     
-    // Show the character details modal
-    const modal = new ModalBuilder()
-      .setCustomId(`character_details_${type}_${userId}`)
-      .setTitle(`${type === 'main' ? 'Main Character' : 'Alt Character'} Details`);
-
-    const ignInput = new TextInputBuilder()
-      .setCustomId('ign')
-      .setLabel('In-Game Name (IGN)')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('Enter your character name')
-      .setRequired(true)
-      .setMaxLength(100);
-
-    const row1 = new ActionRowBuilder().addComponents(ignInput);
-
-    if (type === 'main') {
-      const abilityScoreInput = new TextInputBuilder()
-        .setCustomId('ability_score')
-        .setLabel('Ability Score (Optional)')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('e.g., 25000')
-        .setRequired(false);
-
-      const row2 = new ActionRowBuilder().addComponents(abilityScoreInput);
-      modal.addComponents(row1, row2);
-    } else {
-      modal.addComponents(row1);
-    }
-
-    await interaction.showModal(modal);
-    
     // Update state
     stateManager.setRegistrationState(userId, {
       ...state,
-      step: 'details',
+      step: 'ability_score',
       subclass: selectedSubclass,
       role: role
     });
+
+    if (type === 'main') {
+      // Show ability score dropdown for main character
+      await showAbilityScoreSelection(interaction, userId, state, selectedClass, selectedSubclass);
+    } else {
+      // For alt, show simple IGN modal
+      const modal = new ModalBuilder()
+        .setCustomId(`ign_modal_${type}_${userId}`)
+        .setTitle('Alt Character Name');
+
+      const ignInput = new TextInputBuilder()
+        .setCustomId('ign')
+        .setLabel('In-Game Name (IGN)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Enter your character name')
+        .setRequired(true)
+        .setMaxLength(100);
+
+      const row = new ActionRowBuilder().addComponents(ignInput);
+      modal.addComponents(row);
+
+      await interaction.showModal(modal);
+    }
     
   } catch (error) {
     console.error('Error in handleSubclassSelection:', error);
@@ -222,6 +214,444 @@ export async function handleSubclassSelection(interaction) {
       ephemeral: true
     });
   }
+}
+
+// ✅ NEW: Show ability score dropdown selection
+async function showAbilityScoreSelection(interaction, userId, state, selectedClass, selectedSubclass) {
+  const abilityScoreRanges = [
+    { label: '10k or smaller', value: '10000', description: 'Ability Score: ≤10,000' },
+    { label: '10k - 12k', value: '11000', description: 'Ability Score: 10,001 - 12,000' },
+    { label: '12k - 14k', value: '13000', description: 'Ability Score: 12,001 - 14,000' },
+    { label: '14k - 16k', value: '15000', description: 'Ability Score: 14,001 - 16,000' },
+    { label: '16k - 18k', value: '17000', description: 'Ability Score: 16,001 - 18,000' },
+    { label: '18k - 20k', value: '19000', description: 'Ability Score: 18,001 - 20,000' },
+    { label: '20k - 22k', value: '21000', description: 'Ability Score: 20,001 - 22,000' },
+    { label: '22k - 24k', value: '23000', description: 'Ability Score: 22,001 - 24,000' },
+    { label: '24k - 26k', value: '25000', description: 'Ability Score: 24,001 - 26,000' },
+    { label: '26k - 28k', value: '27000', description: 'Ability Score: 26,001 - 28,000' },
+    { label: '28k - 30k', value: '29000', description: 'Ability Score: 28,001 - 30,000' },
+    { label: '30k - 32k', value: '31000', description: 'Ability Score: 30,001 - 32,000' },
+    { label: '32k - 34k', value: '33000', description: 'Ability Score: 32,001 - 34,000' },
+    { label: '34k - 36k', value: '35000', description: 'Ability Score: 34,001 - 36,000' },
+    { label: '36k - 38k', value: '37000', description: 'Ability Score: 36,001 - 38,000' },
+    { label: '38k - 40k', value: '39000', description: 'Ability Score: 38,001 - 40,000' },
+    { label: '40k - 42k', value: '41000', description: 'Ability Score: 40,001 - 42,000' },
+    { label: '42k - 44k', value: '43000', description: 'Ability Score: 42,001 - 44,000' },
+    { label: '44k - 46k', value: '45000', description: 'Ability Score: 44,001 - 46,000' },
+    { label: '46k - 48k', value: '47000', description: 'Ability Score: 46,001 - 48,000' },
+    { label: '48k - 50k', value: '49000', description: 'Ability Score: 48,001 - 50,000' },
+    { label: '50k - 52k', value: '51000', description: 'Ability Score: 50,001 - 52,000' },
+    { label: '52k - 54k', value: '53000', description: 'Ability Score: 52,001 - 54,000' },
+    { label: '54k - 56k', value: '55000', description: 'Ability Score: 54,001 - 56,000' },
+    { label: '56k+', value: '57000', description: 'Ability Score: 56,001+' }
+  ];
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`select_ability_score_${userId}`)
+    .setPlaceholder('💪 Select your ability score range')
+    .addOptions(abilityScoreRanges);
+
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('⭐ Register Main Character')
+    .setDescription('**Step 3:** Select your ability score range')
+    .addFields(
+      { name: '🎭 Class', value: selectedClass, inline: true },
+      { name: '🎯 Subclass', value: selectedSubclass, inline: true }
+    )
+    .setFooter({ text: '💪 Choose the range closest to your ability score' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+// ✅ NEW: Handle ability score selection
+export async function handleAbilityScoreSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedAbilityScore = interaction.values[0];
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Update state with ability score
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      abilityScore: selectedAbilityScore
+    });
+
+    // Show guild selection
+    await showGuildSelectionEarly(interaction, userId, state);
+    
+  } catch (error) {
+    console.error('Error in handleAbilityScoreSelection:', error);
+    stateManager.clearRegistrationState(interaction.user.id);
+  }
+}
+
+// ✅ NEW: Show guild selection early in the flow
+async function showGuildSelectionEarly(interaction, userId, state) {
+  const guilds = GAME_DATA.guilds;
+  
+  if (guilds.length === 0) {
+    // No guilds configured, skip to timezone
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      guild: null
+    });
+    await showSmartTimezoneSelection(interaction, userId, state);
+    return;
+  }
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`select_guild_early_${userId}`)
+    .setPlaceholder('🏰 Choose your guild')
+    .addOptions(
+      guilds.map(guild => ({
+        label: guild.name,
+        value: guild.name,
+        emoji: guild.isVisitor ? '👋' : '🏰'
+      }))
+    );
+
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('⭐ Register Main Character')
+    .setDescription('**Step 4:** Select your guild')
+    .addFields(
+      { name: '🎭 Class', value: state.class, inline: true },
+      { name: '🎯 Subclass', value: state.subclass, inline: true },
+      { name: '💪 Ability Score', value: `~${parseInt(state.abilityScore).toLocaleString()}`, inline: true }
+    )
+    .setFooter({ text: '🏰 Choose your guild affiliation' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+// ✅ NEW: Handle early guild selection
+export async function handleGuildSelectionEarly(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedGuild = interaction.values[0];
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Store guild
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      guild: selectedGuild
+    });
+
+    // Show smart timezone selection
+    await showSmartTimezoneSelection(interaction, userId, state);
+    
+  } catch (error) {
+    console.error('Error in handleGuildSelectionEarly:', error);
+    stateManager.clearRegistrationState(interaction.user.id);
+  }
+}
+
+// ✅ NEW: Show smart timezone selection based on current time
+async function showSmartTimezoneSelection(interaction, userId, state) {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+
+  // Generate time options (every hour from 00:00 to 23:00)
+  const timeOptions = [];
+  for (let hour = 0; hour < 24; hour++) {
+    const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
+    timeOptions.push({
+      label: timeLabel,
+      value: hour.toString(),
+      description: hour === currentHour ? '← Current hour' : ''
+    });
+  }
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`select_current_time_${userId}`)
+    .setPlaceholder(`🕐 What time is it for you now? (Current: ${currentTime})`)
+    .addOptions(timeOptions);
+
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('⭐ Register Main Character')
+    .setDescription(`**Step 5:** What time is it for you right now?\n\n🕐 **Our current time:** ${currentTime}\n💡 Select the hour closest to your current local time`)
+    .addFields(
+      { name: '🎭 Class', value: state.class, inline: true },
+      { name: '🎯 Subclass', value: state.subclass, inline: true },
+      { name: '💪 Ability Score', value: `~${parseInt(state.abilityScore).toLocaleString()}`, inline: true }
+    )
+    .setFooter({ text: '🌍 This helps us suggest your timezone' })
+    .setTimestamp();
+  
+  if (state.guild) {
+    embed.addFields({ name: '🏰 Guild', value: state.guild, inline: true });
+  }
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+// ✅ NEW: Handle current time selection and suggest timezones
+export async function handleCurrentTimeSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedHour = parseInt(interaction.values[0]);
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Calculate timezone offset
+    const now = new Date();
+    const currentHour = now.getUTCHours();
+    const offsetHours = selectedHour - currentHour;
+    
+    // Get matching timezones
+    const matchingTimezones = getSuggestedTimezones(offsetHours);
+
+    if (matchingTimezones.length === 0) {
+      // Fallback to manual selection
+      await showTimezoneRegionSelection(interaction, userId, state);
+      return;
+    }
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_suggested_timezone_${userId}`)
+      .setPlaceholder('🌍 Select your timezone')
+      .addOptions([
+        {
+          label: '🔄 Show all timezones',
+          value: 'SHOW_ALL_TIMEZONES',
+          description: 'Browse all available timezones'
+        },
+        ...matchingTimezones.slice(0, 24) // Limit to 24 (1 slot for "show all")
+      ]);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('⭐ Register Main Character')
+      .setDescription('**Step 6:** Select your timezone from suggestions\n\n💡 Based on your time, these timezones match!')
+      .addFields(
+        { name: '🕐 Your Time', value: `${selectedHour.toString().padStart(2, '0')}:00`, inline: true },
+        { name: '🌍 UTC Offset', value: `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}`, inline: true }
+      )
+      .setFooter({ text: '🌍 Select your timezone or browse all' })
+      .setTimestamp();
+    
+    if (state.guild) {
+      embed.addFields({ name: '🏰 Guild', value: state.guild, inline: true });
+    }
+
+    await interaction.update({ embeds: [embed], components: [row] });
+
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      selectedOffset: offsetHours
+    });
+    
+  } catch (error) {
+    console.error('Error in handleCurrentTimeSelection:', error);
+    stateManager.clearRegistrationState(interaction.user.id);
+  }
+}
+
+// ✅ NEW: Get suggested timezones based on offset
+function getSuggestedTimezones(offsetHours) {
+  const suggestions = [];
+  
+  // Get all regions
+  const regions = getTimezoneRegions();
+  
+  for (const region of regions) {
+    const countries = getCountriesInRegion(region);
+    
+    for (const country of countries) {
+      const timezones = getTimezonesForCountry(country);
+      
+      for (const tz of timezones) {
+        // Parse UTC offset from string like "UTC-5/-4" or "UTC+9"
+        const utcMatch = tz.utc.match(/UTC([+-]?\d+)/);
+        if (utcMatch) {
+          const tzOffset = parseInt(utcMatch[1]);
+          if (tzOffset === offsetHours) {
+            suggestions.push({
+              label: tz.label,
+              value: tz.value,
+              description: `${country} - ${tz.utc}`
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return suggestions;
+}
+
+// ✅ NEW: Handle suggested timezone selection
+export async function handleSuggestedTimezoneSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedTimezone = interaction.values[0];
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    // Check if user wants to see all timezones
+    if (selectedTimezone === 'SHOW_ALL_TIMEZONES') {
+      await showTimezoneRegionSelection(interaction, userId, state);
+      return;
+    }
+
+    // Store timezone
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      timezone: selectedTimezone
+    });
+
+    // Show IGN modal
+    const modal = new ModalBuilder()
+      .setCustomId(`ign_modal_main_${userId}`)
+      .setTitle('Final Step: Character Name');
+
+    const ignInput = new TextInputBuilder()
+      .setCustomId('ign')
+      .setLabel('In-Game Name (IGN)')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('Enter your character name')
+      .setRequired(true)
+      .setMaxLength(100);
+
+    const row = new ActionRowBuilder().addComponents(ignInput);
+    modal.addComponents(row);
+
+    await interaction.showModal(modal);
+    
+  } catch (error) {
+    console.error('Error in handleSuggestedTimezoneSelection:', error);
+    stateManager.clearRegistrationState(interaction.user.id);
+  }
+}
+
+// ✅ NEW: Handle IGN modal submission (final step)
+export async function handleIGNModal(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const state = stateManager.getRegistrationState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    const ign = interaction.fields.getTextInputValue('ign');
+    const type = state.type;
+
+    if (type === 'main') {
+      // Save main character directly (guild already selected)
+      await saveMainCharacterFinal(interaction, userId, state, ign);
+    } else {
+      // Save alt character
+      await saveAltCharacter(interaction, userId, state, ign);
+    }
+    
+  } catch (error) {
+    console.error('Error in handleIGNModal:', error);
+    stateManager.clearRegistrationState(interaction.user.id);
+    await interaction.reply({
+      content: '❌ An error occurred. Please try again.',
+      ephemeral: true
+    });
+  }
+}
+
+async function saveMainCharacterFinal(interaction, userId, state, ign) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const characterData = {
+    discordId: userId,
+    discordName: interaction.user.tag,
+    ign: ign,
+    role: state.role,
+    className: state.class,
+    subclass: state.subclass,
+    abilityScore: state.abilityScore ? parseInt(state.abilityScore) : null,
+    timezone: state.timezone || null,
+    guild: state.guild || null
+  };
+
+  await queries.createCharacter(characterData);
+
+  const embed = new EmbedBuilder()
+    .setColor('#00FF00')
+    .setTitle('✅ Main Character Registered!')
+    .setDescription('Your main character has been successfully registered.')
+    .addFields(
+      { name: '🎮 IGN', value: ign, inline: true },
+      { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
+      { name: '⚔️ Role', value: state.role, inline: true }
+    )
+    .setFooter({ text: '💡 Loading your profile...' })
+    .setTimestamp();
+
+  if (state.guild) {
+    embed.addFields({ name: '🏰 Guild', value: state.guild, inline: true });
+  }
+
+  if (state.abilityScore) {
+    embed.addFields({ name: '💪 Ability Score', value: `~${parseInt(state.abilityScore).toLocaleString()}`, inline: true });
+  }
+
+  if (state.timezone) {
+    embed.addFields({ name: '🌍 Timezone', value: state.timezone, inline: true });
+  }
+
+  await interaction.editReply({ embeds: [embed], components: [] });
+  
+  stateManager.clearRegistrationState(userId);
+  
+  // ✅ Show main menu immediately
+  setTimeout(async () => {
+    try {
+      const editMemberDetails = await import('../commands/edit-member-details.js');
+      await editMemberDetails.default.showMainMenu(interaction, false);
+    } catch (error) {
+      console.error('Error returning to menu after registration:', error);
+    }
+  }, 2000);
 }
 
 export async function handleCharacterDetailsModal(interaction) {
@@ -239,23 +669,8 @@ export async function handleCharacterDetailsModal(interaction) {
     const type = state.type;
     const ign = interaction.fields.getTextInputValue('ign');
     
-    if (type === 'main') {
-      const abilityScore = interaction.fields.getTextInputValue('ability_score');
-      
-      // Update state with IGN and ability score FIRST
-      const updatedState = {
-        ...state,
-        step: 'timezone',
-        ign: ign,
-        abilityScore: abilityScore || null
-      };
-      
-      stateManager.setRegistrationState(userId, updatedState);
-      
-      // ✅ NEW: Show smart timezone region selection with updated state
-      await showTimezoneRegionSelection(interaction, userId, updatedState);
-    } else {
-      // For alt, save directly (no timezone needed)
+    // This is only for alt characters now (main uses new flow)
+    if (type === 'alt') {
       await saveAltCharacter(interaction, userId, state, ign);
     }
     
@@ -341,7 +756,24 @@ export async function handleTimezoneRegionSelection(interaction) {
         ...state,
         timezone: null
       });
-      await showGuildSelection(interaction, userId, state);
+      
+      // Show IGN modal
+      const modal = new ModalBuilder()
+        .setCustomId(`ign_modal_main_${userId}`)
+        .setTitle('Final Step: Character Name');
+
+      const ignInput = new TextInputBuilder()
+        .setCustomId('ign')
+        .setLabel('In-Game Name (IGN)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Enter your character name')
+        .setRequired(true)
+        .setMaxLength(100);
+
+      const row = new ActionRowBuilder().addComponents(ignInput);
+      modal.addComponents(row);
+
+      await interaction.showModal(modal);
       return;
     }
 
@@ -462,13 +894,29 @@ export async function handleTimezoneSelection(interaction) {
       });
     }
 
-    // Store timezone and show guild selection
+    // Store timezone
     stateManager.setRegistrationState(userId, {
       ...state,
       timezone: selectedTimezone
     });
 
-    await showGuildSelection(interaction, userId, state);
+    // Show IGN modal
+    const modal = new ModalBuilder()
+      .setCustomId(`ign_modal_main_${userId}`)
+      .setTitle('Final Step: Character Name');
+
+    const ignInput = new TextInputBuilder()
+      .setCustomId('ign')
+      .setLabel('In-Game Name (IGN)')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('Enter your character name')
+      .setRequired(true)
+      .setMaxLength(100);
+
+    const row = new ActionRowBuilder().addComponents(ignInput);
+    modal.addComponents(row);
+
+    await interaction.showModal(modal);
     
   } catch (error) {
     console.error('Error in handleTimezoneSelection:', error);
@@ -476,138 +924,6 @@ export async function handleTimezoneSelection(interaction) {
   }
 }
 
-async function showGuildSelection(interaction, userId, state) {
-  const guilds = GAME_DATA.guilds;
-  
-  if (guilds.length === 0) {
-    // No guilds configured, save with empty guild
-    await saveMainCharacter(interaction, userId, state, state.ign, '', null);
-    return;
-  }
-
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(`select_guild_${userId}`)
-    .setPlaceholder('🏰 Choose your guild')
-    .addOptions(
-      guilds.map(guild => ({
-        label: guild.name,
-        value: guild.name,
-        emoji: guild.isVisitor ? '👋' : '🏰'
-      }))
-    );
-
-  const row = new ActionRowBuilder().addComponents(selectMenu);
-
-  const embed = new EmbedBuilder()
-    .setColor('#6640D9')
-    .setTitle('⭐ Register Main Character')
-    .setDescription('**Final Step:** Select your guild')
-    .addFields(
-      { name: '🎭 Class', value: state.class, inline: true },
-      { name: '🎯 Subclass', value: state.subclass, inline: true },
-      { name: '🎮 IGN', value: state.ign, inline: true }
-    )
-    .setFooter({ text: '💡 Choose your guild affiliation' })
-    .setTimestamp();
-
-  await interaction.update({ embeds: [embed], components: [row] });
-}
-
-export async function handleGuildSelection(interaction) {
-  try {
-    const userId = interaction.user.id;
-    const selectedGuild = interaction.values[0];
-    const state = stateManager.getRegistrationState(userId);
-    
-    if (!state) {
-      return interaction.reply({
-        content: '❌ Session expired. Please start over.',
-        ephemeral: true
-      });
-    }
-
-    await saveMainCharacter(interaction, userId, state, state.ign, selectedGuild, interaction.member);
-    
-  } catch (error) {
-    console.error('Error in handleGuildSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
-    await interaction.reply({
-      content: '❌ An error occurred. Please try again.',
-      ephemeral: true
-    });
-  }
-}
-
-async function saveMainCharacter(interaction, userId, state, ign, guild, member) {
-  try {
-    await interaction.deferUpdate();
-
-    const characterData = {
-      discordId: userId,
-      discordName: interaction.user.tag,
-      ign: ign,
-      role: state.role,
-      className: state.class,
-      subclass: state.subclass,
-      abilityScore: state.abilityScore ? parseInt(state.abilityScore) : null,
-      timezone: state.timezone || null,
-      guild: guild
-    };
-
-    await queries.createCharacter(characterData);
-
-    const embed = new EmbedBuilder()
-      .setColor('#00FF00')
-      .setTitle('✅ Main Character Registered!')
-      .setDescription('Your main character has been successfully registered.')
-      .addFields(
-        { name: '🎮 IGN', value: ign, inline: true },
-        { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
-        { name: '⚔️ Role', value: state.role, inline: true }
-      )
-      .setFooter({ text: '💡 Returning to menu...' })
-      .setTimestamp();
-
-    if (guild) {
-      embed.addFields({ name: '🏰 Guild', value: guild, inline: true });
-    }
-
-    if (state.abilityScore) {
-      embed.addFields({ name: '💪 Ability Score', value: state.abilityScore, inline: true });
-    }
-
-    if (state.timezone) {
-      embed.addFields({ name: '🌍 Timezone', value: state.timezone, inline: true });
-    }
-
-    await interaction.editReply({ embeds: [embed], components: [] });
-    
-    // Clear state
-    stateManager.clearRegistrationState(userId);
-    
-    // ✅ FIXED: Show menu as followUp (keeps success message visible briefly)
-    setTimeout(async () => {
-      try {
-        const editMemberDetails = await import('../commands/edit-member-details.js');
-        await editMemberDetails.default.showMainMenu(interaction, false);
-      } catch (error) {
-        console.error('Error returning to menu after registration:', error);
-      }
-    }, 2000);
-    
-  } catch (error) {
-    console.error('Error saving main character:', error);
-    stateManager.clearRegistrationState(userId);
-    
-    const embed = new EmbedBuilder()
-      .setColor('#FF0000')
-      .setTitle('❌ Registration Failed')
-      .setDescription('An error occurred while saving your character.')
-      .setTimestamp();
-    
-    await interaction.editReply({ embeds: [embed], components: [] });
-  }
-}
 
 async function saveAltCharacter(interaction, userId, state, ign) {
   try {
