@@ -431,19 +431,19 @@ class GoogleSheetsService {
 
       // Set column widths
       requests.push(
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 150 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 150 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 80 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 70 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } },
         { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 5, endIndex: 6 }, properties: { pixelSize: 80 }, fields: 'pixelSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 6, endIndex: 7 }, properties: { pixelSize: 100 }, fields: 'pixelSize' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 6, endIndex: 7 }, properties: { pixelSize: 110 }, fields: 'pixelSize' } },
         { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 7, endIndex: 8 }, properties: { pixelSize: 80 }, fields: 'pixelSize' } },
         { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 8, endIndex: 9 }, properties: { pixelSize: 180 }, fields: 'pixelSize' } },
         { updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 9, endIndex: 10 }, properties: { pixelSize: 120 }, fields: 'pixelSize' } }
       );
 
-      // Increase row height for pill effect
+      // Increase row height for pill effect (32px like reference)
       for (let i = 0; i < members.length; i++) {
         requests.push({
           updateDimensionProperties: {
@@ -454,7 +454,7 @@ class GoogleSheetsService {
               endIndex: i + 2
             },
             properties: {
-              pixelSize: 30
+              pixelSize: 32
             },
             fields: 'pixelSize'
           }
@@ -467,49 +467,41 @@ class GoogleSheetsService {
         
         const classColor = this.getClassColor(member.class);
         const roleColor = this.getRoleColor(member.role);
-        const abilityColor = member.ability_score ? this.getAbilityScoreColor(member.ability_score) : { red: 0.94, green: 0.94, blue: 0.94 };
+        const abilityColor = member.ability_score ? this.getAbilityScoreColor(member.ability_score) : null;
         
-        // Type column - pill badge
+        // Type column - pill badge with white text
         const typeColor = member.isMain 
-          ? { red: 0.3, green: 0.8, blue: 0.5 }
-          : { red: 1, green: 0.65, blue: 0.3 };
+          ? { red: 0.4, green: 0.9, blue: 0.5 }
+          : { red: 1, green: 0.7, blue: 0.3 };
         
-        this.addPillCell(requests, sheetId, rowIndex, 2, typeColor, true, 9);
+        this.addPillCell(requests, sheetId, rowIndex, 2, typeColor, true, 10);
         
-        // Class column - bold pill
-        this.addPillCell(requests, sheetId, rowIndex, 3, classColor, false, 10);
+        // Class column - bold pill with white text
+        this.addPillCell(requests, sheetId, rowIndex, 3, classColor, true, 10);
         
-        // Subclass column - darker variant
+        // Subclass column - darker variant with white text
         const subclassColor = {
-          red: Math.max(classColor.red * 0.85, 0.2),
-          green: Math.max(classColor.green * 0.85, 0.2),
-          blue: Math.max(classColor.blue * 0.85, 0.2)
+          red: Math.max(classColor.red * 0.7, 0.2),
+          green: Math.max(classColor.green * 0.7, 0.2),
+          blue: Math.max(classColor.blue * 0.7, 0.2)
         };
-        this.addPillCell(requests, sheetId, rowIndex, 4, subclassColor, false, 10);
+        this.addPillCell(requests, sheetId, rowIndex, 4, subclassColor, true, 10);
         
         // Role column - white text pill
-        this.addPillCell(requests, sheetId, rowIndex, 5, roleColor, true, 9);
+        this.addPillCell(requests, sheetId, rowIndex, 5, roleColor, true, 10);
         
-        // Ability Score - gradient pill
-        if (member.ability_score && member.ability_score !== '') {
-          this.addPillCell(requests, sheetId, rowIndex, 6, abilityColor, false, 10, true);
+        // Ability Score - gradient pill with white text
+        if (member.ability_score && member.ability_score !== '' && abilityColor) {
+          this.addPillCell(requests, sheetId, rowIndex, 6, abilityColor, true, 10, true);
         }
         
-        // Guild - colored pill
+        // Guild - colored pill with white text
         if (member.guild && member.guild !== '') {
           const guildColor = this.getGuildColor(member.guild);
-          this.addPillCell(requests, sheetId, rowIndex, 7, guildColor, false, 9);
+          this.addPillCell(requests, sheetId, rowIndex, 7, guildColor, true, 10);
         }
         
-        // Timezone - soft blue pill
-        if (member.timezone && member.timezone !== '') {
-          this.addPillCell(requests, sheetId, rowIndex, 8, { red: 0.85, green: 0.9, blue: 0.95 }, false, 9);
-        }
-        
-        // Registered - gray pill
-        this.addPillCell(requests, sheetId, rowIndex, 9, { red: 0.9, green: 0.9, blue: 0.92 }, false, 9);
-
-        // Add white borders between pills for separation
+        // Add white borders between pills for separation - CRITICAL for pill effect
         requests.push({
           updateBorders: {
             range: {
@@ -517,16 +509,26 @@ class GoogleSheetsService {
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: 2,
-              endColumnIndex: 10
+              endColumnIndex: 8
             },
             left: {
               style: 'SOLID',
-              width: 3,
+              width: 2,
               color: { red: 1, green: 1, blue: 1 }
             },
             right: {
               style: 'SOLID',
-              width: 3,
+              width: 2,
+              color: { red: 1, green: 1, blue: 1 }
+            },
+            top: {
+              style: 'SOLID',
+              width: 2,
+              color: { red: 1, green: 1, blue: 1 }
+            },
+            bottom: {
+              style: 'SOLID',
+              width: 2,
               color: { red: 1, green: 1, blue: 1 }
             }
           }
@@ -549,7 +551,7 @@ class GoogleSheetsService {
     }
   }
 
-  addPillCell(requests, sheetId, rowIndex, colIndex, bgColor, whiteText = false, fontSize = 10, isNumber = false) {
+  addPillCell(requests, sheetId, rowIndex, colIndex, bgColor, whiteText = true, fontSize = 10, isNumber = false) {
     const textColor = whiteText 
       ? { red: 1, green: 1, blue: 1 }
       : { red: 0.1, green: 0.1, blue: 0.1 };
@@ -567,9 +569,10 @@ class GoogleSheetsService {
           userEnteredFormat: {
             backgroundColor: bgColor,
             textFormat: {
-              bold: whiteText,
+              bold: true,
               fontSize: fontSize,
-              foregroundColor: textColor
+              foregroundColor: textColor,
+              fontFamily: 'Arial'
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE'
