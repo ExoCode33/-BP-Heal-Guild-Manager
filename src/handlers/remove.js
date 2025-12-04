@@ -6,7 +6,6 @@ export async function handleRemoveMain(interaction) {
   try {
     const userId = interaction.user.id;
     
-    // Get main character
     const mainChar = await queries.getMainCharacter(userId);
     
     if (!mainChar) {
@@ -19,10 +18,8 @@ export async function handleRemoveMain(interaction) {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    // Check if they have alts
     const alts = await queries.getAltCharacters(userId);
     
-    // Show confirmation
     await showRemoveMainConfirmation(interaction, userId, mainChar, alts.length);
     
   } catch (error) {
@@ -88,7 +85,6 @@ export async function handleConfirmRemoveMain(interaction) {
 
     await interaction.deferUpdate();
 
-    // Delete the main character (cascade will delete alts)
     await queries.deleteMainCharacter(userId);
 
     const embed = new EmbedBuilder()
@@ -100,17 +96,20 @@ export async function handleConfirmRemoveMain(interaction) {
         value: state.mainChar.ign,
         inline: false
       })
-      .setFooter({ text: '💡 Opening menu...' })
+      .setFooter({ text: '💡 Returning to menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearRemovalState(userId);
     
-    // ✅ UPDATED: Return to main menu with a new message
+    // ✅ NEW: Delete success message and show clean menu
     setTimeout(async () => {
       try {
-        await showMenuHub(interaction, userId);
+        await interaction.deleteReply();
+        
+        const editMemberDetails = await import('../commands/edit-member-details.js');
+        await editMemberDetails.default.showMainMenu(interaction, false);
       } catch (error) {
         console.error('Error returning to menu after removal:', error);
       }
@@ -137,17 +136,20 @@ export async function handleCancelRemoveMain(interaction) {
     .setColor('#6640D9')
     .setTitle('❌ Removal Cancelled')
     .setDescription('Your main character was not removed.')
-    .setFooter({ text: '💡 Opening menu...' })
+    .setFooter({ text: '💡 Returning to menu...' })
     .setTimestamp();
 
   await interaction.update({ embeds: [embed], components: [] });
   
   stateManager.clearRemovalState(userId);
   
-  // ✅ UPDATED: Return to main menu with a new message
+  // ✅ NEW: Delete cancel message and show clean menu
   setTimeout(async () => {
     try {
-      await showMenuHub(interaction, userId);
+      await interaction.deleteReply();
+      
+      const editMemberDetails = await import('../commands/edit-member-details.js');
+      await editMemberDetails.default.showMainMenu(interaction, false);
     } catch (error) {
       console.error('Error returning to menu after cancel:', error);
     }
@@ -158,7 +160,6 @@ export async function handleRemoveAlt(interaction) {
   try {
     const userId = interaction.user.id;
     
-    // Get alt characters
     const alts = await queries.getAltCharacters(userId);
     
     if (alts.length === 0) {
@@ -171,7 +172,6 @@ export async function handleRemoveAlt(interaction) {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    // Show alt selection menu
     await showAltSelectionForRemoval(interaction, userId, alts);
     
   } catch (error) {
@@ -236,7 +236,6 @@ export async function handleAltSelectionForRemoval(interaction) {
       });
     }
 
-    // Show confirmation
     await showRemoveAltConfirmation(interaction, userId, selectedAlt);
     
   } catch (error) {
@@ -291,7 +290,6 @@ export async function handleConfirmRemoveAlt(interaction) {
 
     await interaction.deferUpdate();
 
-    // Delete the alt character
     await queries.deleteAltCharacter(userId, state.alt.ign);
 
     const embed = new EmbedBuilder()
@@ -303,17 +301,20 @@ export async function handleConfirmRemoveAlt(interaction) {
         value: state.alt.ign,
         inline: false
       })
-      .setFooter({ text: '💡 Opening menu...' })
+      .setFooter({ text: '💡 Returning to menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearRemovalState(userId);
     
-    // ✅ UPDATED: Return to main menu with a new message
+    // ✅ NEW: Delete success message and show clean menu
     setTimeout(async () => {
       try {
-        await showMenuHub(interaction, userId);
+        await interaction.deleteReply();
+        
+        const editMemberDetails = await import('../commands/edit-member-details.js');
+        await editMemberDetails.default.showMainMenu(interaction, false);
       } catch (error) {
         console.error('Error returning to menu after alt removal:', error);
       }
@@ -340,139 +341,24 @@ export async function handleCancelRemoveAlt(interaction) {
     .setColor('#6640D9')
     .setTitle('❌ Removal Cancelled')
     .setDescription('Your alt character was not removed.')
-    .setFooter({ text: '💡 Opening menu...' })
+    .setFooter({ text: '💡 Returning to menu...' })
     .setTimestamp();
 
   await interaction.update({ embeds: [embed], components: [] });
   
   stateManager.clearRemovalState(userId);
   
-  // ✅ UPDATED: Return to main menu with a new message
+  // ✅ NEW: Delete cancel message and show clean menu
   setTimeout(async () => {
     try {
-      await showMenuHub(interaction, userId);
+      await interaction.deleteReply();
+      
+      const editMemberDetails = await import('../commands/edit-member-details.js');
+      await editMemberDetails.default.showMainMenu(interaction, false);
     } catch (error) {
       console.error('Error returning to menu after cancel:', error);
     }
   }, 1500);
-}
-
-// ✅ ADDED: Helper function to show the menu hub (sends a new ephemeral message)
-async function showMenuHub(interaction, userId) {
-  const mainChar = await queries.getMainCharacter(userId);
-  const alts = mainChar ? await queries.getAltCharacters(userId) : [];
-
-  const menuEmbed = new EmbedBuilder()
-    .setColor('#6640D9')
-    .setTitle('📋 Member Details Management')
-    .setDescription('Choose what you\'d like to do:')
-    .setFooter({ text: '💡 Select an action below' })
-    .setTimestamp();
-
-  if (mainChar) {
-    menuEmbed.addFields(
-      { 
-        name: '⭐ Main Character', 
-        value: `**${mainChar.ign}**\n${mainChar.class} (${mainChar.subclass})\n${mainChar.role}${mainChar.guild ? ` • ${mainChar.guild}` : ''}`, 
-        inline: true 
-      }
-    );
-    
-    if (alts.length > 0) {
-      menuEmbed.addFields({
-        name: '📋 Alt Characters',
-        value: alts.map(alt => `• ${alt.ign} (${alt.class})`).join('\n'),
-        inline: true
-      });
-    }
-  } else {
-    menuEmbed.addFields({
-      name: '📝 Status',
-      value: 'No main character registered',
-      inline: false
-    });
-  }
-
-  const rows = [];
-  const row1 = new ActionRowBuilder();
-  
-  if (!mainChar) {
-    row1.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`edit_add_main_${userId}`)
-        .setLabel('Add Main Character')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('⭐')
-    );
-  } else {
-    row1.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`edit_update_main_${userId}`)
-        .setLabel('Edit Main Character')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('✏️'),
-      new ButtonBuilder()
-        .setCustomId(`edit_remove_main_${userId}`)
-        .setLabel('Remove Main Character')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('🗑️')
-    );
-  }
-  
-  rows.push(row1);
-
-  if (mainChar) {
-    const row2 = new ActionRowBuilder();
-    
-    row2.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`edit_add_alt_${userId}`)
-        .setLabel('Add Alt Character')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('➕')
-    );
-
-    if (alts.length > 0) {
-      row2.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`edit_remove_alt_${userId}`)
-          .setLabel('Remove Alt Character')
-          .setStyle(ButtonStyle.Danger)
-          .setEmoji('➖')
-      );
-    }
-    
-    rows.push(row2);
-  }
-
-  const row3 = new ActionRowBuilder();
-  
-  if (mainChar) {
-    row3.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`edit_view_chars_${userId}`)
-        .setLabel('View All Characters')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('👀')
-    );
-  }
-  
-  row3.addComponents(
-    new ButtonBuilder()
-      .setCustomId(`edit_close_${userId}`)
-      .setLabel('Close')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('❌')
-  );
-  
-  rows.push(row3);
-
-  // Send as a new ephemeral follow-up message
-  await interaction.followUp({ 
-    embeds: [menuEmbed], 
-    components: rows, 
-    ephemeral: true 
-  });
 }
 
 function getClassEmoji(className) {
