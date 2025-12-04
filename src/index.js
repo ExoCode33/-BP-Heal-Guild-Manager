@@ -241,11 +241,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       else if (interaction.customId.startsWith('select_subclass_')) {
         await registrationHandlers.handleSubclassSelection(interaction);
       }
-      else if (interaction.customId.startsWith('select_guild_')) {
-        await registrationHandlers.handleGuildSelection(interaction);
+      else if (interaction.customId.startsWith('select_ability_score_')) {
+        await registrationHandlers.handleAbilityScoreSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_current_time_')) {
+        await registrationHandlers.handleCurrentTimeSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_suggested_timezone_')) {
+        await registrationHandlers.handleSuggestedTimezoneSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('select_guild_early_')) {
+        await registrationHandlers.handleGuildSelectionEarly(interaction);
       }
       
-      // ✅ NEW: Timezone selection handlers (ORDER MATTERS!)
+      // ✅ Timezone selection handlers (ORDER MATTERS!)
       else if (interaction.customId.startsWith('select_timezone_region_')) {
         await registrationHandlers.handleTimezoneRegionSelection(interaction);
       }
@@ -300,6 +309,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Registration modals
       if (interaction.customId.startsWith('character_details_')) {
         await registrationHandlers.handleCharacterDetailsModal(interaction);
+      }
+      else if (interaction.customId.startsWith('ign_modal_')) {
+        await registrationHandlers.handleIGNModal(interaction);
       }
       
       // Update modals
