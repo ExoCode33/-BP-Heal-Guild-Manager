@@ -379,8 +379,8 @@ class GoogleSheetsService {
         member.guild,
         member.timezone,
         new Date(member.created_at).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric',
+          month: '2-digit', 
+          day: '2-digit',
           year: 'numeric'
         })
       ]);
