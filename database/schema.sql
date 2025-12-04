@@ -40,8 +40,8 @@ CREATE TABLE characters (
     guild VARCHAR(50),
     is_main BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_discord_ign UNIQUE(discord_id, ign)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- Removed UNIQUE constraint to allow same IGN for multiple characters
 );
 
 -- User timezones table (separate from characters)
