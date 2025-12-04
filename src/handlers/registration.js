@@ -364,10 +364,11 @@ export async function handleGuildSelectionEarly(interaction) {
 }
 
 async function showSmartTimezoneSelection(interaction, userId, state) {
+  // Get current UTC time
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const currentTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+  const utcHour = now.getUTCHours();
+  const utcMinute = now.getUTCMinutes();
+  const utcTime = `${utcHour.toString().padStart(2, '0')}:${utcMinute.toString().padStart(2, '0')} UTC`;
 
   // Generate time options (every hour from 00:00 to 23:00)
   const timeOptions = [];
@@ -378,17 +379,12 @@ async function showSmartTimezoneSelection(interaction, userId, state) {
       value: hour.toString()
     };
     
-    // Only add description if it's the current hour
-    if (hour === currentHour) {
-      option.description = '← Current hour';
-    }
-    
     timeOptions.push(option);
   }
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_current_time_${userId}`)
-    .setPlaceholder(`🕐 What time is it for you now? (Current: ${currentTime})`)
+    .setPlaceholder(`🕐 What time is it for you now?`)
     .addOptions(timeOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -396,7 +392,7 @@ async function showSmartTimezoneSelection(interaction, userId, state) {
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
     .setTitle('⭐ Register Main Character')
-    .setDescription(`**Step 5:** What time is it for you right now?\n\n🕐 **Our current time:** ${currentTime}\n💡 Select the hour closest to your current local time`)
+    .setDescription(`**Step 5:** What time is it for you right now?\n\n🕐 **Current UTC time:** ${utcTime}\n💡 Select the hour closest to your current local time (not UTC)`)
     .addFields(
       { name: '🎭 Class', value: state.class, inline: true },
       { name: '🎯 Subclass', value: state.subclass, inline: true },
