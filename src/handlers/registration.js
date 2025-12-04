@@ -367,7 +367,7 @@ async function saveMainCharacter(interaction, userId, state, ign, guild, member)
         { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
         { name: '⚔️ Role', value: state.role, inline: true }
       )
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Opening menu...' })
       .setTimestamp();
 
     if (guild) {
@@ -383,120 +383,10 @@ async function saveMainCharacter(interaction, userId, state, ign, guild, member)
     // Clear state
     stateManager.clearRegistrationState(userId);
     
-    // Return to main menu - edit the message directly
+    // ✅ UPDATED: Return to main menu with a new message
     setTimeout(async () => {
       try {
-        const message = await interaction.fetchReply();
-        
-        const mainChar = await queries.getMainCharacter(userId);
-        const alts = mainChar ? await queries.getAltCharacters(userId) : [];
-
-        const menuEmbed = new EmbedBuilder()
-          .setColor('#6640D9')
-          .setTitle('📋 Member Details Management')
-          .setDescription('Choose what you\'d like to do:')
-          .setFooter({ text: '💡 Select an action below' })
-          .setTimestamp();
-
-        if (mainChar) {
-          menuEmbed.addFields(
-            { 
-              name: '⭐ Main Character', 
-              value: `**${mainChar.ign}**\n${mainChar.class} (${mainChar.subclass})\n${mainChar.role}${mainChar.guild ? ` • ${mainChar.guild}` : ''}`, 
-              inline: true 
-            }
-          );
-          
-          if (alts.length > 0) {
-            menuEmbed.addFields({
-              name: '📋 Alt Characters',
-              value: alts.map(alt => `• ${alt.ign} (${alt.class})`).join('\n'),
-              inline: true
-            });
-          }
-        } else {
-          menuEmbed.addFields({
-            name: '📝 Status',
-            value: 'No main character registered',
-            inline: false
-          });
-        }
-
-        const rows = [];
-        const row1 = new ActionRowBuilder();
-        
-        if (!mainChar) {
-          row1.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_add_main_${userId}`)
-              .setLabel('Add Main Character')
-              .setStyle(ButtonStyle.Success)
-              .setEmoji('⭐')
-          );
-        } else {
-          row1.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_update_main_${userId}`)
-              .setLabel('Edit Main Character')
-              .setStyle(ButtonStyle.Primary)
-              .setEmoji('✏️'),
-            new ButtonBuilder()
-              .setCustomId(`edit_remove_main_${userId}`)
-              .setLabel('Remove Main Character')
-              .setStyle(ButtonStyle.Danger)
-              .setEmoji('🗑️')
-          );
-        }
-        
-        rows.push(row1);
-
-        if (mainChar) {
-          const row2 = new ActionRowBuilder();
-          
-          row2.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_add_alt_${userId}`)
-              .setLabel('Add Alt Character')
-              .setStyle(ButtonStyle.Success)
-              .setEmoji('➕')
-          );
-
-          if (alts.length > 0) {
-            row2.addComponents(
-              new ButtonBuilder()
-                .setCustomId(`edit_remove_alt_${userId}`)
-                .setLabel('Remove Alt Character')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('➖')
-            );
-          }
-          
-          rows.push(row2);
-        }
-
-        const row3 = new ActionRowBuilder();
-        
-        if (mainChar) {
-          row3.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_view_chars_${userId}`)
-              .setLabel('View All Characters')
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji('👀')
-          );
-        }
-        
-        row3.addComponents(
-          new ButtonBuilder()
-            .setCustomId(`edit_close_${userId}`)
-            .setLabel('Close')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('❌')
-        );
-        
-        rows.push(row3);
-
-        await message.edit({ embeds: [menuEmbed], components: rows });
+        await showMenuHub(interaction, userId);
       } catch (error) {
         console.error('Error returning to menu after registration:', error);
       }
@@ -553,7 +443,7 @@ async function saveAltCharacter(interaction, userId, state, ign) {
         { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
         { name: '⚔️ Role', value: state.role, inline: true }
       )
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Opening menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -561,120 +451,10 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     // Clear state
     stateManager.clearRegistrationState(userId);
     
-    // Return to main menu - edit the message directly
+    // ✅ UPDATED: Return to main menu with a new message
     setTimeout(async () => {
       try {
-        const message = await interaction.fetchReply();
-        
-        const mainChar = await queries.getMainCharacter(userId);
-        const alts = mainChar ? await queries.getAltCharacters(userId) : [];
-
-        const menuEmbed = new EmbedBuilder()
-          .setColor('#6640D9')
-          .setTitle('📋 Member Details Management')
-          .setDescription('Choose what you\'d like to do:')
-          .setFooter({ text: '💡 Select an action below' })
-          .setTimestamp();
-
-        if (mainChar) {
-          menuEmbed.addFields(
-            { 
-              name: '⭐ Main Character', 
-              value: `**${mainChar.ign}**\n${mainChar.class} (${mainChar.subclass})\n${mainChar.role}${mainChar.guild ? ` • ${mainChar.guild}` : ''}`, 
-              inline: true 
-            }
-          );
-          
-          if (alts.length > 0) {
-            menuEmbed.addFields({
-              name: '📋 Alt Characters',
-              value: alts.map(alt => `• ${alt.ign} (${alt.class})`).join('\n'),
-              inline: true
-            });
-          }
-        } else {
-          menuEmbed.addFields({
-            name: '📝 Status',
-            value: 'No main character registered',
-            inline: false
-          });
-        }
-
-        const rows = [];
-        const row1 = new ActionRowBuilder();
-        
-        if (!mainChar) {
-          row1.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_add_main_${userId}`)
-              .setLabel('Add Main Character')
-              .setStyle(ButtonStyle.Success)
-              .setEmoji('⭐')
-          );
-        } else {
-          row1.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_update_main_${userId}`)
-              .setLabel('Edit Main Character')
-              .setStyle(ButtonStyle.Primary)
-              .setEmoji('✏️'),
-            new ButtonBuilder()
-              .setCustomId(`edit_remove_main_${userId}`)
-              .setLabel('Remove Main Character')
-              .setStyle(ButtonStyle.Danger)
-              .setEmoji('🗑️')
-          );
-        }
-        
-        rows.push(row1);
-
-        if (mainChar) {
-          const row2 = new ActionRowBuilder();
-          
-          row2.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_add_alt_${userId}`)
-              .setLabel('Add Alt Character')
-              .setStyle(ButtonStyle.Success)
-              .setEmoji('➕')
-          );
-
-          if (alts.length > 0) {
-            row2.addComponents(
-              new ButtonBuilder()
-                .setCustomId(`edit_remove_alt_${userId}`)
-                .setLabel('Remove Alt Character')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('➖')
-            );
-          }
-          
-          rows.push(row2);
-        }
-
-        const row3 = new ActionRowBuilder();
-        
-        if (mainChar) {
-          row3.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`edit_view_chars_${userId}`)
-              .setLabel('View All Characters')
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji('👀')
-          );
-        }
-        
-        row3.addComponents(
-          new ButtonBuilder()
-            .setCustomId(`edit_close_${userId}`)
-            .setLabel('Close')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('❌')
-        );
-        
-        rows.push(row3);
-
-        await message.edit({ embeds: [menuEmbed], components: rows });
+        await showMenuHub(interaction, userId);
       } catch (error) {
         console.error('Error returning to menu after alt registration:', error);
       }
@@ -692,6 +472,124 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     
     await interaction.editReply({ embeds: [embed] });
   }
+}
+
+// ✅ ADDED: Helper function to show the menu hub (sends a new ephemeral message)
+async function showMenuHub(interaction, userId) {
+  const mainChar = await queries.getMainCharacter(userId);
+  const alts = mainChar ? await queries.getAltCharacters(userId) : [];
+
+  const menuEmbed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('📋 Member Details Management')
+    .setDescription('Choose what you\'d like to do:')
+    .setFooter({ text: '💡 Select an action below' })
+    .setTimestamp();
+
+  if (mainChar) {
+    menuEmbed.addFields(
+      { 
+        name: '⭐ Main Character', 
+        value: `**${mainChar.ign}**\n${mainChar.class} (${mainChar.subclass})\n${mainChar.role}${mainChar.guild ? ` • ${mainChar.guild}` : ''}`, 
+        inline: true 
+      }
+    );
+    
+    if (alts.length > 0) {
+      menuEmbed.addFields({
+        name: '📋 Alt Characters',
+        value: alts.map(alt => `• ${alt.ign} (${alt.class})`).join('\n'),
+        inline: true
+      });
+    }
+  } else {
+    menuEmbed.addFields({
+      name: '📝 Status',
+      value: 'No main character registered',
+      inline: false
+    });
+  }
+
+  const rows = [];
+  const row1 = new ActionRowBuilder();
+  
+  if (!mainChar) {
+    row1.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`edit_add_main_${userId}`)
+        .setLabel('Add Main Character')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('⭐')
+    );
+  } else {
+    row1.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`edit_update_main_${userId}`)
+        .setLabel('Edit Main Character')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('✏️'),
+      new ButtonBuilder()
+        .setCustomId(`edit_remove_main_${userId}`)
+        .setLabel('Remove Main Character')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('🗑️')
+    );
+  }
+  
+  rows.push(row1);
+
+  if (mainChar) {
+    const row2 = new ActionRowBuilder();
+    
+    row2.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`edit_add_alt_${userId}`)
+        .setLabel('Add Alt Character')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('➕')
+    );
+
+    if (alts.length > 0) {
+      row2.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`edit_remove_alt_${userId}`)
+          .setLabel('Remove Alt Character')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('➖')
+      );
+    }
+    
+    rows.push(row2);
+  }
+
+  const row3 = new ActionRowBuilder();
+  
+  if (mainChar) {
+    row3.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`edit_view_chars_${userId}`)
+        .setLabel('View All Characters')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('👀')
+    );
+  }
+  
+  row3.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`edit_close_${userId}`)
+      .setLabel('Close')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('❌')
+  );
+  
+  rows.push(row3);
+
+  // Send as a new ephemeral follow-up message
+  await interaction.followUp({ 
+    embeds: [menuEmbed], 
+    components: rows, 
+    ephemeral: true 
+  });
 }
 
 function getClassEmoji(className) {
