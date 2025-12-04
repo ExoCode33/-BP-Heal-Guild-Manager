@@ -135,7 +135,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       
       const errorMessage = { 
         content: '❌ There was an error executing this command!', 
-        ephemeral: true 
+        flags: 64 
       };
       
       if (interaction.replied || interaction.deferred) {
@@ -176,7 +176,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await subclassHandlers.handleAddSubclassToAlt(interaction);
       }
       else if (interaction.customId.startsWith('subclass_remove_')) {
-        await interaction.reply({ content: '🚧 Subclass removal coming soon!', ephemeral: true });
+        await interaction.reply({ content: '🚧 Subclass removal coming soon!', flags: 64 });
       }
       
       // Back buttons
@@ -231,7 +231,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       
       const errorMessage = { 
         content: '❌ An error occurred!', 
-        ephemeral: true 
+        flags: 64 
       };
       
       if (interaction.replied || interaction.deferred) {
@@ -311,7 +311,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       
       const errorMessage = { 
         content: '❌ An error occurred!', 
-        ephemeral: true 
+        flags: 64 
       };
       
       if (interaction.replied || interaction.deferred) {
@@ -349,7 +349,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       
       const errorMessage = { 
         content: '❌ An error occurred!', 
-        ephemeral: true 
+        flags: 64 
       };
       
       if (interaction.replied || interaction.deferred) {
