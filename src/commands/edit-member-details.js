@@ -149,33 +149,9 @@ export default {
   },
 
   async handleViewChars(interaction) {
+    // ✅ FIXED: Simply call view-char and let it send a new message
     const viewChar = await import('./view-char.js');
-    
-    // Create a modified interaction that uses update instead of reply
-    const modifiedInteraction = {
-      ...interaction,
-      reply: async (options) => {
-        await interaction.update(options);
-      }
-    };
-    
-    await viewChar.default.execute(modifiedInteraction);
-
-    // Add back button
-    const backButton = new ButtonBuilder()
-      .setCustomId(`edit_back_to_menu_${interaction.user.id}`)
-      .setLabel('Back to Menu')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('◀️');
-
-    const row = new ActionRowBuilder().addComponents(backButton);
-
-    // Add the back button to the message
-    const currentMessage = await interaction.fetchReply();
-    const currentComponents = currentMessage.components || [];
-    currentComponents.push(row);
-
-    await interaction.editReply({ components: currentComponents });
+    await viewChar.default.execute(interaction);
   },
 
   async handleBackToMenu(interaction) {
