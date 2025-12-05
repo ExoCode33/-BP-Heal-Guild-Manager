@@ -421,7 +421,7 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Update values to include IMAGE formula in Icon column (D)
+      // Update values to include IMAGE formula in Icon column (D) and timezone formulas
       const valueUpdates = [];
       
       for (let i = 0; i < rowMetadata.length; i++) {
@@ -440,11 +440,22 @@ class GoogleSheetsService {
             values: [[`=IMAGE("${imageUrl}",4,28,28)`]]
           });
         }
+
+        // Add timezone live time formula if timezone exists
+        if (meta.timezone && meta.timezone !== '') {
+          console.log(`🕐 [SHEETS] Row ${rowIndex}: Adding live time for ${meta.timezone}`);
+          
+          // Format: "3:45 PM" that updates every minute
+          valueUpdates.push({
+            range: `J${rowIndex}`,
+            values: [[`=TEXT(NOW(),"h:mm AM/PM")`]]
+          });
+        }
       }
 
-      // Batch update all the IMAGE formulas
+      // Batch update all the IMAGE formulas and timezone formulas
       if (valueUpdates.length > 0) {
-        console.log(`🖼️ [SHEETS] Updating ${valueUpdates.length} Icon cells with class icons...`);
+        console.log(`🖼️ [SHEETS] Updating ${valueUpdates.length} cells with icons and live times...`);
         
         for (const update of valueUpdates) {
           await this.sheets.spreadsheets.values.update({
@@ -457,7 +468,7 @@ class GoogleSheetsService {
           });
         }
         
-        console.log(`✅ [SHEETS] Completed adding icons to Icon column!`);
+        console.log(`✅ [SHEETS] Completed adding icons and live times!`);
       }
 
       if (requests.length > 0) {
@@ -609,11 +620,13 @@ class GoogleSheetsService {
           lastDiscordName = meta.discordName;
         }
         
-        const rowBg = meta.isSubclass 
-          ? { red: 0.98, green: 0.98, blue: 0.99 }
-          : { red: 1, green: 1, blue: 1 };
+        const rowBg = meta.isAlt
+          ? { red: 0.96, green: 0.96, blue: 0.96 }  // Light grey for alts
+          : meta.isSubclass 
+          ? { red: 0.98, green: 0.98, blue: 0.99 }  // Very light grey for subclasses
+          : { red: 1, green: 1, blue: 1 };           // White for mains
         
-        // Discord Name (A)
+        // Discord Name (A) - Always bold
         const discordColor = meta.isSubclass 
           ? { red: 0.50, green: 0.52, blue: 0.55 }
           : { red: 0.10, green: 0.11, blue: 0.13 };
@@ -634,7 +647,7 @@ class GoogleSheetsService {
                   fontSize: 10,
                   fontFamily: 'Google Sans',
                   foregroundColor: discordColor,
-                  bold: meta.isMain
+                  bold: true  // Always bold
                 },
                 horizontalAlignment: 'LEFT',
                 verticalAlignment: 'MIDDLE',
@@ -648,7 +661,7 @@ class GoogleSheetsService {
           }
         });
 
-        // IGN (B)
+        // IGN (B) - Always bold
         const ignColor = meta.isSubclass 
           ? { red: 0.50, green: 0.52, blue: 0.55 }
           : { red: 0.10, green: 0.11, blue: 0.13 };
@@ -669,7 +682,7 @@ class GoogleSheetsService {
                   fontSize: 10,
                   fontFamily: 'Google Sans',
                   foregroundColor: ignColor,
-                  bold: !meta.isSubclass,
+                  bold: true,  // Always bold
                   italic: meta.isSubclass
                 },
                 horizontalAlignment: 'LEFT',
@@ -707,22 +720,22 @@ class GoogleSheetsService {
         const roleColor = this.getRoleColor(member.role);
         this.addPillBadge(requests, sheetId, rowIndex, 6, roleColor);
         
-        // Ability Score (H)
+        // Ability Score (H) - Colored text on white/grey background
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addPillBadge(requests, sheetId, rowIndex, 7, abilityColor, true);
+          this.addColoredTextCell(requests, sheetId, rowIndex, 7, abilityColor, rowBg, true);
         } else {
           this.addCleanTextCell(requests, sheetId, rowIndex, 7, '', rowBg);
         }
         
-        // Guild (I)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 8, member.guild || '', rowBg);
+        // Guild (I) - Bold
+        this.addBoldTextCell(requests, sheetId, rowIndex, 8, rowBg);
         
-        // Timezone (J)
-        this.addSubtleTextCell(requests, sheetId, rowIndex, 9, rowBg);
+        // Timezone (J) - Bold with live time formula
+        this.addTimezoneCell(requests, sheetId, rowIndex, 9, meta.timezone, rowBg);
         
-        // Registered (K)
-        this.addSubtleTextCell(requests, sheetId, rowIndex, 10, rowBg);
+        // Registered (K) - Bold
+        this.addBoldTextCell(requests, sheetId, rowIndex, 10, rowBg);
 
         // Borders - Add outline to all cells and purple line at bottom of groups
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
@@ -879,8 +892,8 @@ class GoogleSheetsService {
     });
   }
 
-  addColoredTextCell(requests, sheetId, rowIndex, colIndex, textColor, rowBg) {
-    requests.push({
+  addColoredTextCell(requests, sheetId, rowIndex, colIndex, textColor, rowBg, isNumber = false) {
+    const cellFormat = {
       repeatCell: {
         range: {
           sheetId: sheetId,
@@ -900,6 +913,75 @@ class GoogleSheetsService {
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+      }
+    };
+
+    if (isNumber) {
+      cellFormat.repeatCell.cell.userEnteredFormat.numberFormat = {
+        type: 'NUMBER',
+        pattern: '#,##0'
+      };
+      cellFormat.repeatCell.fields = 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,numberFormat)';
+    }
+
+    requests.push(cellFormat);
+  }
+
+  addBoldTextCell(requests, sheetId, rowIndex, colIndex, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              bold: true,
+              fontSize: 10,
+              fontFamily: 'Google Sans',
+              foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
+            },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
+  }
+
+  addTimezoneCell(requests, sheetId, rowIndex, colIndex, timezone, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              bold: true,
+              fontSize: 9,
+              fontFamily: 'Google Sans',
+              foregroundColor: { red: 0.38, green: 0.42, blue: 0.45 }
+            },
+            horizontalAlignment: 'LEFT',
+            verticalAlignment: 'MIDDLE',
+            padding: {
+              left: 12
+            }
           }
         },
         fields: 'userEnteredFormat'
