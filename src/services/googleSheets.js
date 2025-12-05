@@ -696,12 +696,12 @@ class GoogleSheetsService {
         // Icon (D) - Will have IMAGE formula
         this.addCleanTextCell(requests, sheetId, rowIndex, 3, '', rowBg);
         
-        // Class (E) - With class color
+        // Class (E) - White background with colored bold text
         const classColor = this.getClassColor(member.class);
-        this.addPillBadge(requests, sheetId, rowIndex, 4, classColor);
+        this.addColoredTextCell(requests, sheetId, rowIndex, 4, classColor, rowBg);
         
-        // Subclass (F) - With class color
-        this.addPillBadge(requests, sheetId, rowIndex, 5, classColor);
+        // Subclass (F) - White background with colored bold text
+        this.addColoredTextCell(requests, sheetId, rowIndex, 5, classColor, rowBg);
         
         // Role (G)
         const roleColor = this.getRoleColor(member.role);
@@ -869,6 +869,34 @@ class GoogleSheetsService {
               fontSize: 10,
               fontFamily: 'Google Sans',
               foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
+            },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
+  }
+
+  addColoredTextCell(requests, sheetId, rowIndex, colIndex, textColor, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              bold: true,
+              fontSize: 10,
+              fontFamily: 'Google Sans',
+              foregroundColor: textColor
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE'
