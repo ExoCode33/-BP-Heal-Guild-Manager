@@ -9,24 +9,28 @@ class GoogleSheetsService {
     this.sheets = null;
     this.spreadsheetId = process.env.GOOGLE_SHEETS_ID;
     
-    // 🎨 CLASS LOGO URLs - Uses Railway public URL
-    // Railway automatically provides RAILWAY_PUBLIC_DOMAIN
-    const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
-    const baseUrl = process.env.RAILWAY_PUBLIC_URL || 
-                    (railwayDomain ? `https://${railwayDomain}` : 'http://localhost:3000');
-    
+    // 🎨 CLASS LOGO URLs - Set these in Railway Variables
     this.classLogos = {
-      'Beat Performer': `${baseUrl}/class-icons/BeatPerformer.png`,
-      'Frost Mage': `${baseUrl}/class-icons/FrostMage.png`,
-      'Heavy Guardian': `${baseUrl}/class-icons/HeavyGuardian.png`,
-      'Marksman': `${baseUrl}/class-icons/Marksman.png`,
-      'Shield Knight': `${baseUrl}/class-icons/ShieldKnight.png`,
-      'Stormblade': `${baseUrl}/class-icons/StormBlade.png`,
-      'Verdant Oracle': `${baseUrl}/class-icons/VerdantOracle.png`,
-      'Wind Knight': `${baseUrl}/class-icons/WindKnight.png`
+      'Beat Performer': process.env.ICON_BEAT_PERFORMER || '',
+      'Frost Mage': process.env.ICON_FROST_MAGE || '',
+      'Heavy Guardian': process.env.ICON_HEAVY_GUARDIAN || '',
+      'Marksman': process.env.ICON_MARKSMAN || '',
+      'Shield Knight': process.env.ICON_SHIELD_KNIGHT || '',
+      'Stormblade': process.env.ICON_STORMBLADE || '',
+      'Verdant Oracle': process.env.ICON_VERDANT_ORACLE || '',
+      'Wind Knight': process.env.ICON_WIND_KNIGHT || ''
     };
     
-    console.log(`🖼️ [INIT] Class icons base URL: ${baseUrl}`);
+    console.log(`🖼️ [INIT] Loading class icons from environment variables`);
+    
+    // Log which icons are configured
+    Object.entries(this.classLogos).forEach(([className, url]) => {
+      if (url) {
+        console.log(`✅ [INIT] ${className}: ${url.substring(0, 50)}...`);
+      } else {
+        console.log(`⚠️  [INIT] ${className}: Not configured`);
+      }
+    });
   }
 
   async initialize() {
