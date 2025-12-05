@@ -36,63 +36,18 @@ class GoogleSheetsService {
     }
   }
 
-  // Professional color palette with distinct Main/Alt colors
-  getClassColors(className) {
-    const colors = {
-      'Beat Performer': { 
-        main: { red: 0.91, green: 0.12, blue: 0.39 },
-        sub: { red: 0.73, green: 0.10, blue: 0.31 }
-      },
-      'Frost Mage': { 
-        main: { red: 0.13, green: 0.59, blue: 0.95 },
-        sub: { red: 0.10, green: 0.47, blue: 0.76 }
-      },
-      'Heavy Guardian': { 
-        main: { red: 0.96, green: 0.64, blue: 0.38 },
-        sub: { red: 0.77, green: 0.51, blue: 0.30 }
-      },
-      'Marksman': { 
-        main: { red: 0.55, green: 0.76, blue: 0.29 },
-        sub: { red: 0.44, green: 0.61, blue: 0.23 }
-      },
-      'Shield Knight': { 
-        main: { red: 0.25, green: 0.53, blue: 0.96 },
-        sub: { red: 0.20, green: 0.42, blue: 0.77 }
-      },
-      'Stormblade': { 
-        main: { red: 0.61, green: 0.15, blue: 0.69 },
-        sub: { red: 0.49, green: 0.12, blue: 0.55 }
-      },
-      'Verdant Oracle': { 
-        main: { red: 0.30, green: 0.69, blue: 0.31 },
-        sub: { red: 0.24, green: 0.55, blue: 0.25 }
-      },
-      'Wind Knight': { 
-        main: { red: 0.26, green: 0.59, blue: 0.98 },
-        sub: { red: 0.21, green: 0.47, blue: 0.78 }
-      }
-    };
-    return colors[className] || { 
-      main: { red: 0.62, green: 0.64, blue: 0.66 },
-      sub: { red: 0.50, green: 0.52, blue: 0.54 }
-    };
-  }
-
+  // Minimal strategic colors - only what matters
   getAbilityScoreColor(score) {
     if (!score || score === '') return null;
     
     const numScore = parseInt(score);
     
-    if (numScore >= 50000) return { red: 0.46, green: 0.10, blue: 0.73 };
-    if (numScore >= 45000) return { red: 0.61, green: 0.15, blue: 0.69 };
-    if (numScore >= 40000) return { red: 0.84, green: 0.15, blue: 0.51 };
-    if (numScore >= 35000) return { red: 0.96, green: 0.26, blue: 0.21 };
-    if (numScore >= 30000) return { red: 0.96, green: 0.42, blue: 0.21 };
-    if (numScore >= 25000) return { red: 0.96, green: 0.58, blue: 0.21 };
-    if (numScore >= 20000) return { red: 0.97, green: 0.73, blue: 0.15 };
-    if (numScore >= 15000) return { red: 0.69, green: 0.77, blue: 0.22 };
-    if (numScore >= 10000) return { red: 0.30, green: 0.69, blue: 0.31 };
-    return { red: 0.62, green: 0.64, blue: 0.66 };
+    // Simple tier system
+    if (numScore >= 40000) return { red: 0.61, green: 0.15, blue: 0.69 }; // Purple - Elite
+    if (numScore >= 30000) return { red: 0.96, green: 0.26, blue: 0.21 }; // Red - High
+    if (numScore >= 20000) return { red: 0.97, green: 0.73, blue: 0.15 }; // Gold - Medium
+    if (numScore >= 10000) return { red: 0.30, green: 0.69, blue: 0.31 }; // Green - Entry
+    return { red: 0.62, green: 0.64, blue: 0.66 }; // Gray - Low
   }
 
   getRoleColor(role) {
@@ -104,39 +59,11 @@ class GoogleSheetsService {
     return roleColors[role] || { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
-  getGuildColor(guildName) {
-    const guildColors = {
-      'heal': { red: 0.26, green: 0.59, blue: 0.98 },
-      'Visitor': { red: 0.62, green: 0.64, blue: 0.66 }
-    };
-    
-    if (guildColors[guildName]) {
-      return guildColors[guildName];
-    }
-    
-    // Soft professional palette for other guilds
-    const professionalColors = [
-      { red: 0.76, green: 0.61, blue: 0.91 },
-      { red: 0.91, green: 0.73, blue: 0.61 },
-      { red: 0.61, green: 0.91, blue: 0.76 },
-      { red: 0.91, green: 0.61, blue: 0.73 },
-      { red: 0.73, green: 0.91, blue: 0.61 },
-      { red: 0.61, green: 0.73, blue: 0.91 },
-    ];
-    
-    let hash = 0;
-    for (let i = 0; i < guildName.length; i++) {
-      hash = guildName.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    return professionalColors[Math.abs(hash) % professionalColors.length];
-  }
-
-  async formatPremiumSheet(sheetName, headerCount, dataRowCount) {
+  async formatCleanSheet(sheetName, headerCount, dataRowCount) {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Applying premium formatting to ${sheetName}...`);
+      console.log(`📊 [SHEETS] Applying clean formatting to ${sheetName}...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -227,7 +154,7 @@ class GoogleSheetsService {
         requestBody: { requests }
       });
 
-      console.log(`✅ [SHEETS] Premium formatting applied to ${sheetName}`);
+      console.log(`✅ [SHEETS] Clean formatting applied to ${sheetName}`);
     } catch (error) {
       console.error(`Error formatting ${sheetName}:`, error.message);
     }
@@ -237,7 +164,7 @@ class GoogleSheetsService {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Starting premium sync...`);
+      console.log(`📊 [SHEETS] Starting clean sync...`);
       
       const { queries } = await import('../database/queries.js');
       
@@ -302,6 +229,7 @@ class GoogleSheetsService {
             character: mainChar,
             discordName: discordName,
             timezone: userTimezone,
+            registeredDate: this.formatDate(mainChar.created_at),
             isSubclass: false,
             isMain: true,
             isAlt: false,
@@ -319,13 +247,14 @@ class GoogleSheetsService {
               subclass.ability_score || '',
               mainChar.guild || '',
               userTimezone || '',
-              `'${this.formatDate(mainChar.created_at)}`
+              `'${this.formatDate(mainChar.created_at)}` // Show main's registration date
             ]);
 
             rowMetadata.push({
               character: subclass,
               discordName: discordName,
               timezone: userTimezone,
+              registeredDate: this.formatDate(mainChar.created_at),
               parentIGN: mainChar.ign,
               parentClass: mainChar.class,
               isSubclass: true,
@@ -347,13 +276,14 @@ class GoogleSheetsService {
             alt.ability_score || '',
             alt.guild || '',
             userTimezone || '',
-            `'${this.formatDate(alt.created_at)}` // Alt's own registration date
+            `'${this.formatDate(alt.created_at)}`
           ]);
 
           rowMetadata.push({
             character: alt,
             discordName: discordName,
             timezone: userTimezone,
+            registeredDate: this.formatDate(alt.created_at),
             isSubclass: false,
             isMain: false,
             isAlt: true,
@@ -376,13 +306,14 @@ class GoogleSheetsService {
               subclass.ability_score || '',
               alt.guild || '',
               userTimezone || '',
-              `'${this.formatDate(alt.created_at)}` // Alt's registration date
+              `'${this.formatDate(alt.created_at)}` // Show alt's registration date
             ]);
 
             rowMetadata.push({
               character: subclass,
               discordName: discordName,
               timezone: userTimezone,
+              registeredDate: this.formatDate(alt.created_at),
               parentIGN: alt.ign,
               parentClass: alt.class,
               isSubclass: true,
@@ -410,11 +341,11 @@ class GoogleSheetsService {
         },
       });
 
-      console.log(`📊 [SHEETS] Applying premium formatting...`);
-      await this.formatPremiumSheet('Member List', headers.length, rows.length);
+      console.log(`📊 [SHEETS] Applying clean formatting...`);
+      await this.formatCleanSheet('Member List', headers.length, rows.length);
 
-      console.log(`📊 [SHEETS] Applying premium design...`);
-      await this.applyPremiumDesign('Member List', rowMetadata);
+      console.log(`📊 [SHEETS] Applying clean design...`);
+      await this.applyCleanDesign('Member List', rowMetadata);
 
       console.log(`✅ [SHEETS] Member List synced successfully! (${rows.length} total rows)`);
     } catch (error) {
@@ -430,11 +361,11 @@ class GoogleSheetsService {
     return `${month}/${day}/${year}`;
   }
 
-  async applyPremiumDesign(sheetName, rowMetadata) {
+  async applyCleanDesign(sheetName, rowMetadata) {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🎨 [SHEETS] Applying premium design to ${rowMetadata.length} rows...`);
+      console.log(`🎨 [SHEETS] Applying clean design to ${rowMetadata.length} rows...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -577,30 +508,27 @@ class GoogleSheetsService {
           }
         });
 
-        // Type (C) - Different colors for Main and Alt
-        let typeColor;
+        // Type (C) - ONLY colored for Main and Alt
         if (meta.isMain) {
-          typeColor = { red: 0.26, green: 0.59, blue: 0.98 }; // Blue for Main
+          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.26, green: 0.59, blue: 0.98 }); // Blue
         } else if (meta.isAlt) {
-          typeColor = { red: 0.96, green: 0.49, blue: 0.13 }; // Orange for Alt
+          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.96, green: 0.49, blue: 0.13 }); // Orange
         } else {
-          typeColor = { red: 0.75, green: 0.75, blue: 0.75 }; // Gray for Subclass
+          // Subclass - NO COLOR, just clean text
+          this.addCleanTextCell(requests, sheetId, rowIndex, 2, 'Subclass', rowBg);
         }
         
-        this.addPillBadge(requests, sheetId, rowIndex, 2, typeColor);
+        // Class (D) - CLEAN TEXT only
+        this.addCleanTextCell(requests, sheetId, rowIndex, 3, member.class, rowBg);
         
-        // Class (D) - NOW COLORED
-        const classColors = this.getClassColors(member.class);
-        this.addPillBadge(requests, sheetId, rowIndex, 3, classColors.main);
+        // Subclass (E) - CLEAN TEXT only
+        this.addCleanTextCell(requests, sheetId, rowIndex, 4, member.subclass, rowBg);
         
-        // Subclass (E) - NOW COLORED
-        this.addPillBadge(requests, sheetId, rowIndex, 4, classColors.sub);
-        
-        // Role (F) - Strategic color
+        // Role (F) - Strategic color badge
         const roleColor = this.getRoleColor(member.role);
         this.addPillBadge(requests, sheetId, rowIndex, 5, roleColor);
         
-        // Ability Score (G) - Strategic gradient
+        // Ability Score (G) - Strategic gradient badge
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
           this.addPillBadge(requests, sheetId, rowIndex, 6, abilityColor, true);
@@ -611,10 +539,10 @@ class GoogleSheetsService {
         // Guild (H) - Clean text
         this.addCleanTextCell(requests, sheetId, rowIndex, 7, member.guild || '', rowBg);
         
-        // Timezone (I)
+        // Timezone (I) - Subtle text
         this.addSubtleTextCell(requests, sheetId, rowIndex, 8, rowBg);
         
-        // Registered (J)
+        // Registered (J) - Subtle text
         this.addSubtleTextCell(requests, sheetId, rowIndex, 9, rowBg);
 
         // Professional separator - Thick border after each user group
@@ -668,10 +596,10 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
         }
-        console.log(`✅ [SHEETS] Applied ${requests.length} premium styling requests`);
+        console.log(`✅ [SHEETS] Applied ${requests.length} clean styling requests`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error applying premium design:', error.message);
+      console.error('❌ [SHEETS] Error applying clean design:', error.message);
     }
   }
 
@@ -735,7 +663,7 @@ class GoogleSheetsService {
             textFormat: {
               fontSize: 10,
               fontFamily: 'Google Sans',
-              foregroundColor: { red: 0.10, green: 0.11, blue: 0.13 }
+              foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE'
