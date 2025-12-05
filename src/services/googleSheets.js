@@ -416,9 +416,9 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex + 1}: ${member.class} -> IMAGE formula`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex + 1}: ${member.class} -> IMAGE formula (smaller size)`);
           
-          // Add IMAGE formula to display the icon
+          // Add IMAGE formula to display the icon with smaller size (3 = fit to cell with aspect ratio, smaller)
           requests.push({
             updateCells: {
               range: {
@@ -431,7 +431,7 @@ class GoogleSheetsService {
               rows: [{
                 values: [{
                   userEnteredValue: {
-                    formulaValue: `=IMAGE("${imageUrl}")`
+                    formulaValue: `=IMAGE("${imageUrl}",3)`
                   },
                   userEnteredFormat: {
                     horizontalAlignment: 'CENTER',
@@ -650,10 +650,54 @@ class GoogleSheetsService {
         // Registered (K)
         this.addSubtleTextCell(requests, sheetId, rowIndex, 10, rowBg);
 
-        // Borders
+        // Borders - Add outline to all cells and purple line at bottom of groups
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
                               (i + 1 < rowMetadata.length && rowMetadata[i + 1].isFirstOfUser);
         
+        // Add light gray outline around each cell
+        requests.push({
+          updateBorders: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 0,
+              endColumnIndex: 11
+            },
+            top: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            },
+            bottom: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            },
+            left: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            },
+            right: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            },
+            innerHorizontal: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            },
+            innerVertical: {
+              style: 'SOLID',
+              width: 1,
+              color: { red: 0.85, green: 0.85, blue: 0.87 }
+            }
+          }
+        });
+        
+        // Add thick purple line at bottom of each user group
         if (isLastOfGroup) {
           requests.push({
             updateBorders: {
@@ -665,26 +709,9 @@ class GoogleSheetsService {
                 endColumnIndex: 11
               },
               bottom: {
-                style: 'SOLID_MEDIUM',
+                style: 'SOLID_THICK',
                 width: 3,
                 color: { red: 0.32, green: 0.20, blue: 0.58 }
-              }
-            }
-          });
-        } else {
-          requests.push({
-            updateBorders: {
-              range: {
-                sheetId: sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: 0,
-                endColumnIndex: 11
-              },
-              bottom: {
-                style: 'SOLID',
-                width: 1,
-                color: { red: 0.90, green: 0.90, blue: 0.92 }
               }
             }
           });
