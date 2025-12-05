@@ -95,6 +95,30 @@ class GoogleSheetsService {
     return roleColors[role] || { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
+  getTimezoneOffset(timezone) {
+    // Common timezone offsets from UTC
+    const timezoneOffsets = {
+      'PST': -8, 'PDT': -7,
+      'MST': -7, 'MDT': -6,
+      'CST': -6, 'CDT': -5,
+      'EST': -5, 'EDT': -4,
+      'UTC': 0, 'GMT': 0,
+      'CET': 1, 'CEST': 2,
+      'JST': 9, 'KST': 9,
+      'AEST': 10, 'AEDT': 11,
+      // Add more as needed
+    };
+    
+    // Try to extract timezone abbreviation
+    const tzMatch = timezone.match(/\b([A-Z]{3,4})\b/);
+    if (tzMatch) {
+      const tz = tzMatch[1];
+      return timezoneOffsets[tz] || 0;
+    }
+    
+    return 0;
+  }
+
   async formatCleanSheet(sheetName, headerCount, dataRowCount) {
     if (!this.sheets) return;
 
@@ -391,9 +415,38 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Adding class logos with IMAGE formula...`);
       await this.addClassLogos('Member List', rowMetadata);
 
+      console.log(`🕐 [SHEETS] Enabling automatic recalculation every minute...`);
+      await this.enableAutoRecalculation();
+
       console.log(`✅ [SHEETS] Member List synced successfully! (${rows.length} total rows)`);
     } catch (error) {
       console.error('❌ [SHEETS] Error syncing member list:', error.message);
+    }
+  }
+
+  async enableAutoRecalculation() {
+    try {
+      // Set spreadsheet to recalculate on change and every minute
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [{
+            updateSpreadsheetProperties: {
+              properties: {
+                iterativeCalculationSettings: {
+                  maxIterations: 50,
+                  convergenceThreshold: 0.05
+                },
+                autoRecalc: 'MINUTE' // Recalculate every minute
+              },
+              fields: 'iterativeCalculationSettings,autoRecalc'
+            }
+          }]
+        }
+      });
+      console.log(`✅ [SHEETS] Automatic recalculation enabled (every minute)`);
+    } catch (error) {
+      console.error('⚠️ [SHEETS] Could not enable auto recalculation:', error.message);
     }
   }
 
@@ -445,10 +498,14 @@ class GoogleSheetsService {
         if (meta.timezone && meta.timezone !== '') {
           console.log(`🕐 [SHEETS] Row ${rowIndex}: Adding live time for ${meta.timezone}`);
           
-          // Format: "3:45 PM" that updates every minute
+          const offset = this.getTimezoneOffset(meta.timezone);
+          // Format: "EST 3:45 PM" that updates every minute
+          // Using NOW() + offset hours, then formatting
+          const formula = `="${meta.timezone} " & TEXT(NOW() + (${offset}/24), "h:mm AM/PM")`;
+          
           valueUpdates.push({
             range: `J${rowIndex}`,
-            values: [[`=TEXT(NOW(),"h:mm AM/PM")`]]
+            values: [[formula]]
           });
         }
       }
