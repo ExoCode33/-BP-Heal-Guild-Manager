@@ -393,7 +393,7 @@ class GoogleSheetsService {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🖼️ [SHEETS] Adding class logos as embedded images...`);
+      console.log(`🖼️ [SHEETS] Inserting class logos as images...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -403,9 +403,45 @@ class GoogleSheetsService {
       if (!sheet) return;
 
       const sheetId = sheet.properties.sheetId;
-      const requests = [];
+      
+      // First, add text to cells
+      const textRequests = [];
+      for (let i = 0; i < rowMetadata.length; i++) {
+        const rowIndex = i + 1;
+        const meta = rowMetadata[i];
+        const member = meta.character;
+        
+        textRequests.push({
+          updateCells: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 3,
+              endColumnIndex: 4
+            },
+            rows: [{
+              values: [{
+                userEnteredValue: {
+                  stringValue: member.class
+                }
+              }]
+            }],
+            fields: 'userEnteredValue'
+          }
+        });
+      }
+      
+      if (textRequests.length > 0) {
+        await this.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests: textRequests }
+        });
+        console.log(`✅ [SHEETS] Added class names as text`);
+      }
 
-      // Add images directly to cells (not formula)
+      // Now insert images over the cells
+      const imageRequests = [];
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
@@ -414,60 +450,46 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> ${imageUrl.substring(0, 60)}...`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex}: Inserting image for ${member.class}`);
           
-          // Insert image directly into cell (not formula)
-          requests.push({
-            updateCells: {
-              range: {
+          // Insert image overlaid on the cell
+          imageRequests.push({
+            addCellImage: {
+              uri: imageUrl,
+              cellCoordinate: {
                 sheetId: sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: 3, // Column D (Class)
-                endColumnIndex: 4
+                rowIndex: rowIndex,
+                columnIndex: 3 // Column D
               },
-              rows: [{
-                values: [{
-                  userEnteredValue: {
-                    stringValue: member.class  // Show text as fallback
-                  },
-                  userEnteredFormat: {
-                    horizontalAlignment: 'CENTER',
-                    verticalAlignment: 'MIDDLE',
-                    textFormat: {
-                      fontSize: 10,
-                      fontFamily: 'Google Sans',
-                      foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
-                    }
-                  }
-                }]
-              }],
-              fields: 'userEnteredValue,userEnteredFormat'
+              offsetType: 'FIT_INSIDE_CELL'
             }
           });
         }
       }
 
-      if (requests.length > 0) {
-        console.log(`🖼️ [SHEETS] Sending ${requests.length} cell updates (showing class names)...`);
-        const batchSize = 50;
-        for (let i = 0; i < requests.length; i += batchSize) {
-          const batch = requests.slice(i, i + batchSize);
+      if (imageRequests.length > 0) {
+        console.log(`🖼️ [SHEETS] Inserting ${imageRequests.length} images...`);
+        
+        // Process images one at a time (Google Sheets can be sensitive with images)
+        for (let i = 0; i < imageRequests.length; i++) {
           try {
             await this.sheets.spreadsheets.batchUpdate({
               spreadsheetId: this.spreadsheetId,
-              requestBody: { requests: batch }
+              requestBody: { requests: [imageRequests[i]] }
             });
-            console.log(`✅ [SHEETS] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(requests.length / batchSize)}`);
-          } catch (batchError) {
-            console.error(`❌ [SHEETS] Batch ${Math.floor(i / batchSize) + 1} failed:`, batchError.message);
+            console.log(`✅ [SHEETS] Inserted image ${i + 1}/${imageRequests.length}`);
+            
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (imageError) {
+            console.error(`❌ [SHEETS] Failed to insert image ${i + 1}:`, imageError.message);
           }
         }
-        console.log(`✅ [SHEETS] Completed ${requests.length} cell updates (class names displayed)`);
-        console.log(`ℹ️  [SHEETS] Note: IMAGE() function not reliable in all Google Sheets. Showing text instead.`);
+        
+        console.log(`✅ [SHEETS] Completed inserting ${imageRequests.length} images`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error adding class content:', error.message);
+      console.error('❌ [SHEETS] Error adding class logos:', error.message);
     }
   }
 
