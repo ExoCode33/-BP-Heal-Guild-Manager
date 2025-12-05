@@ -57,9 +57,9 @@ async function performAutoSync() {
     }
 
     console.log(`⏰ [AUTO-SYNC] Starting automatic sync...`);
-    const allMainChars = await queries.getAllMainCharacters();
-    const allAlts = await queries.getAllAlts();
-    await googleSheets.fullSync(allMainChars, allAlts);
+    // Get all characters with subclasses for hierarchical sync
+    const allChars = await queries.getAllCharacters();
+    await googleSheets.fullSync(allChars);
   } catch (error) {
     console.error('❌ [AUTO-SYNC] Error during automatic sync:', error.message);
   }
