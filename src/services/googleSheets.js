@@ -197,6 +197,7 @@ class GoogleSheetsService {
         'Discord Name',
         'IGN',
         'Type',
+        'Icon',
         'Class',
         'Subclass',
         'Role',
@@ -241,6 +242,7 @@ class GoogleSheetsService {
             discordName,
             mainChar.ign,
             'Main',
+            '', // Icon column (empty, will add image formula)
             mainChar.class,
             mainChar.subclass,
             mainChar.role,
@@ -266,6 +268,7 @@ class GoogleSheetsService {
               discordName,
               mainChar.ign,
               'Subclass',
+              '', // Icon column
               subclass.class,
               subclass.subclass,
               subclass.role,
@@ -295,6 +298,7 @@ class GoogleSheetsService {
             discordName,
             alt.ign,
             'Alt',
+            '', // Icon column
             alt.class,
             alt.subclass,
             alt.role,
@@ -325,6 +329,7 @@ class GoogleSheetsService {
               discordName,
               alt.ign,
               'Subclass',
+              '', // Icon column
               subclass.class,
               subclass.subclass,
               subclass.role,
@@ -353,7 +358,7 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Clearing Member List sheet...`);
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A:J',
+        range: 'Member List!A:K',
       });
 
       console.log(`📊 [SHEETS] Writing ${rows.length} rows to Member List...`);
@@ -393,7 +398,7 @@ class GoogleSheetsService {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🖼️ [SHEETS] Inserting class logos as images...`);
+      console.log(`🖼️ [SHEETS] Adding class icons to Icon column...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -403,45 +408,9 @@ class GoogleSheetsService {
       if (!sheet) return;
 
       const sheetId = sheet.properties.sheetId;
-      
-      // First, add text to cells
-      const textRequests = [];
-      for (let i = 0; i < rowMetadata.length; i++) {
-        const rowIndex = i + 1;
-        const meta = rowMetadata[i];
-        const member = meta.character;
-        
-        textRequests.push({
-          updateCells: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 3,
-              endColumnIndex: 4
-            },
-            rows: [{
-              values: [{
-                userEnteredValue: {
-                  stringValue: member.class
-                }
-              }]
-            }],
-            fields: 'userEnteredValue'
-          }
-        });
-      }
-      
-      if (textRequests.length > 0) {
-        await this.sheets.spreadsheets.batchUpdate({
-          spreadsheetId: this.spreadsheetId,
-          requestBody: { requests: textRequests }
-        });
-        console.log(`✅ [SHEETS] Added class names as text`);
-      }
+      const requests = [];
 
-      // Now insert images over the cells
-      const imageRequests = [];
+      // Add image URL to Icon column (Column D, index 3)
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
@@ -450,46 +419,58 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex}: Inserting image for ${member.class}`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> ${imageUrl.substring(0, 50)}...`);
           
-          // Insert image overlaid on the cell
-          imageRequests.push({
-            addCellImage: {
-              uri: imageUrl,
-              cellCoordinate: {
+          // Add hyperlink to image in Icon column
+          requests.push({
+            updateCells: {
+              range: {
                 sheetId: sheetId,
-                rowIndex: rowIndex,
-                columnIndex: 3 // Column D
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 3, // Column D (Icon)
+                endColumnIndex: 4
               },
-              offsetType: 'FIT_INSIDE_CELL'
+              rows: [{
+                values: [{
+                  userEnteredValue: {
+                    formulaValue: `=HYPERLINK("${imageUrl}"; "🖼️")`
+                  },
+                  userEnteredFormat: {
+                    horizontalAlignment: 'CENTER',
+                    verticalAlignment: 'MIDDLE',
+                    textFormat: {
+                      fontSize: 16
+                    }
+                  }
+                }]
+              }],
+              fields: 'userEnteredValue,userEnteredFormat'
             }
           });
         }
       }
 
-      if (imageRequests.length > 0) {
-        console.log(`🖼️ [SHEETS] Inserting ${imageRequests.length} images...`);
-        
-        // Process images one at a time (Google Sheets can be sensitive with images)
-        for (let i = 0; i < imageRequests.length; i++) {
+      if (requests.length > 0) {
+        console.log(`🖼️ [SHEETS] Sending ${requests.length} icon links...`);
+        const batchSize = 50;
+        for (let i = 0; i < requests.length; i += batchSize) {
+          const batch = requests.slice(i, i + batchSize);
           try {
             await this.sheets.spreadsheets.batchUpdate({
               spreadsheetId: this.spreadsheetId,
-              requestBody: { requests: [imageRequests[i]] }
+              requestBody: { requests: batch }
             });
-            console.log(`✅ [SHEETS] Inserted image ${i + 1}/${imageRequests.length}`);
-            
-            // Small delay to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 100));
-          } catch (imageError) {
-            console.error(`❌ [SHEETS] Failed to insert image ${i + 1}:`, imageError.message);
+            console.log(`✅ [SHEETS] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(requests.length / batchSize)}`);
+          } catch (batchError) {
+            console.error(`❌ [SHEETS] Batch ${Math.floor(i / batchSize) + 1} failed:`, batchError.message);
           }
         }
-        
-        console.log(`✅ [SHEETS] Completed inserting ${imageRequests.length} images`);
+        console.log(`✅ [SHEETS] Completed ${requests.length} icon links`);
+        console.log(`ℹ️  [SHEETS] Click the 🖼️ emoji to view the image (IMAGE formula not working)`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error adding class logos:', error.message);
+      console.error('❌ [SHEETS] Error adding class icons:', error.message);
     }
   }
 
@@ -510,7 +491,7 @@ class GoogleSheetsService {
       const requests = [];
 
       // Column widths
-      const columnWidths = [160, 150, 95, 180, 145, 85, 125, 105, 170, 105];
+      const columnWidths = [160, 150, 95, 60, 180, 145, 85, 125, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -645,32 +626,35 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 2, 'Subclass', rowBg);
         }
         
-        // Class (D) - Will have logo added separately
-        this.addCleanTextCell(requests, sheetId, rowIndex, 3, member.class, rowBg);
+        // Icon (D) - Will have image link added separately
+        this.addCleanTextCell(requests, sheetId, rowIndex, 3, '', rowBg);
         
-        // Subclass (E)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 4, member.subclass, rowBg);
+        // Class (E)
+        this.addCleanTextCell(requests, sheetId, rowIndex, 4, member.class, rowBg);
         
-        // Role (F)
+        // Subclass (F)
+        this.addCleanTextCell(requests, sheetId, rowIndex, 5, member.subclass, rowBg);
+        
+        // Role (G)
         const roleColor = this.getRoleColor(member.role);
-        this.addPillBadge(requests, sheetId, rowIndex, 5, roleColor);
+        this.addPillBadge(requests, sheetId, rowIndex, 6, roleColor);
         
-        // Ability Score (G)
+        // Ability Score (H)
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addPillBadge(requests, sheetId, rowIndex, 6, abilityColor, true);
+          this.addPillBadge(requests, sheetId, rowIndex, 7, abilityColor, true);
         } else {
-          this.addCleanTextCell(requests, sheetId, rowIndex, 6, '', rowBg);
+          this.addCleanTextCell(requests, sheetId, rowIndex, 7, '', rowBg);
         }
         
-        // Guild (H)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 7, member.guild || '', rowBg);
+        // Guild (I)
+        this.addCleanTextCell(requests, sheetId, rowIndex, 8, member.guild || '', rowBg);
         
-        // Timezone (I)
-        this.addSubtleTextCell(requests, sheetId, rowIndex, 8, rowBg);
-        
-        // Registered (J)
+        // Timezone (J)
         this.addSubtleTextCell(requests, sheetId, rowIndex, 9, rowBg);
+        
+        // Registered (K)
+        this.addSubtleTextCell(requests, sheetId, rowIndex, 10, rowBg);
 
         // Borders
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
@@ -684,7 +668,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 10
+                endColumnIndex: 11
               },
               bottom: {
                 style: 'SOLID_MEDIUM',
@@ -701,7 +685,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 10
+                endColumnIndex: 11
               },
               bottom: {
                 style: 'SOLID',
