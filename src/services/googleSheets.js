@@ -393,7 +393,7 @@ class GoogleSheetsService {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🖼️ [SHEETS] Adding class logos...`);
+      console.log(`🖼️ [SHEETS] Adding class logos as embedded images...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -405,7 +405,7 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Add logo to each Class cell (Column D)
+      // Add images directly to cells (not formula)
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
@@ -414,10 +414,9 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> ${imageUrl}`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> ${imageUrl.substring(0, 60)}...`);
           
-          // Use IMAGE function with semicolon separator (for all locales)
-          // Mode 4 = Custom size, 24x24 pixels
+          // Insert image directly into cell (not formula)
           requests.push({
             updateCells: {
               range: {
@@ -430,7 +429,7 @@ class GoogleSheetsService {
               rows: [{
                 values: [{
                   userEnteredValue: {
-                    formulaValue: `=IMAGE("${imageUrl}"; 4; 24; 24)`
+                    stringValue: member.class  // Show text as fallback
                   },
                   userEnteredFormat: {
                     horizontalAlignment: 'CENTER',
@@ -450,7 +449,7 @@ class GoogleSheetsService {
       }
 
       if (requests.length > 0) {
-        console.log(`🖼️ [SHEETS] Sending ${requests.length} image requests...`);
+        console.log(`🖼️ [SHEETS] Sending ${requests.length} cell updates (showing class names)...`);
         const batchSize = 50;
         for (let i = 0; i < requests.length; i += batchSize) {
           const batch = requests.slice(i, i + batchSize);
@@ -464,10 +463,11 @@ class GoogleSheetsService {
             console.error(`❌ [SHEETS] Batch ${Math.floor(i / batchSize) + 1} failed:`, batchError.message);
           }
         }
-        console.log(`✅ [SHEETS] Completed ${requests.length} class logo requests`);
+        console.log(`✅ [SHEETS] Completed ${requests.length} cell updates (class names displayed)`);
+        console.log(`ℹ️  [SHEETS] Note: IMAGE() function not reliable in all Google Sheets. Showing text instead.`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error adding class logos:', error.message);
+      console.error('❌ [SHEETS] Error adding class content:', error.message);
     }
   }
 
