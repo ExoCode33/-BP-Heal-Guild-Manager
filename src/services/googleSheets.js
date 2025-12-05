@@ -36,107 +36,40 @@ class GoogleSheetsService {
     }
   }
 
-  // 🎨 Elite color palette - Maximum visual impact
-  getClassColors(className) {
-    const colors = {
-      'Beat Performer': { 
-        main: { red: 0.98, green: 0.12, blue: 0.58 },
-        sub: { red: 0.78, green: 0.09, blue: 0.46 }
-      },
-      'Frost Mage': { 
-        main: { red: 0.20, green: 0.69, blue: 1.00 },
-        sub: { red: 0.16, green: 0.55, blue: 0.80 }
-      },
-      'Heavy Guardian': { 
-        main: { red: 0.78, green: 0.50, blue: 0.20 },
-        sub: { red: 0.62, green: 0.40, blue: 0.16 }
-      },
-      'Marksman': { 
-        main: { red: 0.55, green: 0.82, blue: 0.27 },
-        sub: { red: 0.44, green: 0.66, blue: 0.22 }
-      },
-      'Shield Knight': { 
-        main: { red: 1.00, green: 0.84, blue: 0.00 },
-        sub: { red: 0.80, green: 0.67, blue: 0.00 }
-      },
-      'Stormblade': { 
-        main: { red: 0.69, green: 0.31, blue: 0.85 },
-        sub: { red: 0.55, green: 0.25, blue: 0.68 }
-      },
-      'Verdant Oracle': { 
-        main: { red: 0.30, green: 0.76, blue: 0.33 },
-        sub: { red: 0.24, green: 0.61, blue: 0.26 }
-      },
-      'Wind Knight': { 
-        main: { red: 0.20, green: 0.88, blue: 1.00 },
-        sub: { red: 0.16, green: 0.70, blue: 0.80 }
-      }
-    };
-    return colors[className] || { 
-      main: { red: 0.75, green: 0.75, blue: 0.75 },
-      sub: { red: 0.60, green: 0.60, blue: 0.60 }
-    };
-  }
-
-  getAbilityScoreColor(score) {
-    if (!score || score === '') return null;
-    
-    const numScore = parseInt(score);
-    
-    // Elite gradient
-    if (numScore >= 50000) return { red: 0.38, green: 0.10, blue: 0.75 };
-    if (numScore >= 45000) return { red: 0.55, green: 0.15, blue: 0.80 };
-    if (numScore >= 40000) return { red: 0.88, green: 0.15, blue: 0.62 };
-    if (numScore >= 35000) return { red: 0.98, green: 0.20, blue: 0.45 };
-    if (numScore >= 30000) return { red: 1.00, green: 0.30, blue: 0.30 };
-    if (numScore >= 25000) return { red: 1.00, green: 0.55, blue: 0.20 };
-    if (numScore >= 20000) return { red: 1.00, green: 0.76, blue: 0.03 };
-    if (numScore >= 15000) return { red: 0.90, green: 0.90, blue: 0.20 };
-    if (numScore >= 10000) return { red: 0.45, green: 0.80, blue: 0.25 };
-    return { red: 0.70, green: 0.72, blue: 0.74 };
+  // 🎨 Professional color palette - Strategic use only
+  getTypeColor(type) {
+    if (type === 'Main') return { red: 0.29, green: 0.56, blue: 0.89 }; // Professional Blue
+    if (type === 'Alt') return { red: 0.95, green: 0.61, blue: 0.07 }; // Amber
+    return { red: 0.62, green: 0.64, blue: 0.66 }; // Neutral Gray for Subclass
   }
 
   getRoleColor(role) {
-    const roleColors = {
-      'Tank': { red: 0.25, green: 0.58, blue: 1.00 },
-      'DPS': { red: 1.00, green: 0.30, blue: 0.30 },
-      'Support': { red: 0.30, green: 0.76, blue: 0.33 }
-    };
-    return roleColors[role] || { red: 0.70, green: 0.72, blue: 0.74 };
+    if (role === 'Tank') return { red: 0.26, green: 0.52, blue: 0.96 };
+    if (role === 'DPS') return { red: 0.96, green: 0.26, blue: 0.21 };
+    if (role === 'Support') return { red: 0.30, green: 0.69, blue: 0.31 };
+    return { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
-  getGuildColor(guildName) {
-    const guildColors = {
-      'heal': { red: 0.20, green: 0.88, blue: 1.00 },
-      'Visitor': { red: 0.70, green: 0.72, blue: 0.74 }
-    };
+  getAbilityScoreTier(score) {
+    if (!score || score === '') return { tier: 'None', color: { red: 0.96, green: 0.96, blue: 0.96 } };
     
-    if (guildColors[guildName]) {
-      return guildColors[guildName];
-    }
+    const numScore = parseInt(score);
     
-    const eliteColors = [
-      { red: 0.85, green: 0.70, blue: 0.98 },
-      { red: 0.98, green: 0.82, blue: 0.70 },
-      { red: 0.70, green: 0.98, blue: 0.85 },
-      { red: 0.98, green: 0.70, blue: 0.82 },
-      { red: 0.82, green: 0.98, blue: 0.70 },
-      { red: 0.70, green: 0.82, blue: 0.98 },
-    ];
-    
-    let hash = 0;
-    for (let i = 0; i < guildName.length; i++) {
-      hash = guildName.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    return eliteColors[Math.abs(hash) % eliteColors.length];
+    if (numScore >= 40000) return { tier: 'S+', color: { red: 0.61, green: 0.15, blue: 0.69 } }; // Purple
+    if (numScore >= 35000) return { tier: 'S', color: { red: 0.84, green: 0.15, blue: 0.16 } }; // Red
+    if (numScore >= 30000) return { tier: 'A+', color: { red: 0.95, green: 0.49, blue: 0.13 } }; // Orange
+    if (numScore >= 25000) return { tier: 'A', color: { red: 0.97, green: 0.73, blue: 0.15 } }; // Gold
+    if (numScore >= 20000) return { tier: 'B+', color: { red: 0.55, green: 0.76, blue: 0.29 } }; // Light Green
+    if (numScore >= 15000) return { tier: 'B', color: { red: 0.30, green: 0.69, blue: 0.31 } }; // Green
+    if (numScore >= 10000) return { tier: 'C', color: { red: 0.26, green: 0.59, blue: 0.98 } }; // Blue
+    return { tier: 'D', color: { red: 0.62, green: 0.64, blue: 0.66 } }; // Gray
   }
 
-  async formatEliteSheet(sheetName, headerCount, dataRowCount) {
+  async formatProfessionalSheet(sheetName, headerCount, dataRowCount) {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Applying elite formatting to ${sheetName}...`);
+      console.log(`📊 [SHEETS] Applying professional formatting to ${sheetName}...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -148,25 +81,25 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
 
       const requests = [
-        // Sheet properties
+        // Professional sheet properties
         {
           updateSheetProperties: {
             properties: {
               sheetId: sheetId,
               gridProperties: {
                 frozenRowCount: 1,
-                hideGridlines: true
+                hideGridlines: false // Keep subtle gridlines for professional look
               },
               tabColor: {
-                red: 0.45,
-                green: 0.27,
-                blue: 0.85
+                red: 0.26,
+                green: 0.52,
+                blue: 0.96
               }
             },
             fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines,tabColor'
           }
         },
-        // Elite header with gradient effect
+        // Corporate header - Navy blue
         {
           repeatCell: {
             range: {
@@ -179,9 +112,9 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: {
-                  red: 0.35,
-                  green: 0.22,
-                  blue: 0.65
+                  red: 0.20,
+                  green: 0.25,
+                  blue: 0.37
                 },
                 textFormat: {
                   foregroundColor: {
@@ -189,24 +122,24 @@ class GoogleSheetsService {
                     green: 1,
                     blue: 1
                   },
-                  fontSize: 12,
+                  fontSize: 11,
                   bold: true,
-                  fontFamily: 'Google Sans'
+                  fontFamily: 'Arial'
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
                 padding: {
-                  top: 18,
-                  bottom: 18,
-                  left: 16,
-                  right: 16
+                  top: 12,
+                  bottom: 12,
+                  left: 10,
+                  right: 10
                 }
               }
             },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
+            fields: 'userEnteredFormat'
           }
         },
-        // Elite shadow effect
+        // Professional border under header
         {
           updateBorders: {
             range: {
@@ -217,9 +150,9 @@ class GoogleSheetsService {
               endColumnIndex: headerCount
             },
             bottom: {
-              style: 'SOLID_THICK',
-              width: 5,
-              color: { red: 0.25, green: 0.15, blue: 0.50 }
+              style: 'SOLID_MEDIUM',
+              width: 2,
+              color: { red: 0.20, green: 0.25, blue: 0.37 }
             }
           }
         }
@@ -230,7 +163,7 @@ class GoogleSheetsService {
         requestBody: { requests }
       });
 
-      console.log(`✅ [SHEETS] Elite formatting applied to ${sheetName}`);
+      console.log(`✅ [SHEETS] Professional formatting applied to ${sheetName}`);
     } catch (error) {
       console.error(`Error formatting ${sheetName}:`, error.message);
     }
@@ -240,7 +173,7 @@ class GoogleSheetsService {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Starting elite sync...`);
+      console.log(`📊 [SHEETS] Starting professional sync...`);
       
       const { queries } = await import('../database/queries.js');
       
@@ -251,7 +184,8 @@ class GoogleSheetsService {
         'Class',
         'Subclass',
         'Role',
-        'Ability Score',
+        'Score',
+        'Tier',
         'Guild',
         'Timezone',
         'Registered'
@@ -287,6 +221,7 @@ class GoogleSheetsService {
         
         if (mainChar) {
           discordName = mainChar.discord_name;
+          const scoreTier = this.getAbilityScoreTier(mainChar.ability_score);
           
           rows.push([
             discordName,
@@ -296,6 +231,7 @@ class GoogleSheetsService {
             mainChar.subclass,
             mainChar.role,
             mainChar.ability_score || '',
+            scoreTier.tier,
             mainChar.guild || '',
             userTimezone || '',
             `'${this.formatDate(mainChar.created_at)}`
@@ -305,49 +241,58 @@ class GoogleSheetsService {
             character: mainChar,
             discordName: discordName,
             timezone: userTimezone,
+            scoreTier: scoreTier,
             isSubclass: false,
             isMain: true,
-            isAlt: false
+            isAlt: false,
+            isFirstInGroup: true
           });
 
           mainSubclasses.forEach(subclass => {
+            const subScoreTier = this.getAbilityScoreTier(subclass.ability_score);
+            
             rows.push([
-              discordName,
-              mainChar.ign,
+              '',
+              `  ↳ ${subclass.class}`,
               'Subclass',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
-              mainChar.guild || '',
-              userTimezone || '',
-              `'${this.formatDate(mainChar.created_at)}`
+              subScoreTier.tier,
+              '',
+              '',
+              ''
             ]);
 
             rowMetadata.push({
               character: subclass,
               discordName: discordName,
               timezone: userTimezone,
+              scoreTier: subScoreTier,
               parentIGN: mainChar.ign,
-              parentClass: mainChar.class,
               isSubclass: true,
               isMain: false,
-              isAlt: false
+              isAlt: false,
+              isFirstInGroup: false
             });
           });
         }
 
-        alts.forEach(alt => {
+        alts.forEach((alt, altIndex) => {
+          const altScoreTier = this.getAbilityScoreTier(alt.ability_score);
+          
           rows.push([
-            discordName,
+            altIndex === 0 && mainSubclasses.length === 0 ? '' : '',
             alt.ign,
             'Alt',
             alt.class,
             alt.subclass,
             alt.role,
             alt.ability_score || '',
+            altScoreTier.tier,
             alt.guild || '',
-            userTimezone || '',
+            '',
             `'${this.formatDate(alt.created_at)}`
           ]);
 
@@ -355,9 +300,11 @@ class GoogleSheetsService {
             character: alt,
             discordName: discordName,
             timezone: userTimezone,
+            scoreTier: altScoreTier,
             isSubclass: false,
             isMain: false,
-            isAlt: true
+            isAlt: true,
+            isFirstInGroup: altIndex === 0 && mainSubclasses.length === 0
           });
 
           const altSubclasses = userChars.filter(c => 
@@ -366,28 +313,32 @@ class GoogleSheetsService {
           );
 
           altSubclasses.forEach(subclass => {
+            const subScoreTier = this.getAbilityScoreTier(subclass.ability_score);
+            
             rows.push([
-              discordName,
-              alt.ign,
+              '',
+              `  ↳ ${subclass.class}`,
               'Subclass',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
-              alt.guild || '',
-              userTimezone || '',
-              `'${this.formatDate(alt.created_at)}`
+              subScoreTier.tier,
+              '',
+              '',
+              ''
             ]);
 
             rowMetadata.push({
               character: subclass,
               discordName: discordName,
               timezone: userTimezone,
+              scoreTier: subScoreTier,
               parentIGN: alt.ign,
-              parentClass: alt.class,
               isSubclass: true,
               isMain: false,
-              isAlt: false
+              isAlt: false,
+              isFirstInGroup: false
             });
           });
         });
@@ -396,7 +347,7 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Clearing Member List sheet...`);
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A:J',
+        range: 'Member List!A:K',
       });
 
       console.log(`📊 [SHEETS] Writing ${rows.length} rows to Member List...`);
@@ -409,11 +360,11 @@ class GoogleSheetsService {
         },
       });
 
-      console.log(`📊 [SHEETS] Applying elite formatting...`);
-      await this.formatEliteSheet('Member List', headers.length, rows.length);
+      console.log(`📊 [SHEETS] Applying professional formatting...`);
+      await this.formatProfessionalSheet('Member List', headers.length, rows.length);
 
-      console.log(`📊 [SHEETS] Applying elite design...`);
-      await this.applyEliteDesign('Member List', rowMetadata);
+      console.log(`📊 [SHEETS] Applying professional design...`);
+      await this.applyProfessionalDesign('Member List', rowMetadata);
 
       console.log(`✅ [SHEETS] Member List synced successfully! (${rows.length} total rows)`);
     } catch (error) {
@@ -429,11 +380,11 @@ class GoogleSheetsService {
     return `${month}/${day}/${year}`;
   }
 
-  async applyEliteDesign(sheetName, rowMetadata) {
+  async applyProfessionalDesign(sheetName, rowMetadata) {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🎨 [SHEETS] Applying elite design to ${rowMetadata.length} rows...`);
+      console.log(`🎨 [SHEETS] Applying professional design to ${rowMetadata.length} rows...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -445,8 +396,8 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Elite column widths - Optimized
-      const columnWidths = [155, 145, 90, 140, 140, 80, 120, 100, 165, 100];
+      // Professional column widths
+      const columnWidths = [160, 150, 80, 140, 140, 75, 90, 50, 100, 170, 100];
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -464,10 +415,10 @@ class GoogleSheetsService {
         });
       });
 
-      // Elite row heights - Perfectly balanced
+      // Professional row heights
       for (let i = 0; i < rowMetadata.length; i++) {
         const meta = rowMetadata[i];
-        const rowHeight = meta.isSubclass ? 36 : 40;
+        const rowHeight = meta.isSubclass ? 32 : 36;
         
         requests.push({
           updateDimensionProperties: {
@@ -485,58 +436,79 @@ class GoogleSheetsService {
         });
       }
 
-      // Apply elite styling to each row
+      // Track user groups for borders
+      let lastDiscordName = '';
+      let userGroupStart = 1;
+
+      // Apply professional styling to each row
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
         const member = meta.character;
         
-        // Elite alternating background - Grouped by user
-        const userGroupIndex = Math.floor(i / 3);
-        const isEvenGroup = userGroupIndex % 2 === 0;
-        const rowBg = isEvenGroup 
-          ? { red: 1, green: 1, blue: 1 }
-          : { red: 0.98, green: 0.985, blue: 0.99 };
+        // Detect user group changes
+        const isNewUserGroup = meta.discordName !== lastDiscordName && meta.discordName !== '';
+        if (isNewUserGroup) {
+          lastDiscordName = meta.discordName;
+          userGroupStart = rowIndex;
+        }
         
-        // Discord Name (A) - Elite styling
-        const discordColor = meta.isSubclass 
-          ? { red: 0.50, green: 0.52, blue: 0.55 }
-          : { red: 0.10, green: 0.11, blue: 0.13 };
+        // Professional alternating background
+        const rowBg = meta.isSubclass 
+          ? { red: 0.97, green: 0.97, blue: 0.98 }
+          : { red: 1, green: 1, blue: 1 };
         
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 0,
-              endColumnIndex: 1
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: rowBg,
-                textFormat: {
-                  fontSize: 10,
-                  fontFamily: 'Google Sans',
-                  foregroundColor: discordColor,
-                  bold: meta.isMain
-                },
-                horizontalAlignment: 'LEFT',
-                verticalAlignment: 'MIDDLE',
-                padding: {
-                  left: 14,
-                  right: 10
+        // Discord Name (A) - Only show for main characters
+        if (meta.isMain) {
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 1
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: rowBg,
+                  textFormat: {
+                    fontSize: 10,
+                    fontFamily: 'Arial',
+                    foregroundColor: { red: 0.13, green: 0.13, blue: 0.13 },
+                    bold: true
+                  },
+                  horizontalAlignment: 'LEFT',
+                  verticalAlignment: 'MIDDLE'
                 }
-              }
-            },
-            fields: 'userEnteredFormat'
-          }
-        });
+              },
+              fields: 'userEnteredFormat'
+            }
+          });
+        } else {
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 1
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: rowBg
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor)'
+            }
+          });
+        }
 
-        // IGN (B) - Elite styling
+        // IGN (B) - Professional text
         const ignColor = meta.isSubclass 
-          ? { red: 0.50, green: 0.52, blue: 0.55 }
-          : { red: 0.10, green: 0.11, blue: 0.13 };
+          ? { red: 0.46, green: 0.46, blue: 0.46 }
+          : { red: 0.13, green: 0.13, blue: 0.13 };
         
         requests.push({
           repeatCell: {
@@ -552,184 +524,93 @@ class GoogleSheetsService {
                 backgroundColor: rowBg,
                 textFormat: {
                   fontSize: 10,
-                  fontFamily: 'Google Sans',
+                  fontFamily: meta.isSubclass ? 'Courier New' : 'Arial',
                   foregroundColor: ignColor,
                   bold: !meta.isSubclass,
                   italic: meta.isSubclass
                 },
                 horizontalAlignment: 'LEFT',
-                verticalAlignment: 'MIDDLE',
-                padding: {
-                  left: 14,
-                  right: 10
-                }
+                verticalAlignment: 'MIDDLE'
               }
             },
             fields: 'userEnteredFormat'
           }
         });
 
-        // Type (C) - Elite pill
-        const typeColor = meta.isSubclass
-          ? { red: 0.68, green: 0.70, blue: 0.73 }
-          : (meta.isMain 
-              ? { red: 0.30, green: 0.76, blue: 0.33 } 
-              : { red: 1.00, green: 0.65, blue: 0.25 });
+        // Type (C) - Strategic color badge
+        const typeColor = this.getTypeColor(member.character_type === 'main' ? 'Main' : member.character_type === 'alt' ? 'Alt' : 'Subclass');
+        this.addProfessionalBadge(requests, sheetId, rowIndex, 2, typeColor, rowBg);
         
-        this.addElitePill(requests, sheetId, rowIndex, 2, typeColor);
+        // Class (D) - Clean text
+        this.addCleanText(requests, sheetId, rowIndex, 3, rowBg);
         
-        // Class (D) - Elite pill
-        const classColors = this.getClassColors(member.class);
-        this.addElitePill(requests, sheetId, rowIndex, 3, classColors.main);
+        // Subclass (E) - Clean text
+        this.addCleanText(requests, sheetId, rowIndex, 4, rowBg);
         
-        // Subclass (E) - Elite pill
-        this.addElitePill(requests, sheetId, rowIndex, 4, classColors.sub);
-        
-        // Role (F) - Elite pill
+        // Role (F) - Strategic color badge
         const roleColor = this.getRoleColor(member.role);
-        this.addElitePill(requests, sheetId, rowIndex, 5, roleColor);
+        this.addProfessionalBadge(requests, sheetId, rowIndex, 5, roleColor, rowBg);
         
-        // Ability Score (G) - Elite gradient pill
-        if (member.ability_score && member.ability_score !== '') {
-          const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addElitePill(requests, sheetId, rowIndex, 6, abilityColor, true);
+        // Score (G) - Right-aligned number
+        this.addNumberCell(requests, sheetId, rowIndex, 6, rowBg);
+        
+        // Tier (H) - Strategic color badge
+        if (meta.scoreTier.tier !== 'None') {
+          this.addProfessionalBadge(requests, sheetId, rowIndex, 7, meta.scoreTier.color, rowBg);
         } else {
-          requests.push({
-            repeatCell: {
-              range: {
-                sheetId: sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: 6,
-                endColumnIndex: 7
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: rowBg,
-                  textFormat: {
-                    fontSize: 9,
-                    fontFamily: 'Google Sans',
-                    foregroundColor: { red: 0.85, green: 0.85, blue: 0.85 }
-                  },
-                  horizontalAlignment: 'CENTER',
-                  verticalAlignment: 'MIDDLE'
-                }
-              },
-              fields: 'userEnteredFormat'
-            }
-          });
+          this.addCleanText(requests, sheetId, rowIndex, 7, rowBg);
         }
         
-        // Guild (H) - Elite pill
-        if (member.guild && member.guild !== '') {
-          const guildColor = this.getGuildColor(member.guild);
-          this.addElitePill(requests, sheetId, rowIndex, 7, guildColor);
-        } else {
-          requests.push({
-            repeatCell: {
-              range: {
-                sheetId: sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: 7,
-                endColumnIndex: 8
-              },
-              cell: {
-                userEnteredFormat: {
-                  backgroundColor: rowBg,
-                  textFormat: {
-                    fontSize: 9,
-                    fontFamily: 'Google Sans',
-                    foregroundColor: { red: 0.85, green: 0.85, blue: 0.85 }
-                  },
-                  horizontalAlignment: 'CENTER',
-                  verticalAlignment: 'MIDDLE'
-                }
-              },
-              fields: 'userEnteredFormat'
-            }
-          });
-        }
+        // Guild (I) - Clean text
+        this.addCleanText(requests, sheetId, rowIndex, 8, rowBg);
         
-        // Timezone (I) - Elite text with icon
-        const timezoneColor = meta.timezone && meta.timezone !== ''
-          ? { red: 0.38, green: 0.42, blue: 0.45 }
-          : { red: 0.82, green: 0.82, blue: 0.82 };
+        // Timezone (J) - Subtle text
+        this.addSubtleText(requests, sheetId, rowIndex, 9, rowBg);
         
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 8,
-              endColumnIndex: 9
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: rowBg,
-                textFormat: {
-                  fontSize: 9,
-                  fontFamily: 'Google Sans',
-                  foregroundColor: timezoneColor
-                },
-                horizontalAlignment: 'LEFT',
-                verticalAlignment: 'MIDDLE',
-                padding: {
-                  left: 12
-                }
-              }
-            },
-            fields: 'userEnteredFormat'
-          }
-        });
-        
-        // Registered (J) - Elite date
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 9,
-              endColumnIndex: 10
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: rowBg,
-                textFormat: {
-                  fontSize: 9,
-                  fontFamily: 'Google Sans',
-                  foregroundColor: { red: 0.38, green: 0.42, blue: 0.45 }
-                },
-                horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE',
-                numberFormat: {
-                  type: 'TEXT'
-                }
-              }
-            },
-            fields: 'userEnteredFormat'
-          }
-        });
+        // Registered (K) - Subtle text
+        this.addSubtleText(requests, sheetId, rowIndex, 10, rowBg);
 
-        // Elite row separator - Subtle elegance
-        requests.push({
-          updateBorders: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: rowIndex,
-              endRowIndex: rowIndex + 1,
-              startColumnIndex: 0,
-              endColumnIndex: 10
-            },
-            bottom: {
-              style: 'SOLID',
-              width: 1,
-              color: { red: 0.93, green: 0.93, blue: 0.94 }
+        // Professional borders - Group separation
+        const isLastInGroup = i === rowMetadata.length - 1 || 
+                              (i + 1 < rowMetadata.length && rowMetadata[i + 1].isMain);
+        
+        if (isLastInGroup) {
+          // Thick border at end of user group
+          requests.push({
+            updateBorders: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 11
+              },
+              bottom: {
+                style: 'SOLID_MEDIUM',
+                width: 2,
+                color: { red: 0.20, green: 0.25, blue: 0.37 }
+              }
             }
-          }
-        });
+          });
+        } else {
+          // Subtle border between rows
+          requests.push({
+            updateBorders: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 11
+              },
+              bottom: {
+                style: 'SOLID',
+                width: 1,
+                color: { red: 0.90, green: 0.90, blue: 0.90 }
+              }
+            }
+          });
+        }
       }
 
       // Apply in batches
@@ -742,15 +623,15 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
         }
-        console.log(`✅ [SHEETS] Applied ${requests.length} elite styling requests`);
+        console.log(`✅ [SHEETS] Applied ${requests.length} professional styling requests`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error applying elite design:', error.message);
+      console.error('❌ [SHEETS] Error applying professional design:', error.message);
     }
   }
 
-  addElitePill(requests, sheetId, rowIndex, colIndex, bgColor, isNumber = false) {
-    const cellFormat = {
+  addProfessionalBadge(requests, sheetId, rowIndex, colIndex, bgColor, rowBg) {
+    requests.push({
       repeatCell: {
         range: {
           sheetId: sheetId,
@@ -764,33 +645,105 @@ class GoogleSheetsService {
             backgroundColor: bgColor,
             textFormat: {
               bold: true,
-              fontSize: 10,
+              fontSize: 9,
               foregroundColor: { red: 1, green: 1, blue: 1 },
-              fontFamily: 'Google Sans'
+              fontFamily: 'Arial'
+            },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
+  }
+
+  addCleanText(requests, sheetId, rowIndex, colIndex, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              fontSize: 10,
+              fontFamily: 'Arial',
+              foregroundColor: { red: 0.13, green: 0.13, blue: 0.13 }
+            },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE'
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
+  }
+
+  addSubtleText(requests, sheetId, rowIndex, colIndex, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              fontSize: 9,
+              fontFamily: 'Arial',
+              foregroundColor: { red: 0.46, green: 0.46, blue: 0.46 }
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE',
-            padding: {
-              top: 7,
-              bottom: 7,
-              left: 12,
-              right: 12
+            numberFormat: {
+              type: 'TEXT'
             }
           }
         },
-        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
+        fields: 'userEnteredFormat'
       }
-    };
+    });
+  }
 
-    if (isNumber) {
-      cellFormat.repeatCell.cell.userEnteredFormat.numberFormat = {
-        type: 'NUMBER',
-        pattern: '#,##0'
-      };
-      cellFormat.repeatCell.fields = 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,numberFormat)';
-    }
-
-    requests.push(cellFormat);
+  addNumberCell(requests, sheetId, rowIndex, colIndex, rowBg) {
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: rowBg,
+            textFormat: {
+              fontSize: 10,
+              fontFamily: 'Arial',
+              foregroundColor: { red: 0.13, green: 0.13, blue: 0.13 }
+            },
+            horizontalAlignment: 'RIGHT',
+            verticalAlignment: 'MIDDLE',
+            numberFormat: {
+              type: 'NUMBER',
+              pattern: '#,##0'
+            }
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
   }
 
   async fullSync(allCharactersWithSubclasses) {
