@@ -416,11 +416,14 @@ class GoogleSheetsService {
               rows: [{
                 values: [{
                   userEnteredValue: {
-                    stringValue: `=IMAGE("${imageUrl}", 4, 24, 24) & " " & "${member.class}"`
+                    formulaValue: `=IMAGE("${imageUrl}", 4, 24, 24)`
+                  },
+                  userEnteredFormat: {
+                    horizontalAlignment: 'LEFT'
                   }
                 }]
               }],
-              fields: 'userEnteredValue'
+              fields: 'userEnteredValue,userEnteredFormat'
             }
           });
         }
