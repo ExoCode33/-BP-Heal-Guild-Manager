@@ -36,66 +36,96 @@ class GoogleSheetsService {
     }
   }
 
-  // 🎨 Professional color palette - Clean and consistent
-  getClassColor(className) {
+  // 🎨 Premium color palette - Modern and sophisticated
+  getClassColors(className) {
     const colors = {
-      'Beat Performer': { red: 0.91, green: 0.30, blue: 0.64, dark: { red: 0.73, green: 0.24, blue: 0.51 } },
-      'Frost Mage': { red: 0.26, green: 0.65, blue: 0.96, dark: { red: 0.21, green: 0.52, blue: 0.77 } },
-      'Heavy Guardian': { red: 0.61, green: 0.35, blue: 0.16, dark: { red: 0.49, green: 0.28, blue: 0.13 } },
-      'Marksman': { red: 0.55, green: 0.76, blue: 0.29, dark: { red: 0.44, green: 0.61, blue: 0.23 } },
-      'Shield Knight': { red: 0.95, green: 0.77, blue: 0.20, dark: { red: 0.76, green: 0.62, blue: 0.16 } },
-      'Stormblade': { red: 0.61, green: 0.35, blue: 0.71, dark: { red: 0.49, green: 0.28, blue: 0.57 } },
-      'Verdant Oracle': { red: 0.30, green: 0.69, blue: 0.31, dark: { red: 0.24, green: 0.55, blue: 0.25 } },
-      'Wind Knight': { red: 0.26, green: 0.80, blue: 0.91, dark: { red: 0.21, green: 0.64, blue: 0.73 } }
+      'Beat Performer': { 
+        main: { red: 0.95, green: 0.26, blue: 0.61 },
+        sub: { red: 0.76, green: 0.21, blue: 0.49 }
+      },
+      'Frost Mage': { 
+        main: { red: 0.31, green: 0.71, blue: 0.98 },
+        sub: { red: 0.25, green: 0.57, blue: 0.78 }
+      },
+      'Heavy Guardian': { 
+        main: { red: 0.68, green: 0.43, blue: 0.24 },
+        sub: { red: 0.54, green: 0.34, blue: 0.19 }
+      },
+      'Marksman': { 
+        main: { red: 0.60, green: 0.80, blue: 0.36 },
+        sub: { red: 0.48, green: 0.64, blue: 0.29 }
+      },
+      'Shield Knight': { 
+        main: { red: 0.98, green: 0.82, blue: 0.27 },
+        sub: { red: 0.78, green: 0.66, blue: 0.22 }
+      },
+      'Stormblade': { 
+        main: { red: 0.67, green: 0.40, blue: 0.76 },
+        sub: { red: 0.54, green: 0.32, blue: 0.61 }
+      },
+      'Verdant Oracle': { 
+        main: { red: 0.36, green: 0.74, blue: 0.38 },
+        sub: { red: 0.29, green: 0.59, blue: 0.30 }
+      },
+      'Wind Knight': { 
+        main: { red: 0.31, green: 0.85, blue: 0.95 },
+        sub: { red: 0.25, green: 0.68, blue: 0.76 }
+      }
     };
-    return colors[className] || { red: 0.70, green: 0.70, blue: 0.70, dark: { red: 0.56, green: 0.56, blue: 0.56 } };
+    return colors[className] || { 
+      main: { red: 0.75, green: 0.75, blue: 0.75 },
+      sub: { red: 0.60, green: 0.60, blue: 0.60 }
+    };
   }
 
-  // 🌟 Clean ability score colors - Single consistent gradient
+  // 🌟 Premium ability score gradient
   getAbilityScoreColor(score) {
     if (!score || score === '') return null;
     
     const numScore = parseInt(score);
     
-    // Purple to Red gradient (high to low)
-    if (numScore >= 40000) return { red: 0.46, green: 0.20, blue: 0.73 }; // Deep Purple
-    if (numScore >= 35000) return { red: 0.58, green: 0.24, blue: 0.71 }; // Purple
-    if (numScore >= 30000) return { red: 0.91, green: 0.30, blue: 0.64 }; // Pink
-    if (numScore >= 25000) return { red: 0.96, green: 0.42, blue: 0.42 }; // Red
-    if (numScore >= 20000) return { red: 0.95, green: 0.61, blue: 0.27 }; // Orange
-    if (numScore >= 15000) return { red: 0.95, green: 0.77, blue: 0.20 }; // Yellow
-    if (numScore >= 10000) return { red: 0.55, green: 0.76, blue: 0.29 }; // Green
-    return { red: 0.62, green: 0.64, blue: 0.66 }; // Gray
+    // Premium gradient: Purple → Pink → Red → Orange → Gold → Green
+    if (numScore >= 50000) return { red: 0.42, green: 0.15, blue: 0.68 }; // Royal Purple
+    if (numScore >= 45000) return { red: 0.58, green: 0.22, blue: 0.72 }; // Purple
+    if (numScore >= 40000) return { red: 0.85, green: 0.24, blue: 0.58 }; // Hot Pink
+    if (numScore >= 35000) return { red: 0.95, green: 0.26, blue: 0.42 }; // Red-Pink
+    if (numScore >= 30000) return { red: 0.98, green: 0.38, blue: 0.35 }; // Red
+    if (numScore >= 25000) return { red: 0.98, green: 0.58, blue: 0.29 }; // Orange
+    if (numScore >= 20000) return { red: 0.98, green: 0.75, blue: 0.24 }; // Gold
+    if (numScore >= 15000) return { red: 0.85, green: 0.85, blue: 0.31 }; // Yellow
+    if (numScore >= 10000) return { red: 0.52, green: 0.78, blue: 0.33 }; // Green
+    return { red: 0.67, green: 0.69, blue: 0.71 }; // Silver Gray
   }
 
-  // 🎭 Clean role colors
+  // 🎭 Premium role colors
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.26, green: 0.52, blue: 0.96 },    // Blue
-      'DPS': { red: 0.96, green: 0.42, blue: 0.42 },     // Red  
-      'Support': { red: 0.30, green: 0.69, blue: 0.31 }  // Green
+      'Tank': { red: 0.31, green: 0.60, blue: 0.98 },     // Bright Blue
+      'DPS': { red: 0.98, green: 0.38, blue: 0.35 },      // Bright Red
+      'Support': { red: 0.36, green: 0.74, blue: 0.38 }   // Bright Green
     };
-    return roleColors[role] || { red: 0.62, green: 0.64, blue: 0.66 };
+    return roleColors[role] || { red: 0.67, green: 0.69, blue: 0.71 };
   }
 
-  // 🏰 Clean guild colors
+  // 🏰 Premium guild colors
   getGuildColor(guildName) {
     const guildColors = {
-      'heal': { red: 0.26, green: 0.80, blue: 0.91 },
-      'Visitor': { red: 0.62, green: 0.64, blue: 0.66 }
+      'heal': { red: 0.31, green: 0.85, blue: 0.95 },
+      'Visitor': { red: 0.67, green: 0.69, blue: 0.71 }
     };
     
     if (guildColors[guildName]) {
       return guildColors[guildName];
     }
     
-    // Pastel colors for other guilds
-    const pastelColors = [
-      { red: 0.74, green: 0.62, blue: 0.91 }, // Lavender
-      { red: 0.91, green: 0.76, blue: 0.62 }, // Peach
-      { red: 0.62, green: 0.91, blue: 0.76 }, // Mint
-      { red: 0.91, green: 0.62, blue: 0.76 }, // Pink
-      { red: 0.76, green: 0.91, blue: 0.62 }, // Light Green
+    // Premium pastel gradient
+    const premiumColors = [
+      { red: 0.80, green: 0.67, blue: 0.93 }, // Lavender
+      { red: 0.93, green: 0.78, blue: 0.67 }, // Peach
+      { red: 0.67, green: 0.93, blue: 0.80 }, // Mint
+      { red: 0.93, green: 0.67, blue: 0.78 }, // Rose
+      { red: 0.78, green: 0.93, blue: 0.67 }, // Lime
+      { red: 0.67, green: 0.78, blue: 0.93 }, // Sky
     ];
     
     let hash = 0;
@@ -103,14 +133,14 @@ class GoogleSheetsService {
       hash = guildName.charCodeAt(i) + ((hash << 5) - hash);
     }
     
-    return pastelColors[Math.abs(hash) % pastelColors.length];
+    return premiumColors[Math.abs(hash) % premiumColors.length];
   }
 
-  async formatProfessionalSheet(sheetName, headerCount, dataRowCount) {
+  async formatPremiumSheet(sheetName, headerCount, dataRowCount) {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Applying glamorous formatting to ${sheetName}...`);
+      console.log(`📊 [SHEETS] Applying premium formatting to ${sheetName}...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -122,7 +152,7 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
 
       const requests = [
-        // Sheet properties
+        // Sheet properties - Premium dark theme
         {
           updateSheetProperties: {
             properties: {
@@ -132,15 +162,15 @@ class GoogleSheetsService {
                 hideGridlines: true
               },
               tabColor: {
-                red: 0.40,
-                green: 0.23,
-                blue: 0.72
+                red: 0.42,
+                green: 0.27,
+                blue: 0.76
               }
             },
             fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines,tabColor'
           }
         },
-        // Header row - Elegant dark purple
+        // Premium header - Deep purple gradient effect
         {
           repeatCell: {
             range: {
@@ -153,9 +183,9 @@ class GoogleSheetsService {
             cell: {
               userEnteredFormat: {
                 backgroundColor: {
-                  red: 0.29,
-                  green: 0.16,
-                  blue: 0.52
+                  red: 0.32,
+                  green: 0.20,
+                  blue: 0.58
                 },
                 textFormat: {
                   foregroundColor: {
@@ -170,14 +200,31 @@ class GoogleSheetsService {
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
                 padding: {
-                  top: 14,
-                  bottom: 14,
-                  left: 12,
-                  right: 12
+                  top: 16,
+                  bottom: 16,
+                  left: 14,
+                  right: 14
                 }
               }
             },
             fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
+          }
+        },
+        // Premium shadow effect under header
+        {
+          updateBorders: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: headerCount
+            },
+            bottom: {
+              style: 'SOLID_THICK',
+              width: 4,
+              color: { red: 0.22, green: 0.14, blue: 0.42 }
+            }
           }
         }
       ];
@@ -187,7 +234,7 @@ class GoogleSheetsService {
         requestBody: { requests }
       });
 
-      console.log(`✅ [SHEETS] Glamorous formatting applied to ${sheetName}`);
+      console.log(`✅ [SHEETS] Premium formatting applied to ${sheetName}`);
     } catch (error) {
       console.error(`Error formatting ${sheetName}:`, error.message);
     }
@@ -197,7 +244,7 @@ class GoogleSheetsService {
     if (!this.sheets) return;
 
     try {
-      console.log(`📊 [SHEETS] Starting glamorous sync...`);
+      console.log(`📊 [SHEETS] Starting premium sync...`);
       
       const headers = [
         'Discord Name',
@@ -234,6 +281,7 @@ class GoogleSheetsService {
         let discordName = '';
         
         if (mainChar) {
+          // Get timezone from user_timezones table if available
           userTimezone = mainChar.timezone || '';
           discordName = mainChar.discord_name;
           
@@ -263,16 +311,16 @@ class GoogleSheetsService {
           // Add main's subclasses
           mainSubclasses.forEach(subclass => {
             rows.push([
-              discordName, // REPEAT discord name
-              mainChar.ign, // REPEAT parent IGN
+              discordName,
+              mainChar.ign,
               'Subclass',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
-              mainChar.guild || '', // Use parent guild
-              userTimezone, // REPEAT timezone
-              this.formatDate(mainChar.created_at) // Use parent date
+              mainChar.guild || '',
+              userTimezone,
+              this.formatDate(mainChar.created_at)
             ]);
 
             rowMetadata.push({
@@ -280,6 +328,7 @@ class GoogleSheetsService {
               discordName: discordName,
               timezone: userTimezone,
               parentIGN: mainChar.ign,
+              parentClass: mainChar.class,
               isSubclass: true,
               isMain: false,
               isAlt: false
@@ -290,7 +339,7 @@ class GoogleSheetsService {
         // Add each alt and its subclasses
         alts.forEach(alt => {
           rows.push([
-            discordName, // REPEAT discord name
+            discordName,
             alt.ign,
             'Alt',
             alt.class,
@@ -298,7 +347,7 @@ class GoogleSheetsService {
             alt.role,
             alt.ability_score || '',
             alt.guild || '',
-            userTimezone, // REPEAT timezone
+            userTimezone,
             this.formatDate(alt.created_at)
           ]);
 
@@ -319,16 +368,16 @@ class GoogleSheetsService {
 
           altSubclasses.forEach(subclass => {
             rows.push([
-              discordName, // REPEAT discord name
-              alt.ign, // REPEAT parent IGN
+              discordName,
+              alt.ign,
               'Subclass',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
-              alt.guild || '', // Use parent guild
-              userTimezone, // REPEAT timezone
-              this.formatDate(alt.created_at) // Use parent date
+              alt.guild || '',
+              userTimezone,
+              this.formatDate(alt.created_at)
             ]);
 
             rowMetadata.push({
@@ -336,6 +385,7 @@ class GoogleSheetsService {
               discordName: discordName,
               timezone: userTimezone,
               parentIGN: alt.ign,
+              parentClass: alt.class,
               isSubclass: true,
               isMain: false,
               isAlt: false
@@ -360,11 +410,11 @@ class GoogleSheetsService {
         },
       });
 
-      console.log(`📊 [SHEETS] Applying professional formatting...`);
-      await this.formatProfessionalSheet('Member List', headers.length, rows.length);
+      console.log(`📊 [SHEETS] Applying premium formatting...`);
+      await this.formatPremiumSheet('Member List', headers.length, rows.length);
 
-      console.log(`📊 [SHEETS] Applying glamorous colors...`);
-      await this.applyGlamorousColors('Member List', rowMetadata);
+      console.log(`📊 [SHEETS] Applying premium design...`);
+      await this.applyPremiumDesign('Member List', rowMetadata);
 
       console.log(`✅ [SHEETS] Member List synced successfully! (${rows.length} total rows)`);
     } catch (error) {
@@ -380,11 +430,11 @@ class GoogleSheetsService {
     return `${month}/${day}/${year}`;
   }
 
-  async applyGlamorousColors(sheetName, rowMetadata) {
+  async applyPremiumDesign(sheetName, rowMetadata) {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🎨 [SHEETS] Applying glamorous design to ${rowMetadata.length} rows...`);
+      console.log(`🎨 [SHEETS] Applying premium design to ${rowMetadata.length} rows...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -396,8 +446,8 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Set column widths for perfect layout
-      const columnWidths = [150, 150, 100, 140, 140, 90, 120, 110, 160, 110];
+      // Premium column widths - Perfectly balanced
+      const columnWidths = [160, 150, 95, 145, 145, 85, 125, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -415,8 +465,11 @@ class GoogleSheetsService {
         });
       });
 
-      // Set consistent row height
+      // Premium row heights - Spacious and elegant
       for (let i = 0; i < rowMetadata.length; i++) {
+        const meta = rowMetadata[i];
+        const rowHeight = meta.isSubclass ? 34 : 38;
+        
         requests.push({
           updateDimensionProperties: {
             range: {
@@ -426,26 +479,29 @@ class GoogleSheetsService {
               endIndex: i + 2
             },
             properties: {
-              pixelSize: 36
+              pixelSize: rowHeight
             },
             fields: 'pixelSize'
           }
         });
       }
 
-      // Apply formatting to each row
+      // Apply premium styling to each row
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
         const member = meta.character;
         
-        // Clean white background for all rows
-        const rowBg = { red: 1, green: 1, blue: 1 };
+        // Premium alternating background - Subtle elegance
+        const isEvenRow = Math.floor(i / 3) % 2 === 0;
+        const rowBg = isEvenRow 
+          ? { red: 1, green: 1, blue: 1 }
+          : { red: 0.99, green: 0.99, blue: 0.995 };
         
-        // Discord Name (A) - Always visible, muted for subclasses
-        const discordTextColor = meta.isSubclass 
-          ? { red: 0.60, green: 0.62, blue: 0.65 }
-          : { red: 0.15, green: 0.16, blue: 0.18 };
+        // Discord Name (A) - Premium styling
+        const discordColor = meta.isSubclass 
+          ? { red: 0.55, green: 0.57, blue: 0.60 }
+          : { red: 0.13, green: 0.14, blue: 0.16 };
         
         requests.push({
           repeatCell: {
@@ -462,21 +518,25 @@ class GoogleSheetsService {
                 textFormat: {
                   fontSize: 10,
                   fontFamily: 'Google Sans',
-                  foregroundColor: discordTextColor,
+                  foregroundColor: discordColor,
                   bold: meta.isMain
                 },
                 horizontalAlignment: 'LEFT',
-                verticalAlignment: 'MIDDLE'
+                verticalAlignment: 'MIDDLE',
+                padding: {
+                  left: 12,
+                  right: 8
+                }
               }
             },
             fields: 'userEnteredFormat'
           }
         });
 
-        // IGN (B) - Always visible, styled for subclasses
-        const ignTextColor = meta.isSubclass 
-          ? { red: 0.60, green: 0.62, blue: 0.65 }
-          : { red: 0.15, green: 0.16, blue: 0.18 };
+        // IGN (B) - Premium styling
+        const ignColor = meta.isSubclass 
+          ? { red: 0.55, green: 0.57, blue: 0.60 }
+          : { red: 0.13, green: 0.14, blue: 0.16 };
         
         requests.push({
           repeatCell: {
@@ -493,42 +553,46 @@ class GoogleSheetsService {
                 textFormat: {
                   fontSize: 10,
                   fontFamily: 'Google Sans',
-                  foregroundColor: ignTextColor,
+                  foregroundColor: ignColor,
                   bold: !meta.isSubclass,
                   italic: meta.isSubclass
                 },
                 horizontalAlignment: 'LEFT',
-                verticalAlignment: 'MIDDLE'
+                verticalAlignment: 'MIDDLE',
+                padding: {
+                  left: 12,
+                  right: 8
+                }
               }
             },
             fields: 'userEnteredFormat'
           }
         });
 
-        // Type (C) - Elegant pill
+        // Type (C) - Premium pill
         const typeColor = meta.isSubclass
-          ? { red: 0.72, green: 0.74, blue: 0.76 }
+          ? { red: 0.70, green: 0.72, blue: 0.75 }
           : (meta.isMain 
-              ? { red: 0.30, green: 0.69, blue: 0.31 } 
-              : { red: 0.95, green: 0.61, blue: 0.27 });
+              ? { red: 0.36, green: 0.74, blue: 0.38 } 
+              : { red: 0.98, green: 0.65, blue: 0.31 });
         
-        this.addModernPill(requests, sheetId, rowIndex, 2, typeColor);
+        this.addPremiumPill(requests, sheetId, rowIndex, 2, typeColor);
         
-        // Class (D) - Vibrant pill
-        const classColorObj = this.getClassColor(member.class);
-        this.addModernPill(requests, sheetId, rowIndex, 3, classColorObj);
+        // Class (D) - Premium pill with class colors
+        const classColors = this.getClassColors(member.class);
+        this.addPremiumPill(requests, sheetId, rowIndex, 3, classColors.main);
         
-        // Subclass (E) - Darker variant pill
-        this.addModernPill(requests, sheetId, rowIndex, 4, classColorObj.dark);
+        // Subclass (E) - Premium pill with darker variant
+        this.addPremiumPill(requests, sheetId, rowIndex, 4, classColors.sub);
         
-        // Role (F) - Clean pill
+        // Role (F) - Premium pill
         const roleColor = this.getRoleColor(member.role);
-        this.addModernPill(requests, sheetId, rowIndex, 5, roleColor);
+        this.addPremiumPill(requests, sheetId, rowIndex, 5, roleColor);
         
-        // Ability Score (G) - Gradient pill
+        // Ability Score (G) - Premium gradient pill
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addModernPill(requests, sheetId, rowIndex, 6, abilityColor, true);
+          this.addPremiumPill(requests, sheetId, rowIndex, 6, abilityColor, true);
         } else {
           requests.push({
             repeatCell: {
@@ -541,18 +605,25 @@ class GoogleSheetsService {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: rowBg
+                  backgroundColor: rowBg,
+                  textFormat: {
+                    fontSize: 9,
+                    fontFamily: 'Google Sans',
+                    foregroundColor: { red: 0.85, green: 0.85, blue: 0.85 }
+                  },
+                  horizontalAlignment: 'CENTER',
+                  verticalAlignment: 'MIDDLE'
                 }
               },
-              fields: 'userEnteredFormat(backgroundColor)'
+              fields: 'userEnteredFormat'
             }
           });
         }
         
-        // Guild (H) - Soft pill
+        // Guild (H) - Premium pill
         if (member.guild && member.guild !== '') {
           const guildColor = this.getGuildColor(member.guild);
-          this.addModernPill(requests, sheetId, rowIndex, 7, guildColor);
+          this.addPremiumPill(requests, sheetId, rowIndex, 7, guildColor);
         } else {
           requests.push({
             repeatCell: {
@@ -565,17 +636,24 @@ class GoogleSheetsService {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: rowBg
+                  backgroundColor: rowBg,
+                  textFormat: {
+                    fontSize: 9,
+                    fontFamily: 'Google Sans',
+                    foregroundColor: { red: 0.85, green: 0.85, blue: 0.85 }
+                  },
+                  horizontalAlignment: 'CENTER',
+                  verticalAlignment: 'MIDDLE'
                 }
               },
-              fields: 'userEnteredFormat(backgroundColor)'
+              fields: 'userEnteredFormat'
             }
           });
         }
         
-        // Timezone (I) - Muted text
+        // Timezone (I) - Premium text styling with icon effect
         const timezoneColor = meta.timezone && meta.timezone !== ''
-          ? { red: 0.45, green: 0.47, blue: 0.50 }
+          ? { red: 0.42, green: 0.45, blue: 0.48 }
           : { red: 0.85, green: 0.85, blue: 0.85 };
         
         requests.push({
@@ -603,7 +681,7 @@ class GoogleSheetsService {
           }
         });
         
-        // Registered (J) - Muted text
+        // Registered (J) - Premium date styling
         requests.push({
           repeatCell: {
             range: {
@@ -619,7 +697,7 @@ class GoogleSheetsService {
                 textFormat: {
                   fontSize: 9,
                   fontFamily: 'Google Sans',
-                  foregroundColor: { red: 0.45, green: 0.47, blue: 0.50 }
+                  foregroundColor: { red: 0.42, green: 0.45, blue: 0.48 }
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE'
@@ -629,7 +707,7 @@ class GoogleSheetsService {
           }
         });
 
-        // Add subtle row separator
+        // Premium row separator - Elegant and subtle
         requests.push({
           updateBorders: {
             range: {
@@ -642,13 +720,13 @@ class GoogleSheetsService {
             bottom: {
               style: 'SOLID',
               width: 1,
-              color: { red: 0.95, green: 0.95, blue: 0.96 }
+              color: { red: 0.94, green: 0.94, blue: 0.95 }
             }
           }
         });
       }
 
-      // Apply in batches
+      // Apply in batches for performance
       if (requests.length > 0) {
         const batchSize = 100;
         for (let i = 0; i < requests.length; i += batchSize) {
@@ -658,14 +736,14 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
         }
-        console.log(`✅ [SHEETS] Applied ${requests.length} glamorous formats`);
+        console.log(`✅ [SHEETS] Applied ${requests.length} premium styling requests`);
       }
     } catch (error) {
-      console.error('❌ [SHEETS] Error applying glamorous colors:', error.message);
+      console.error('❌ [SHEETS] Error applying premium design:', error.message);
     }
   }
 
-  addModernPill(requests, sheetId, rowIndex, colIndex, bgColor, isNumber = false) {
+  addPremiumPill(requests, sheetId, rowIndex, colIndex, bgColor, isNumber = false) {
     const cellFormat = {
       repeatCell: {
         range: {
@@ -685,10 +763,16 @@ class GoogleSheetsService {
               fontFamily: 'Google Sans'
             },
             horizontalAlignment: 'CENTER',
-            verticalAlignment: 'MIDDLE'
+            verticalAlignment: 'MIDDLE',
+            padding: {
+              top: 6,
+              bottom: 6,
+              left: 10,
+              right: 10
+            }
           }
         },
-        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
       }
     };
 
@@ -697,7 +781,7 @@ class GoogleSheetsService {
         type: 'NUMBER',
         pattern: '#,##0'
       };
-      cellFormat.repeatCell.fields = 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,numberFormat)';
+      cellFormat.repeatCell.fields = 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,numberFormat)';
     }
 
     requests.push(cellFormat);
