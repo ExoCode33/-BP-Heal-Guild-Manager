@@ -252,7 +252,7 @@ export default {
   async handleListAll(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const allCharacters = await queries.getAllCharacters();
+    const allCharacters = await queries.getAllMainCharacters();
     
     if (allCharacters.length === 0) {
       const embed = new EmbedBuilder()
@@ -325,21 +325,18 @@ export default {
       await interaction.deferReply({ ephemeral: true });
       await interaction.editReply({ embeds: [startEmbed] });
 
-      // Get all data
-      const allCharacters = await queries.getAllCharacters();
-      const allAlts = await queries.getAllAlts();
+      // Get all characters with subclasses
+      const allChars = await queries.getAllCharacters();
 
       // Sync to Google Sheets
-      await googleSheets.default.fullSync(allCharacters, allAlts);
+      await googleSheets.default.fullSync(allChars);
 
       const successEmbed = new EmbedBuilder()
         .setColor('#00FF00')
         .setTitle('✅ Sync Complete!')
         .setDescription('All character data has been successfully synced to Google Sheets.')
         .addFields(
-          { name: '⭐ Main Characters', value: `${allCharacters.length} synced`, inline: true },
-          { name: '📋 Alt Characters', value: `${allAlts.length} synced`, inline: true },
-          { name: '📊 Total', value: `${allCharacters.length + allAlts.length} characters`, inline: true }
+          { name: '📊 Total Characters', value: `${allChars.length} synced`, inline: true }
         )
         .setFooter({ text: '📊 Data synchronized successfully' })
         .setTimestamp();
