@@ -72,6 +72,20 @@ class GoogleSheetsService {
     return { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
+  getClassColor(className) {
+    const classColors = {
+      'Beat Performer': { red: 0.58, green: 0.29, blue: 0.82 }, // Purple
+      'Frost Mage': { red: 0.26, green: 0.71, blue: 0.89 }, // Light Blue
+      'Heavy Guardian': { red: 0.42, green: 0.56, blue: 0.14 }, // Olive/Green
+      'Marksman': { red: 0.80, green: 0.47, blue: 0.13 }, // Orange/Brown
+      'Shield Knight': { red: 0.13, green: 0.59, blue: 0.95 }, // Blue
+      'Stormblade': { red: 0.61, green: 0.15, blue: 0.69 }, // Purple/Magenta
+      'Verdant Oracle': { red: 0.98, green: 0.74, blue: 0.02 }, // Gold/Yellow
+      'Wind Knight': { red: 0.40, green: 0.85, blue: 0.92 } // Cyan
+    };
+    return classColors[className] || { red: 0.62, green: 0.64, blue: 0.66 };
+  }
+
   getRoleColor(role) {
     const roleColors = {
       'Tank': { red: 0.25, green: 0.53, blue: 0.96 },
@@ -416,9 +430,9 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex + 1}: ${member.class} -> IMAGE formula (smaller size)`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex + 1}: ${member.class} -> IMAGE formula (small size)`);
           
-          // Add IMAGE formula to display the icon with smaller size (3 = fit to cell with aspect ratio, smaller)
+          // Add IMAGE formula to display the icon with size mode 4 (original size, clipped to cell)
           requests.push({
             updateCells: {
               range: {
@@ -431,7 +445,7 @@ class GoogleSheetsService {
               rows: [{
                 values: [{
                   userEnteredValue: {
-                    formulaValue: `=IMAGE("${imageUrl}",3)`
+                    formulaValue: `=IMAGE("${imageUrl}",4,32,32)`
                   },
                   userEnteredFormat: {
                     horizontalAlignment: 'CENTER',
@@ -623,11 +637,12 @@ class GoogleSheetsService {
         // Icon (D) - Will have IMAGE formula added separately
         this.addCleanTextCell(requests, sheetId, rowIndex, 3, '', rowBg);
         
-        // Class (E)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 4, member.class, rowBg);
+        // Class (E) - With class color
+        const classColor = this.getClassColor(member.class);
+        this.addPillBadge(requests, sheetId, rowIndex, 4, classColor);
         
-        // Subclass (F)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 5, member.subclass, rowBg);
+        // Subclass (F) - With class color
+        this.addPillBadge(requests, sheetId, rowIndex, 5, classColor);
         
         // Role (G)
         const roleColor = this.getRoleColor(member.role);
