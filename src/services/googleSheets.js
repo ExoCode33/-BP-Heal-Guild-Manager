@@ -8,6 +8,22 @@ class GoogleSheetsService {
     this.auth = null;
     this.sheets = null;
     this.spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+    
+    // 🎨 CLASS LOGO URLs - Uses Railway public URL
+    // The images will be served from /public/class-icons/ folder
+    // Railway URL format: https://YOUR-APP.up.railway.app/class-icons/ClassName.png
+    const baseUrl = process.env.RAILWAY_PUBLIC_URL || process.env.PUBLIC_URL || 'http://localhost:3000';
+    
+    this.classLogos = {
+      'Beat Performer': `${baseUrl}/class-icons/BeatPerformer.png`,
+      'Frost Mage': `${baseUrl}/class-icons/FrostMage.png`,
+      'Heavy Guardian': `${baseUrl}/class-icons/HeavyGuardian.png`,
+      'Marksman': `${baseUrl}/class-icons/Marksman.png`,
+      'Shield Knight': `${baseUrl}/class-icons/ShieldKnight.png`,
+      'Stormblade': `${baseUrl}/class-icons/StormBlade.png`,
+      'Verdant Oracle': `${baseUrl}/class-icons/VerdantOracle.png`,
+      'Wind Knight': `${baseUrl}/class-icons/WindKnight.png`
+    };
   }
 
   async initialize() {
@@ -29,6 +45,7 @@ class GoogleSheetsService {
 
       this.sheets = google.sheets({ version: 'v4', auth: this.auth });
       console.log('✅ Google Sheets API initialized');
+      console.log(`📸 Class logos will be served from: ${process.env.RAILWAY_PUBLIC_URL || process.env.PUBLIC_URL || 'http://localhost:3000'}/class-icons/`);
       return true;
     } catch (error) {
       console.error('⚠️  Google Sheets initialization failed:', error.message);
@@ -36,18 +53,16 @@ class GoogleSheetsService {
     }
   }
 
-  // Minimal strategic colors - only what matters
   getAbilityScoreColor(score) {
     if (!score || score === '') return null;
     
     const numScore = parseInt(score);
     
-    // Simple tier system
-    if (numScore >= 40000) return { red: 0.61, green: 0.15, blue: 0.69 }; // Purple - Elite
-    if (numScore >= 30000) return { red: 0.96, green: 0.26, blue: 0.21 }; // Red - High
-    if (numScore >= 20000) return { red: 0.97, green: 0.73, blue: 0.15 }; // Gold - Medium
-    if (numScore >= 10000) return { red: 0.30, green: 0.69, blue: 0.31 }; // Green - Entry
-    return { red: 0.62, green: 0.64, blue: 0.66 }; // Gray - Low
+    if (numScore >= 40000) return { red: 0.61, green: 0.15, blue: 0.69 };
+    if (numScore >= 30000) return { red: 0.96, green: 0.26, blue: 0.21 };
+    if (numScore >= 20000) return { red: 0.97, green: 0.73, blue: 0.15 };
+    if (numScore >= 10000) return { red: 0.30, green: 0.69, blue: 0.31 };
+    return { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
   getRoleColor(role) {
@@ -247,7 +262,7 @@ class GoogleSheetsService {
               subclass.ability_score || '',
               mainChar.guild || '',
               userTimezone || '',
-              `'${this.formatDate(mainChar.created_at)}` // Show main's registration date
+              `'${this.formatDate(mainChar.created_at)}`
             ]);
 
             rowMetadata.push({
@@ -306,7 +321,7 @@ class GoogleSheetsService {
               subclass.ability_score || '',
               alt.guild || '',
               userTimezone || '',
-              `'${this.formatDate(alt.created_at)}` // Show alt's registration date
+              `'${this.formatDate(alt.created_at)}`
             ]);
 
             rowMetadata.push({
@@ -347,6 +362,9 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Applying clean design...`);
       await this.applyCleanDesign('Member List', rowMetadata);
 
+      console.log(`📊 [SHEETS] Adding class logos...`);
+      await this.addClassLogos('Member List', rowMetadata);
+
       console.log(`✅ [SHEETS] Member List synced successfully! (${rows.length} total rows)`);
     } catch (error) {
       console.error('❌ [SHEETS] Error syncing member list:', error.message);
@@ -359,6 +377,69 @@ class GoogleSheetsService {
     const day = String(date.getDate()).padStart(2, '0');
     const year = date.getFullYear();
     return `${month}/${day}/${year}`;
+  }
+
+  async addClassLogos(sheetName, rowMetadata) {
+    if (!this.sheets || rowMetadata.length === 0) return;
+
+    try {
+      console.log(`🖼️ [SHEETS] Adding class logos...`);
+      
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      if (!sheet) return;
+
+      const sheetId = sheet.properties.sheetId;
+      const requests = [];
+
+      // Add logo formula to each Class cell (Column D)
+      for (let i = 0; i < rowMetadata.length; i++) {
+        const rowIndex = i + 1;
+        const meta = rowMetadata[i];
+        const member = meta.character;
+        
+        const imageUrl = this.classLogos[member.class];
+        
+        if (imageUrl) {
+          requests.push({
+            updateCells: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: 3, // Column D (Class)
+                endColumnIndex: 4
+              },
+              rows: [{
+                values: [{
+                  userEnteredValue: {
+                    stringValue: `=IMAGE("${imageUrl}", 4, 24, 24) & " " & "${member.class}"`
+                  }
+                }]
+              }],
+              fields: 'userEnteredValue'
+            }
+          });
+        }
+      }
+
+      if (requests.length > 0) {
+        const batchSize = 100;
+        for (let i = 0; i < requests.length; i += batchSize) {
+          const batch = requests.slice(i, i + batchSize);
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            requestBody: { requests: batch }
+          });
+        }
+        console.log(`✅ [SHEETS] Added ${requests.length} class logos`);
+      }
+    } catch (error) {
+      console.error('❌ [SHEETS] Error adding class logos:', error.message);
+    }
   }
 
   async applyCleanDesign(sheetName, rowMetadata) {
@@ -378,7 +459,7 @@ class GoogleSheetsService {
       const requests = [];
 
       // Column widths
-      const columnWidths = [160, 150, 95, 145, 145, 85, 125, 105, 170, 105];
+      const columnWidths = [160, 150, 95, 180, 145, 85, 125, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -417,22 +498,18 @@ class GoogleSheetsService {
         });
       }
 
-      // Track for user group separators
       let lastDiscordName = '';
 
-      // Apply styling to each row
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
         const member = meta.character;
         
-        // Detect when we're starting a new user's section
         const isNewUserGroup = meta.discordName !== lastDiscordName && meta.discordName !== '';
         if (isNewUserGroup) {
           lastDiscordName = meta.discordName;
         }
         
-        // Clean alternating background
         const rowBg = meta.isSubclass 
           ? { red: 0.98, green: 0.98, blue: 0.99 }
           : { red: 1, green: 1, blue: 1 };
@@ -508,27 +585,26 @@ class GoogleSheetsService {
           }
         });
 
-        // Type (C) - ONLY colored for Main and Alt
+        // Type (C)
         if (meta.isMain) {
-          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.26, green: 0.59, blue: 0.98 }); // Blue
+          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.26, green: 0.59, blue: 0.98 });
         } else if (meta.isAlt) {
-          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.96, green: 0.49, blue: 0.13 }); // Orange
+          this.addPillBadge(requests, sheetId, rowIndex, 2, { red: 0.96, green: 0.49, blue: 0.13 });
         } else {
-          // Subclass - NO COLOR, just clean text
           this.addCleanTextCell(requests, sheetId, rowIndex, 2, 'Subclass', rowBg);
         }
         
-        // Class (D) - CLEAN TEXT only
+        // Class (D) - Logo will be added
         this.addCleanTextCell(requests, sheetId, rowIndex, 3, member.class, rowBg);
         
-        // Subclass (E) - CLEAN TEXT only
+        // Subclass (E)
         this.addCleanTextCell(requests, sheetId, rowIndex, 4, member.subclass, rowBg);
         
-        // Role (F) - Strategic color badge
+        // Role (F)
         const roleColor = this.getRoleColor(member.role);
         this.addPillBadge(requests, sheetId, rowIndex, 5, roleColor);
         
-        // Ability Score (G) - Strategic gradient badge
+        // Ability Score (G)
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
           this.addPillBadge(requests, sheetId, rowIndex, 6, abilityColor, true);
@@ -536,16 +612,16 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 6, '', rowBg);
         }
         
-        // Guild (H) - Clean text
+        // Guild (H)
         this.addCleanTextCell(requests, sheetId, rowIndex, 7, member.guild || '', rowBg);
         
-        // Timezone (I) - Subtle text
+        // Timezone (I)
         this.addSubtleTextCell(requests, sheetId, rowIndex, 8, rowBg);
         
-        // Registered (J) - Subtle text
+        // Registered (J)
         this.addSubtleTextCell(requests, sheetId, rowIndex, 9, rowBg);
 
-        // Professional separator - Thick border after each user group
+        // Borders
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
                               (i + 1 < rowMetadata.length && rowMetadata[i + 1].isFirstOfUser);
         
@@ -586,7 +662,6 @@ class GoogleSheetsService {
         }
       }
 
-      // Apply in batches
       if (requests.length > 0) {
         const batchSize = 100;
         for (let i = 0; i < requests.length; i += batchSize) {
