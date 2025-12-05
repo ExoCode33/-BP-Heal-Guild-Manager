@@ -208,7 +208,6 @@ class GoogleSheetsService {
         'Discord Name',
         'IGN',
         'Type',
-        'Icon',
         'Class',
         'Subclass',
         'Role',
@@ -253,7 +252,6 @@ class GoogleSheetsService {
             discordName,
             mainChar.ign,
             'Main',
-            '', // Icon column (empty, will add IMAGE formula)
             mainChar.class,
             mainChar.subclass,
             mainChar.role,
@@ -279,7 +277,6 @@ class GoogleSheetsService {
               discordName,
               mainChar.ign,
               'Subclass',
-              '', // Icon column
               subclass.class,
               subclass.subclass,
               subclass.role,
@@ -309,7 +306,6 @@ class GoogleSheetsService {
             discordName,
             alt.ign,
             'Alt',
-            '', // Icon column
             alt.class,
             alt.subclass,
             alt.role,
@@ -340,7 +336,6 @@ class GoogleSheetsService {
               discordName,
               alt.ign,
               'Subclass',
-              '', // Icon column
               subclass.class,
               subclass.subclass,
               subclass.role,
@@ -369,7 +364,7 @@ class GoogleSheetsService {
       console.log(`📊 [SHEETS] Clearing Member List sheet...`);
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A:K',
+        range: 'Member List!A:J',
       });
 
       console.log(`📊 [SHEETS] Writing ${rows.length} rows to Member List...`);
@@ -409,7 +404,7 @@ class GoogleSheetsService {
     if (!this.sheets || rowMetadata.length === 0) return;
 
     try {
-      console.log(`🖼️ [SHEETS] Adding class icons with IMAGE formula to Icon column...`);
+      console.log(`🖼️ [SHEETS] Adding class icons to Class column...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -421,42 +416,43 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Add IMAGE formula to Icon column (Column D, index 3)
+      // Update values to include IMAGE formula in Class column
+      const valueUpdates = [];
+      
       for (let i = 0; i < rowMetadata.length; i++) {
-        const rowIndex = i + 1;
+        const rowIndex = i + 2; // +2 because row 1 is headers, data starts at row 2
         const meta = rowMetadata[i];
         const member = meta.character;
         
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          console.log(`🖼️ [SHEETS] Row ${rowIndex + 1}: ${member.class} -> IMAGE formula (small size)`);
+          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> Adding icon to Class`);
           
-          // Add IMAGE formula to display the icon with size mode 4 (original size, clipped to cell)
-          requests.push({
-            updateCells: {
-              range: {
-                sheetId: sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: 3, // Column D (Icon)
-                endColumnIndex: 4
-              },
-              rows: [{
-                values: [{
-                  userEnteredValue: {
-                    formulaValue: `=IMAGE("${imageUrl}",4,32,32)`
-                  },
-                  userEnteredFormat: {
-                    horizontalAlignment: 'CENTER',
-                    verticalAlignment: 'MIDDLE'
-                  }
-                }]
-              }],
-              fields: 'userEnteredValue,userEnteredFormat'
+          // Update the cell to include IMAGE + text using CONCATENATE or just IMAGE with cell reference
+          valueUpdates.push({
+            range: `D${rowIndex}`,
+            values: [[`=IMAGE("${imageUrl}",4,28,28)`]]
+          });
+        }
+      }
+
+      // Batch update all the IMAGE formulas
+      if (valueUpdates.length > 0) {
+        console.log(`🖼️ [SHEETS] Updating ${valueUpdates.length} Class cells with icons...`);
+        
+        for (const update of valueUpdates) {
+          await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.spreadsheetId,
+            range: update.range,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+              values: update.values
             }
           });
         }
+        
+        console.log(`✅ [SHEETS] Completed adding icons to Class column!`);
       }
 
       if (requests.length > 0) {
@@ -498,8 +494,8 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Column widths
-      const columnWidths = [160, 150, 95, 60, 180, 145, 85, 125, 105, 170, 105];
+      // Column widths (removed Icon column, Class is now wider to fit icon+text)
+      const columnWidths = [160, 150, 95, 220, 145, 85, 125, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -634,36 +630,33 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 2, 'Subclass', rowBg);
         }
         
-        // Icon (D) - Will have IMAGE formula added separately
-        this.addCleanTextCell(requests, sheetId, rowIndex, 3, '', rowBg);
-        
-        // Class (E) - With class color
+        // Class (D) - With class color (icon will be added on top)
         const classColor = this.getClassColor(member.class);
+        this.addClassCellWithIcon(requests, sheetId, rowIndex, 3, classColor);
+        
+        // Subclass (E) - With class color
         this.addPillBadge(requests, sheetId, rowIndex, 4, classColor);
         
-        // Subclass (F) - With class color
-        this.addPillBadge(requests, sheetId, rowIndex, 5, classColor);
-        
-        // Role (G)
+        // Role (F)
         const roleColor = this.getRoleColor(member.role);
-        this.addPillBadge(requests, sheetId, rowIndex, 6, roleColor);
+        this.addPillBadge(requests, sheetId, rowIndex, 5, roleColor);
         
-        // Ability Score (H)
+        // Ability Score (G)
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addPillBadge(requests, sheetId, rowIndex, 7, abilityColor, true);
+          this.addPillBadge(requests, sheetId, rowIndex, 6, abilityColor, true);
         } else {
-          this.addCleanTextCell(requests, sheetId, rowIndex, 7, '', rowBg);
+          this.addCleanTextCell(requests, sheetId, rowIndex, 6, '', rowBg);
         }
         
-        // Guild (I)
-        this.addCleanTextCell(requests, sheetId, rowIndex, 8, member.guild || '', rowBg);
+        // Guild (H)
+        this.addCleanTextCell(requests, sheetId, rowIndex, 7, member.guild || '', rowBg);
         
-        // Timezone (J)
+        // Timezone (I)
+        this.addSubtleTextCell(requests, sheetId, rowIndex, 8, rowBg);
+        
+        // Registered (J)
         this.addSubtleTextCell(requests, sheetId, rowIndex, 9, rowBg);
-        
-        // Registered (K)
-        this.addSubtleTextCell(requests, sheetId, rowIndex, 10, rowBg);
 
         // Borders - Add outline to all cells and purple line at bottom of groups
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
@@ -677,7 +670,7 @@ class GoogleSheetsService {
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: 0,
-              endColumnIndex: 11
+              endColumnIndex: 10
             },
             top: {
               style: 'SOLID',
@@ -721,7 +714,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 11
+                endColumnIndex: 10
               },
               bottom: {
                 style: 'SOLID_THICK',
@@ -791,6 +784,41 @@ class GoogleSheetsService {
     }
 
     requests.push(cellFormat);
+  }
+
+  addClassCellWithIcon(requests, sheetId, rowIndex, colIndex, bgColor) {
+    // Add background color to Class cell (icon will overlay on top)
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId: sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: colIndex,
+          endColumnIndex: colIndex + 1
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: bgColor,
+            textFormat: {
+              bold: true,
+              fontSize: 10,
+              foregroundColor: { red: 1, green: 1, blue: 1 },
+              fontFamily: 'Google Sans'
+            },
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE',
+            padding: {
+              top: 6,
+              bottom: 6,
+              left: 36,
+              right: 10
+            }
+          }
+        },
+        fields: 'userEnteredFormat'
+      }
+    });
   }
 
   addCleanTextCell(requests, sheetId, rowIndex, colIndex, value, rowBg) {
