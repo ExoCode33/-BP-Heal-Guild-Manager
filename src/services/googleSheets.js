@@ -390,6 +390,7 @@ class GoogleSheetsService {
 
     try {
       console.log(`🖼️ [SHEETS] Adding class logos...`);
+      console.log(`🖼️ [SHEETS] Testing URL accessibility...`);
       
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -401,7 +402,7 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Add logo + class name to each Class cell (Column D)
+      // Add logo to each Class cell (Column D)
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = i + 1;
         const meta = rowMetadata[i];
@@ -410,7 +411,10 @@ class GoogleSheetsService {
         const imageUrl = this.classLogos[member.class];
         
         if (imageUrl) {
-          // Use IMAGE + CONCATENATE to show icon with text
+          console.log(`🖼️ [SHEETS] Row ${rowIndex}: ${member.class} -> ${imageUrl}`);
+          
+          // Use IMAGE function with semicolon separator (for EU locale compatibility)
+          // Mode 4 = Custom size, 24x24 pixels
           requests.push({
             updateCells: {
               range: {
@@ -423,11 +427,16 @@ class GoogleSheetsService {
               rows: [{
                 values: [{
                   userEnteredValue: {
-                    formulaValue: `=CONCATENATE(IMAGE("${imageUrl}", 4, 24, 24), " ", "${member.class}")`
+                    formulaValue: `=IMAGE("${imageUrl}"; 4; 24; 24)`
                   },
                   userEnteredFormat: {
-                    horizontalAlignment: 'LEFT',
-                    verticalAlignment: 'MIDDLE'
+                    horizontalAlignment: 'CENTER',
+                    verticalAlignment: 'MIDDLE',
+                    textFormat: {
+                      fontSize: 10,
+                      fontFamily: 'Google Sans',
+                      foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
+                    }
                   }
                 }]
               }],
@@ -438,18 +447,30 @@ class GoogleSheetsService {
       }
 
       if (requests.length > 0) {
-        const batchSize = 100;
+        console.log(`🖼️ [SHEETS] Sending ${requests.length} image requests...`);
+        const batchSize = 50; // Reduced batch size for image operations
         for (let i = 0; i < requests.length; i += batchSize) {
           const batch = requests.slice(i, i + batchSize);
-          await this.sheets.spreadsheets.batchUpdate({
-            spreadsheetId: this.spreadsheetId,
-            requestBody: { requests: batch }
-          });
+          try {
+            await this.sheets.spreadsheets.batchUpdate({
+              spreadsheetId: this.spreadsheetId,
+              requestBody: { requests: batch }
+            });
+            console.log(`✅ [SHEETS] Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(requests.length / batchSize)}`);
+          } catch (batchError) {
+            console.error(`❌ [SHEETS] Batch ${Math.floor(i / batchSize) + 1} failed:`, batchError.message);
+            if (batchError.response?.data) {
+              console.error('❌ [SHEETS] Error details:', JSON.stringify(batchError.response.data, null, 2));
+            }
+          }
         }
-        console.log(`✅ [SHEETS] Added ${requests.length} class logos with names`);
+        console.log(`✅ [SHEETS] Completed ${requests.length} class logo requests`);
       }
     } catch (error) {
       console.error('❌ [SHEETS] Error adding class logos:', error.message);
+      if (error.response?.data) {
+        console.error('❌ [SHEETS] API Error details:', JSON.stringify(error.response.data, null, 2));
+      }
     }
   }
 
@@ -605,7 +626,7 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 2, 'Subclass', rowBg);
         }
         
-        // Class (D) - Logo will be added
+        // Class (D) - Will have logo added separately
         this.addCleanTextCell(requests, sheetId, rowIndex, 3, member.class, rowBg);
         
         // Subclass (E)
