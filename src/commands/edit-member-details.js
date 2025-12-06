@@ -76,8 +76,7 @@ export default {
         : '🌍 *No timezone set*';
       
       embed.setDescription(
-        `${timezoneDisplay}\n` +
-        `📊 **Total Characters:** ${allCharacters.length}\n`
+        `${timezoneDisplay}\n`
       );
 
       // === MAIN CHARACTER CARD ===
