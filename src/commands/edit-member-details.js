@@ -100,12 +100,14 @@ export default {
 
       // === MAIN SUBCLASSES (if any) ===
       if (mainSubclasses.length > 0) {
+        const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+        
         const subclassText = mainSubclasses.map((sc, i) => {
-          const roleColor = this.getRoleColor(sc.role);
+          const numberEmoji = numberEmojis[i] || `${i + 1}.`;
           return (
             '```ansi\n' +
-            `${roleColor} \u001b[1;36m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
-            `   \u001b[1;33mScore:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
+            `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
+            `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```'
           );
         }).join('');
@@ -132,12 +134,14 @@ export default {
 
           // Alt's Subclasses (if any)
           if (alt.subclasses.length > 0) {
-            const altSubText = alt.subclasses.map((sc) => {
-              const roleColor = this.getRoleColor(sc.role);
+            const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+            
+            const altSubText = alt.subclasses.map((sc, i) => {
+              const numberEmoji = numberEmojis[i] || `${i + 1}.`;
               return (
                 '```ansi\n' +
-                `${roleColor} \u001b[1;36m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
-                `   \u001b[1;33mScore:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
+                `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
+                `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
                 '```'
               );
             }).join('');
