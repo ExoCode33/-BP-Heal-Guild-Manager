@@ -89,21 +89,22 @@ export default {
           '```ansi\n' +
           `\u001b[1;36m${mainChar.ign}\u001b[0m\n` +
           `\n` +
-          `\u001b[1;33mClass:\u001b[0m    ${mainChar.class}\n` +
-          `\u001b[1;35mSubclass:\u001b[0m ${mainChar.subclass}\n` +
-          `\u001b[1;32mRole:\u001b[0m     ${mainChar.role} ${mainRoleEmoji}\n` +
-          `\u001b[1;34mGuild:\u001b[0m    ${mainChar.guild || 'None'}\n` +
+          `\u001b[1;33mClass:\u001b[0m     ${mainChar.class}\n` +
+          `\u001b[1;35mSubclass:\u001b[0m  ${mainChar.subclass}\n` +
+          `\u001b[1;32mRole:\u001b[0m      ${mainChar.role} ${mainRoleEmoji}\n` +
+          `\u001b[1;34mGuild:\u001b[0m     ${mainChar.guild || 'None'}\n` +
           `\n` +
-          `\u001b[1;31m⚡ Score:\u001b[0m  ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
+          `\u001b[1;31m⚡ Score:\u001b[0m   ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
           '```',
         inline: false
       });
 
       // === MAIN SUBCLASSES (if any) ===
       if (mainSubclasses.length > 0) {
-        const subclassText = mainSubclasses.map((sc, i) => 
-          `**${i + 1}.** \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`
-        ).join('\n');
+        const subclassText = mainSubclasses.map((sc, i) => {
+          const roleColor = this.getRoleColor(sc.role);
+          return `${roleColor} **${i + 1}.** \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`;
+        }).join('\n');
 
         embed.addFields({
           name: '📌 Main Subclasses',
@@ -127,17 +128,20 @@ export default {
             '```ansi\n' +
             `\u001b[1;33m${alt.ign}\u001b[0m\n` +
             `\n` +
-            `\u001b[1;36mClass:\u001b[0m  ${alt.class} (${alt.subclass})\n` +
-            `\u001b[1;32mRole:\u001b[0m   ${alt.role} ${altRoleEmoji} • ${alt.guild || 'No Guild'}\n` +
+            `\u001b[1;36mClass:\u001b[0m     ${alt.class}\n` +
+            `\u001b[1;35mSubclass:\u001b[0m  ${alt.subclass}\n` +
+            `\u001b[1;32mRole:\u001b[0m      ${alt.role} ${altRoleEmoji}\n` +
+            `\u001b[1;34mGuild:\u001b[0m     ${alt.guild || 'None'}\n` +
             `\n` +
-            `\u001b[1;31m⚡ Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
+            `\u001b[1;31m⚡ Score:\u001b[0m   ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```';
 
           // Alt's Subclasses
           if (alt.subclasses.length > 0) {
-            const altSubText = alt.subclasses.map((sc, i) => 
-              `└ \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`
-            ).join('\n');
+            const altSubText = alt.subclasses.map((sc, i) => {
+              const roleColor = this.getRoleColor(sc.role);
+              return `${roleColor} └ \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`;
+            }).join('\n');
             altValue += '\n' + altSubText;
           }
 
@@ -275,6 +279,16 @@ export default {
       'Support': '💚'
     };
     return roleEmojis[role] || '⭐';
+  },
+
+  // Helper: Get role color (for markdown formatting)
+  getRoleColor(role) {
+    const roleColors = {
+      'Support': '🟢', // Green
+      'DPS': '🔴',     // Red
+      'Tank': '🔵'     // Blue
+    };
+    return roleColors[role] || '⚪';
   },
 
   async handleBackToMenu(interaction) {
