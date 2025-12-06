@@ -106,7 +106,7 @@ export default {
           const numberEmoji = numberEmojis[i] || `${i + 1}.`;
           return (
             '```ansi\n' +
-            `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
+            `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m › \u001b[1;32m${sc.role}\u001b[0m\n` +
             `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```'
           );
@@ -140,7 +140,7 @@ export default {
               const numberEmoji = numberEmojis[i] || `${i + 1}.`;
               return (
                 '```ansi\n' +
-                `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m\n` +
+                `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m › \u001b[1;32m${sc.role}\u001b[0m\n` +
                 `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
                 '```'
               );
