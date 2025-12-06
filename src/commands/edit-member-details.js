@@ -87,16 +87,14 @@ export default {
         name: '⭐ MAIN CHARACTER',
         value: 
           '```ansi\n' +
-          `\u001b[1;37m╭──────────────────────────────────╮\n` +
-          `\u001b[1;37m│  \u001b[1;36m${mainChar.ign.padEnd(30)}\u001b[1;37m  │\n` +
-          `\u001b[1;37m├──────────────────────────────────┤\n` +
-          `\u001b[1;37m│  \u001b[1;33mClass:\u001b[0m    ${mainChar.class.padEnd(20)} \u001b[1;37m│\n` +
-          `\u001b[1;37m│  \u001b[1;35mSubclass:\u001b[0m ${mainChar.subclass.padEnd(20)} \u001b[1;37m│\n` +
-          `\u001b[1;37m│  ${mainRoleEmoji} \u001b[1;32mRole:\u001b[0m     ${mainChar.role.padEnd(20)} \u001b[1;37m│\n` +
-          `\u001b[1;37m│  \u001b[1;34mGuild:\u001b[0m    ${(mainChar.guild || 'None').padEnd(20)} \u001b[1;37m│\n` +
-          `\u001b[1;37m├──────────────────────────────────┤\n` +
-          `\u001b[1;37m│  \u001b[1;31m⚡ Score:\u001b[0m  ${(mainChar.ability_score?.toLocaleString() || 'N/A').padEnd(20)} \u001b[1;37m│\n` +
-          `\u001b[1;37m╰──────────────────────────────────╯\u001b[0m\n` +
+          `\u001b[1;36m${mainChar.ign}\u001b[0m\n` +
+          `\n` +
+          `\u001b[1;33mClass:\u001b[0m    ${mainChar.class}\n` +
+          `\u001b[1;35mSubclass:\u001b[0m ${mainChar.subclass}\n` +
+          `\u001b[1;32mRole:\u001b[0m     ${mainChar.role} ${mainRoleEmoji}\n` +
+          `\u001b[1;34mGuild:\u001b[0m    ${mainChar.guild || 'None'}\n` +
+          `\n` +
+          `\u001b[1;31m⚡ Score:\u001b[0m  ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
           '```',
         inline: false
       });
@@ -127,13 +125,12 @@ export default {
           
           let altValue = 
             '```ansi\n' +
-            `\u001b[1;37m╭──────────────────────────────────╮\n` +
-            `\u001b[1;37m│  \u001b[1;33m${alt.ign.padEnd(30)}\u001b[1;37m  │\n` +
-            `\u001b[1;37m├──────────────────────────────────┤\n` +
-            `\u001b[1;37m│  \u001b[1;36mClass:\u001b[0m ${`${alt.class} (${alt.subclass})`.padEnd(24)} \u001b[1;37m│\n` +
-            `\u001b[1;37m│  ${altRoleEmoji} ${`${alt.role} • ${alt.guild || 'No Guild'}`.padEnd(28)} \u001b[1;37m│\n` +
-            `\u001b[1;37m│  \u001b[1;31m⚡ Score:\u001b[0m  ${(alt.ability_score?.toLocaleString() || 'N/A').padEnd(18)} \u001b[1;37m│\n` +
-            `\u001b[1;37m╰──────────────────────────────────╯\u001b[0m\n` +
+            `\u001b[1;33m${alt.ign}\u001b[0m\n` +
+            `\n` +
+            `\u001b[1;36mClass:\u001b[0m  ${alt.class} (${alt.subclass})\n` +
+            `\u001b[1;32mRole:\u001b[0m   ${alt.role} ${altRoleEmoji} • ${alt.guild || 'No Guild'}\n` +
+            `\n` +
+            `\u001b[1;31m⚡ Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```';
 
           // Alt's Subclasses
