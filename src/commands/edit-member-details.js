@@ -93,7 +93,7 @@ export default {
           `🎯 \u001b[1;35mSubclass:\u001b[0m  ${mainChar.subclass}\n` +
           `${mainRoleEmoji} \u001b[1;32mRole:\u001b[0m      ${mainChar.role}\n` +
           `\n` +
-          `💪 \u001b[1;31mAbility Score:\u001b[0m ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
+          `💪 \u001b[1;31mAS:\u001b[0m ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
           '```',
         inline: false
       });
@@ -107,7 +107,7 @@ export default {
           return (
             '```ansi\n' +
             `${numberEmoji} ${sc.class} › ${sc.subclass} › ${sc.role}\n` +
-            `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
+            `   \u001b[1;31mAS:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```'
           );
         }).join('');
@@ -130,7 +130,7 @@ export default {
             '```ansi\n' +
             `${numberEmoji} \u001b[1;36mIGN:\u001b[0m ${alt.ign}  •  \u001b[1;34mGuild:\u001b[0m ${alt.guild || 'None'}\n` +
             `   ${alt.class} › ${alt.subclass} › ${alt.role}\n` +
-            `   \u001b[1;31mAbility Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
+            `   \u001b[1;31mAS:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```'
           );
         }).join('');
