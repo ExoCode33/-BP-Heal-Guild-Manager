@@ -106,7 +106,7 @@ export default {
           const numberEmoji = numberEmojis[i] || `${i + 1}.`;
           return (
             '```ansi\n' +
-            `${numberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m › \u001b[1;32m${sc.role}\u001b[0m\n` +
+            `${numberEmoji} ${sc.class} › ${sc.subclass} › ${sc.role}\n` +
             `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```'
           );
@@ -126,7 +126,7 @@ export default {
           let altValue = 
             '```ansi\n' +
             `📄 \u001b[1;36mIGN:\u001b[0m ${alt.ign}  •  \u001b[1;34mGuild:\u001b[0m ${alt.guild || 'None'}\n` +
-            `   \u001b[1;33m${alt.class}\u001b[0m › \u001b[1;35m${alt.subclass}\u001b[0m › \u001b[1;32m${alt.role}\u001b[0m\n` +
+            `   ${alt.class} › ${alt.subclass} › ${alt.role}\n` +
             `   \u001b[1;31mAbility Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```';
 
@@ -138,7 +138,7 @@ export default {
               const subNumberEmoji = numberEmojis[i] || `${i + 1}.`;
               return (
                 '```ansi\n' +
-                `${subNumberEmoji} \u001b[1;33m${sc.class}\u001b[0m › \u001b[1;35m${sc.subclass}\u001b[0m › \u001b[1;32m${sc.role}\u001b[0m\n` +
+                `${subNumberEmoji} ${sc.class} › ${sc.subclass} › ${sc.role}\n` +
                 `   \u001b[1;31mAbility Score:\u001b[0m ${sc.ability_score?.toLocaleString() || 'N/A'}\n` +
                 '```'
               );
