@@ -102,7 +102,7 @@ export default {
       if (mainSubclasses.length > 0) {
         const subclassText = mainSubclasses.map((sc, i) => {
           const roleColor = this.getRoleColor(sc.role);
-          return `${roleColor} **${i + 1}.** \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`;
+          return `${roleColor} \`${sc.class}\` **${sc.subclass}** • ${sc.ability_score?.toLocaleString() || 'N/A'}`;
         }).join('\n');
 
         embed.addFields({
@@ -117,29 +117,22 @@ export default {
         altsWithSubclasses.forEach((alt, altIndex) => {
           const altRoleEmoji = this.getRoleEmoji(alt.role);
           
+          // Compact alt display
           let altValue = 
-            '```ansi\n' +
-            `\u001b[1;36mIGN:\u001b[0m       ${alt.ign}\n` +
-            `\n` +
-            `\u001b[1;33mClass:\u001b[0m     ${alt.class}\n` +
-            `\u001b[1;35mSubclass:\u001b[0m  ${alt.subclass}\n` +
-            `\u001b[1;32mRole:\u001b[0m      ${alt.role} ${altRoleEmoji}\n` +
-            `\u001b[1;34mGuild:\u001b[0m     ${alt.guild || 'None'}\n` +
-            `\n` +
-            `\u001b[1;31mAbility Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
-            '```';
+            `**${alt.ign}** • \`${alt.class}\` **${alt.subclass}** • ${altRoleEmoji} ${alt.role}\n` +
+            `Guild: **${alt.guild || 'None'}** • Score: **${alt.ability_score?.toLocaleString() || 'N/A'}**`;
 
-          // Alt's Subclasses
+          // Alt's Subclasses (if any)
           if (alt.subclasses.length > 0) {
-            const altSubText = alt.subclasses.map((sc, i) => {
+            const altSubText = alt.subclasses.map((sc) => {
               const roleColor = this.getRoleColor(sc.role);
-              return `${roleColor} └ \`${sc.class}\` › ${sc.subclass} • **${sc.ability_score?.toLocaleString() || 'N/A'}**`;
+              return `${roleColor} \`${sc.class}\` **${sc.subclass}** • ${sc.ability_score?.toLocaleString() || 'N/A'}`;
             }).join('\n');
             altValue += '\n' + altSubText;
           }
 
           embed.addFields({
-            name: `📋 Alt Character ${altIndex + 1}`,
+            name: `📋 Alt ${altIndex + 1}`,
             value: altValue,
             inline: false
           });
