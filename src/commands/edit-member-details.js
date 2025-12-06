@@ -41,134 +41,136 @@ export default {
       )
     }));
 
-    // Build professional embed with better layout
+    // Build premium embed
     const embed = new EmbedBuilder()
-      .setColor('#6640D9')
-      .setTitle('📋 Character Profile')
-      .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
+      .setColor(mainChar ? '#6640D9' : '#5865F2')
+      .setAuthor({ 
+        name: `${interaction.user.tag}'s Character Profile`,
+        iconURL: interaction.user.displayAvatarURL({ dynamic: true })
+      })
+      .setThumbnail(interaction.user.displayAvatarURL({ size: 512 }))
       .setTimestamp();
 
-    // === PROFILE INFO SECTION (Compact) ===
-    const profileInfo = [
-      `**👤 Discord:** ${interaction.user.tag}`,
-      `**🌍 Timezone:** ${userTimezone?.timezone ? `${userTimezone.timezone}` : '*Not set*'}`
-    ].join('\n');
-
-    embed.addFields({
-      name: '\u200B', // Invisible character for spacing
-      value: profileInfo,
-      inline: false
-    });
-
-    // === MAIN CHARACTER SECTION ===
-    if (mainChar) {
-      // Main character header with separator
+    if (!mainChar) {
+      // === NO MAIN CHARACTER - Welcome Screen ===
+      embed.setDescription(
+        '```ansi\n' +
+        '\u001b[1;36m╔════════════════════════════════╗\n' +
+        '\u001b[1;36m║   \u001b[1;33mWelcome to Registration!   \u001b[1;36m║\n' +
+        '\u001b[1;36m╚════════════════════════════════╝\u001b[0m\n' +
+        '```\n' +
+        '> **Get started by registering your main character!**\n' +
+        '> \n' +
+        '> Click the button below to begin your journey.\n'
+      );
+      
       embed.addFields({
-        name: '⭐ ━━━━━━━ MAIN CHARACTER ━━━━━━━',
-        value: '\u200B',
+        name: '✨ What you can do:',
+        value: '> • Register your **Main Character**\n> • Add **Alt Characters**\n> • Track **Subclasses**\n> • Manage your **Guild** membership',
+        inline: false
+      });
+    } else {
+      // === PROFILE HEADER ===
+      const timezoneDisplay = userTimezone?.timezone 
+        ? `🌍 ${userTimezone.timezone}` 
+        : '🌍 *No timezone set*';
+      
+      embed.setDescription(
+        `${timezoneDisplay}\n` +
+        `📊 **Total Characters:** ${allCharacters.length}\n` +
+        '```\n' + '═'.repeat(35) + '\n```'
+      );
+
+      // === MAIN CHARACTER CARD ===
+      const mainScoreBar = this.createScoreBar(mainChar.ability_score);
+      const mainRoleEmoji = this.getRoleEmoji(mainChar.role);
+      
+      embed.addFields({
+        name: '⭐ MAIN CHARACTER',
+        value: 
+          '```ansi\n' +
+          `\u001b[1;37m┌─ \u001b[1;36m${mainChar.ign}\u001b[1;37m ─────────────────────\n` +
+          `\u001b[1;37m│\u001b[0m\n` +
+          `\u001b[1;37m│ \u001b[1;33mClass:\u001b[0m    ${mainChar.class}\n` +
+          `\u001b[1;37m│ \u001b[1;35mSubclass:\u001b[0m ${mainChar.subclass}\n` +
+          `\u001b[1;37m│ ${mainRoleEmoji} \u001b[1;32mRole:\u001b[0m     ${mainChar.role}\n` +
+          `\u001b[1;37m│ \u001b[1;34mGuild:\u001b[0m    ${mainChar.guild || 'None'}\n` +
+          `\u001b[1;37m│\u001b[0m\n` +
+          `\u001b[1;37m│ \u001b[1;31m⚡ Ability Score:\u001b[0m ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
+          `\u001b[1;37m└──────────────────────────────\u001b[0m\n` +
+          '```' +
+          mainScoreBar,
         inline: false
       });
 
-      // Main stats in 2 columns
-      embed.addFields(
-        { 
-          name: '🎮 IGN', 
-          value: `**${mainChar.ign}**`, 
-          inline: true 
-        },
-        { 
-          name: '🎭 Class', 
-          value: `**${mainChar.class}**\n${mainChar.subclass}`, 
-          inline: true 
-        },
-        { 
-          name: '⚔️ Role', 
-          value: `**${mainChar.role}**`, 
-          inline: true 
-        }
-      );
-
-      // Second row of stats
-      embed.addFields(
-        { 
-          name: '💪 Ability Score', 
-          value: mainChar.ability_score ? `**${mainChar.ability_score.toLocaleString()}**` : '*Not set*', 
-          inline: true 
-        },
-        { 
-          name: '🏰 Guild', 
-          value: mainChar.guild ? `**${mainChar.guild}**` : '*Not set*', 
-          inline: true 
-        },
-        {
-          name: '\u200B', // Empty space for alignment
-          value: '\u200B',
-          inline: true
-        }
-      );
-
-      // Main Character Subclasses (condensed)
+      // === MAIN SUBCLASSES (if any) ===
       if (mainSubclasses.length > 0) {
-        const subclassList = mainSubclasses.map((sc, i) => 
-          `**${i + 1}.** ${sc.class} (${sc.subclass}) • ${sc.ability_score?.toLocaleString() || 'N/A'}`
-        ).join('\n');
+        const subclassText = mainSubclasses.map((sc, i) => {
+          const scoreBar = this.createMiniScoreBar(sc.ability_score);
+          return (
+            `**${i + 1}.** \`${sc.class}\` **›** ${sc.subclass}\n` +
+            `${scoreBar} ${sc.ability_score?.toLocaleString() || 'N/A'}`
+          );
+        }).join('\n\n');
 
         embed.addFields({
           name: '📌 Main Subclasses',
-          value: subclassList,
+          value: subclassText,
           inline: false
         });
       }
-    } else {
-      embed.setDescription('**No main character registered yet!**\n\n*Get started by adding your main character below.*');
-    }
 
-    // === ALT CHARACTERS SECTION ===
-    if (altsWithSubclasses.length > 0) {
-      embed.addFields({
-        name: '📋 ━━━━━━━ ALT CHARACTERS ━━━━━━━',
-        value: '\u200B',
-        inline: false
-      });
-
-      altsWithSubclasses.forEach((alt, altIndex) => {
-        const altInfo = [
-          `**${alt.ign}** • ${alt.class} (${alt.subclass})`,
-          `⚔️ ${alt.role} • 💪 ${alt.ability_score?.toLocaleString() || 'N/A'}`,
-          alt.guild ? `🏰 ${alt.guild}` : ''
-        ].filter(Boolean).join(' • ');
-
+      // === ALT CHARACTERS (if any) ===
+      if (altsWithSubclasses.length > 0) {
         embed.addFields({
-          name: `${altIndex + 1}. Alt Character`,
-          value: altInfo,
+          name: '\u200B',
+          value: '```\n' + '─'.repeat(35) + '\n```',
           inline: false
         });
 
-        // Alt's Subclasses (condensed)
-        if (alt.subclasses.length > 0) {
-          const subclassList = alt.subclasses.map((sc, i) => 
-            `  └ ${sc.class} (${sc.subclass}) • ${sc.ability_score?.toLocaleString() || 'N/A'}`
-          ).join('\n');
+        altsWithSubclasses.forEach((alt, altIndex) => {
+          const altScoreBar = this.createMiniScoreBar(alt.ability_score);
+          const altRoleEmoji = this.getRoleEmoji(alt.role);
+          
+          let altValue = 
+            '```ansi\n' +
+            `\u001b[1;37m┌─ \u001b[1;33m${alt.ign}\u001b[1;37m ─────────────────────\n` +
+            `\u001b[1;37m│ \u001b[1;36mClass:\u001b[0m ${alt.class} (${alt.subclass})\n` +
+            `\u001b[1;37m│ ${altRoleEmoji} ${alt.role} • ${alt.guild || 'No Guild'}\n` +
+            `\u001b[1;37m└──────────────────────────────\u001b[0m\n` +
+            '```' +
+            `${altScoreBar} **${alt.ability_score?.toLocaleString() || 'N/A'}**`;
+
+          // Alt's Subclasses
+          if (alt.subclasses.length > 0) {
+            const altSubText = alt.subclasses.map((sc, i) => 
+              `  └ \`${sc.class}\` › ${sc.subclass} • ${sc.ability_score?.toLocaleString() || 'N/A'}`
+            ).join('\n');
+            altValue += '\n' + altSubText;
+          }
 
           embed.addFields({
-            name: '\u200B',
-            value: subclassList,
+            name: `📋 Alt Character ${altIndex + 1}`,
+            value: altValue,
             inline: false
           });
-        }
-      });
+        });
+      }
     }
 
-    // Footer with total count
+    // Footer
     const totalChars = allCharacters.length;
     if (totalChars > 0) {
-      embed.setFooter({ text: `Total: ${totalChars} character${totalChars !== 1 ? 's' : ''} • Select an action below` });
+      embed.setFooter({ 
+        text: `${totalChars} character${totalChars !== 1 ? 's' : ''} registered • Last updated`,
+        iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.png' // Optional: add a small icon
+      });
     } else {
-      embed.setFooter({ text: 'Click "Add Main Character" to begin' });
+      embed.setFooter({ text: 'Click "Add Main Character" to begin your adventure' });
     }
 
-    // === BUILD BUTTON ROWS (Improved Layout) ===
-    const rows = this.buildImprovedButtonRows(mainChar, mainSubclasses, altsWithSubclasses, interaction.user.id);
+    // === BUILD PREMIUM BUTTON ROWS ===
+    const rows = this.buildPremiumButtonRows(mainChar, mainSubclasses, altsWithSubclasses, interaction.user.id);
 
     if (isUpdate) {
       await interaction.update({ embeds: [embed], components: rows });
@@ -181,21 +183,20 @@ export default {
     }
   },
 
-  buildImprovedButtonRows(mainChar, mainSubclasses, alts, userId) {
+  buildPremiumButtonRows(mainChar, mainSubclasses, alts, userId) {
     const rows = [];
 
     if (!mainChar) {
-      // === NO MAIN CHARACTER - Single prominent button ===
+      // === NO MAIN CHARACTER - Single large button ===
       const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`char_add_main_${userId}`)
-          .setLabel('Add Main Character')
+          .setLabel('⭐ Register Main Character')
           .setStyle(ButtonStyle.Success)
-          .setEmoji('⭐')
       );
       rows.push(row1);
     } else {
-      // === ROW 1: Primary Actions (Main Management) ===
+      // === ROW 1: Main Character Actions (2 buttons, equal width) ===
       const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`char_edit_main_${userId}`)
@@ -204,19 +205,19 @@ export default {
           .setEmoji('✏️'),
         new ButtonBuilder()
           .setCustomId(`subclass_add_to_main_${userId}`)
-          .setLabel('Add Subclass to Main')
+          .setLabel('Add Subclass')
           .setStyle(ButtonStyle.Success)
           .setEmoji('📌')
       );
       rows.push(row1);
 
-      // === ROW 2: Alt Character Actions ===
+      // === ROW 2: Alt Character Actions (2 buttons, equal width) ===
       const row2 = new ActionRowBuilder();
       
       row2.addComponents(
         new ButtonBuilder()
           .setCustomId(`char_add_alt_${userId}`)
-          .setLabel('Add Alt Character')
+          .setLabel('Add Alt')
           .setStyle(ButtonStyle.Success)
           .setEmoji('➕')
       );
@@ -225,7 +226,7 @@ export default {
         row2.addComponents(
           new ButtonBuilder()
             .setCustomId(`subclass_add_to_alt_${userId}`)
-            .setLabel('Add Subclass to Alt')
+            .setLabel('Add Alt Subclass')
             .setStyle(ButtonStyle.Success)
             .setEmoji('📌')
         );
@@ -233,10 +234,9 @@ export default {
 
       rows.push(row2);
 
-      // === ROW 3: Removal Actions (Danger) ===
+      // === ROW 3: Removal Actions (Equal width, all danger red) ===
       const row3 = new ActionRowBuilder();
       
-      // Check if there are any subclasses to remove
       const totalSubclasses = mainSubclasses.length + alts.reduce((sum, alt) => sum + alt.subclasses.length, 0);
       
       if (totalSubclasses > 0) {
@@ -267,10 +267,58 @@ export default {
           .setEmoji('🗑️')
       );
 
-      rows.push(row3);
+      // Only add row 3 if it has buttons
+      if (row3.components.length > 0) {
+        rows.push(row3);
+      }
     }
 
     return rows;
+  },
+
+  // Helper: Create progress bar for ability score
+  createScoreBar(score) {
+    if (!score) return '';
+    
+    const maxScore = 60000;
+    const percentage = Math.min((score / maxScore) * 100, 100);
+    const filledBlocks = Math.floor(percentage / 5); // 20 blocks total
+    const emptyBlocks = 20 - filledBlocks;
+    
+    let color = '🟩'; // Green
+    if (score >= 40000) color = '🟪'; // Purple
+    else if (score >= 30000) color = '🟥'; // Red
+    else if (score >= 20000) color = '🟨'; // Yellow
+    
+    const bar = color.repeat(filledBlocks) + '⬜'.repeat(emptyBlocks);
+    return `${bar} \`${percentage.toFixed(0)}%\``;
+  },
+
+  // Helper: Create mini progress bar
+  createMiniScoreBar(score) {
+    if (!score) return '⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜';
+    
+    const maxScore = 60000;
+    const percentage = Math.min((score / maxScore) * 100, 100);
+    const filledBlocks = Math.floor(percentage / 10); // 10 blocks total
+    const emptyBlocks = 10 - filledBlocks;
+    
+    let color = '🟩';
+    if (score >= 40000) color = '🟪';
+    else if (score >= 30000) color = '🟥';
+    else if (score >= 20000) color = '🟨';
+    
+    return color.repeat(filledBlocks) + '⬜'.repeat(emptyBlocks);
+  },
+
+  // Helper: Get role emoji with ANSI color
+  getRoleEmoji(role) {
+    const roleEmojis = {
+      'Tank': '🛡️',
+      'DPS': '⚔️',
+      'Support': '💚'
+    };
+    return roleEmojis[role] || '⭐';
   },
 
   async handleBackToMenu(interaction) {
