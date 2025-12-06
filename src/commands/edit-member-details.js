@@ -126,10 +126,14 @@ export default {
           
           let altValue = 
             '```ansi\n' +
-            `\u001b[1;36m${alt.ign}\u001b[0m\n` +
-            `\u001b[1;33mClass:\u001b[0m ${alt.class} › \u001b[1;35m${alt.subclass}\u001b[0m\n` +
-            `\u001b[1;32mRole:\u001b[0m  ${alt.role} ${altRoleEmoji}  •  \u001b[1;34mGuild:\u001b[0m ${alt.guild || 'None'}\n` +
-            `\u001b[1;31mScore:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
+            `✨ \u001b[1;36mIGN:\u001b[0m       ${alt.ign}\n` +
+            `\n` +
+            `🎭 \u001b[1;33mClass:\u001b[0m     ${alt.class}\n` +
+            `🎯 \u001b[1;35mSubclass:\u001b[0m  ${alt.subclass}\n` +
+            `${altRoleEmoji} \u001b[1;32mRole:\u001b[0m      ${alt.role}\n` +
+            `🏰 \u001b[1;34mGuild:\u001b[0m     ${alt.guild || 'None'}\n` +
+            `\n` +
+            `💪 \u001b[1;31mAbility Score:\u001b[0m ${alt.ability_score?.toLocaleString() || 'N/A'}\n` +
             '```';
 
           // Alt's Subclasses (if any)
