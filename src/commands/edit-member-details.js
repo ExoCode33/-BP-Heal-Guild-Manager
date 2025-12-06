@@ -54,19 +54,12 @@ export default {
     if (!mainChar) {
       // === NO MAIN CHARACTER - Welcome Screen ===
       embed.setDescription(
+        '```ansi\n' +
+        '\u001b[1;33mWelcome to Registration!\u001b[0m\n' +
+        '```\n' +
         '**Get started by registering your main character!**\n' +
         'Click the button below to begin your journey.'
       );
-      
-      embed.addFields({
-        name: '✨ **What you can do:**',
-        value: 
-          '**Main Character** • Register your primary character\n' +
-          '**Subclasses** • Track additional specializations\n' +
-          '**Alt Characters** • Add alternate characters\n' +
-          '**Guild** • Manage your guild membership',
-        inline: false
-      });
     } else {
       // === PROFILE HEADER ===
       const timezoneDisplay = userTimezone?.timezone 
