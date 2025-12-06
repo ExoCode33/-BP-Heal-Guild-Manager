@@ -54,27 +54,17 @@ export default {
     if (!mainChar) {
       // === NO MAIN CHARACTER - Welcome Screen ===
       embed.setDescription(
-        '```ansi\n' +
-        '\u001b[1;36m╭──────────────────────────────────╮\n' +
-        '\u001b[1;36m│  \u001b[1;33mWelcome to Registration!\u001b[1;36m     │\n' +
-        '\u001b[1;36m╰──────────────────────────────────╯\u001b[0m\n' +
-        '```\n' +
         '**Get started by registering your main character!**\n' +
-        '\n' +
         'Click the button below to begin your journey.'
       );
       
       embed.addFields({
         name: '✨ **What you can do:**',
         value: 
-          '**Main Character**\n' +
-          '└ Register your primary character\n\n' +
-          '**Subclasses**\n' +
-          '└ Track additional specializations\n\n' +
-          '**Alt Characters**\n' +
-          '└ Add alternate characters\n\n' +
-          '**Guild**\n' +
-          '└ Manage your guild membership',
+          '**Main Character** • Register your primary character\n' +
+          '**Subclasses** • Track additional specializations\n' +
+          '**Alt Characters** • Add alternate characters\n' +
+          '**Guild** • Manage your guild membership',
         inline: false
       });
     } else {
