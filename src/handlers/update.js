@@ -1,5 +1,5 @@
-import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } from 'discord.js';
-import { GAME_DATA, getRoleFromClass, getSubclassesForClass } from '../config/gameData.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { GAME_DATA, getRoleFromClass, getSubclassesForClass, getTimezoneRegions, getCountriesInRegion, getTimezonesForCountry } from '../config/gameData.js';
 import { queries } from '../database/queries.js';
 import stateManager from '../utils/stateManager.js';
 
@@ -33,6 +33,9 @@ export async function handleUpdateMain(interaction) {
 }
 
 async function showUpdateOptionsMenu(interaction, userId, mainChar) {
+  // Get user timezone
+  const userTimezone = await queries.getUserTimezone(userId);
+  
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`update_option_${userId}`)
     .setPlaceholder('✏️ What would you like to update?')
@@ -69,7 +72,14 @@ async function showUpdateOptionsMenu(interaction, userId, mainChar) {
       }
     ]);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_menu_${userId}`)
+    .setLabel('Back to Menu')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
 
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
@@ -84,16 +94,16 @@ async function showUpdateOptionsMenu(interaction, userId, mainChar) {
     .setTimestamp();
 
   if (mainChar.ability_score) {
-    embed.addFields({ name: '💪 Ability Score', value: mainChar.ability_score.toString(), inline: true });
+    embed.addFields({ name: '💪 Ability Score', value: `~${mainChar.ability_score.toLocaleString()}`, inline: true });
   }
-  if (mainChar.timezone) {
-    embed.addFields({ name: '🌍 Timezone', value: mainChar.timezone, inline: true });
+  if (userTimezone?.timezone) {
+    embed.addFields({ name: '🌍 Timezone', value: userTimezone.timezone, inline: true });
   }
   if (mainChar.guild) {
     embed.addFields({ name: '🏰 Guild', value: mainChar.guild, inline: true });
   }
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
   
   // Store state
   stateManager.setUpdateState(userId, { mainChar });
@@ -120,10 +130,10 @@ export async function handleUpdateOptionSelection(interaction) {
         await showIGNModal(interaction, userId, state.mainChar);
         break;
       case 'ability_score':
-        await showAbilityScoreModal(interaction, userId, state.mainChar);
+        await showAbilityScoreSelectionForUpdate(interaction, userId, state.mainChar);
         break;
       case 'timezone':
-        await showTimezoneModal(interaction, userId, state.mainChar);
+        await showTimezoneRegionSelectionForUpdate(interaction, userId, state.mainChar);
         break;
       case 'guild':
         await showGuildSelectionForUpdate(interaction, userId, state.mainChar);
@@ -140,6 +150,8 @@ export async function handleUpdateOptionSelection(interaction) {
   }
 }
 
+// ==================== CLASS UPDATE ====================
+
 async function showClassSelectionForUpdate(interaction, userId, mainChar) {
   const classes = Object.keys(GAME_DATA.classes);
   
@@ -155,7 +167,14 @@ async function showClassSelectionForUpdate(interaction, userId, mainChar) {
       }))
     );
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_update_menu_${userId}`)
+    .setLabel('Back')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
 
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
@@ -168,7 +187,7 @@ async function showClassSelectionForUpdate(interaction, userId, mainChar) {
     })
     .setTimestamp();
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
   
   stateManager.setUpdateState(userId, { mainChar, updateType: 'class' });
 }
@@ -198,7 +217,14 @@ export async function handleUpdateClassSelection(interaction) {
         }))
       );
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_update_class_${userId}`)
+      .setLabel('Back')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
 
     const embed = new EmbedBuilder()
       .setColor('#6640D9')
@@ -211,7 +237,7 @@ export async function handleUpdateClassSelection(interaction) {
       })
       .setTimestamp();
 
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
     
     stateManager.setUpdateState(userId, {
       ...state,
@@ -241,7 +267,7 @@ export async function handleUpdateSubclassSelection(interaction) {
 
     const newRole = getRoleFromClass(state.newClass);
     
-    await queries.updateCharacter(userId, state.mainChar.ign, {
+    await queries.updateCharacter(state.mainChar.id, {
       class: state.newClass,
       subclass: selectedSubclass,
       role: newRole
@@ -255,6 +281,7 @@ export async function handleUpdateSubclassSelection(interaction) {
         { name: '🎭 New Class', value: `${state.newClass} (${selectedSubclass})`, inline: true },
         { name: '⚔️ New Role', value: newRole, inline: true }
       )
+      .setFooter({ text: '💡 Returning to menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
@@ -264,7 +291,7 @@ export async function handleUpdateSubclassSelection(interaction) {
     // Return to main menu
     const editMemberDetails = await import('../commands/edit-member-details.js');
     setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, true);
+      await editMemberDetails.default.showMainMenu(interaction, false);
     }, 2000);
     
   } catch (error) {
@@ -272,6 +299,8 @@ export async function handleUpdateSubclassSelection(interaction) {
     stateManager.clearUpdateState(interaction.user.id);
   }
 }
+
+// ==================== IGN UPDATE (MODAL) ====================
 
 async function showIGNModal(interaction, userId, mainChar) {
   const modal = new ModalBuilder()
@@ -295,47 +324,326 @@ async function showIGNModal(interaction, userId, mainChar) {
   stateManager.setUpdateState(userId, { mainChar, updateType: 'ign' });
 }
 
-async function showAbilityScoreModal(interaction, userId, mainChar) {
-  const modal = new ModalBuilder()
-    .setCustomId(`update_ability_modal_${userId}`)
-    .setTitle('Update Ability Score');
+// ==================== ABILITY SCORE UPDATE (DROPDOWN) ====================
 
-  const abilityInput = new TextInputBuilder()
-    .setCustomId('ability_score')
-    .setLabel('Ability Score')
-    .setStyle(TextInputStyle.Short)
-    .setPlaceholder('e.g., 25000')
-    .setValue(mainChar.ability_score ? mainChar.ability_score.toString() : '')
-    .setRequired(false);
+async function showAbilityScoreSelectionForUpdate(interaction, userId, mainChar) {
+  const abilityScoreRanges = [
+    { label: '10k or smaller', value: '10000', description: 'Ability Score: ≤10,000' },
+    { label: '10k - 12k', value: '11000', description: 'Ability Score: 10,001 - 12,000' },
+    { label: '12k - 14k', value: '13000', description: 'Ability Score: 12,001 - 14,000' },
+    { label: '14k - 16k', value: '15000', description: 'Ability Score: 14,001 - 16,000' },
+    { label: '16k - 18k', value: '17000', description: 'Ability Score: 16,001 - 18,000' },
+    { label: '18k - 20k', value: '19000', description: 'Ability Score: 18,001 - 20,000' },
+    { label: '20k - 22k', value: '21000', description: 'Ability Score: 20,001 - 22,000' },
+    { label: '22k - 24k', value: '23000', description: 'Ability Score: 22,001 - 24,000' },
+    { label: '24k - 26k', value: '25000', description: 'Ability Score: 24,001 - 26,000' },
+    { label: '26k - 28k', value: '27000', description: 'Ability Score: 26,001 - 28,000' },
+    { label: '28k - 30k', value: '29000', description: 'Ability Score: 28,001 - 30,000' },
+    { label: '30k - 32k', value: '31000', description: 'Ability Score: 30,001 - 32,000' },
+    { label: '32k - 34k', value: '33000', description: 'Ability Score: 32,001 - 34,000' },
+    { label: '34k - 36k', value: '35000', description: 'Ability Score: 34,001 - 36,000' },
+    { label: '36k - 38k', value: '37000', description: 'Ability Score: 36,001 - 38,000' },
+    { label: '38k - 40k', value: '39000', description: 'Ability Score: 38,001 - 40,000' },
+    { label: '40k - 42k', value: '41000', description: 'Ability Score: 40,001 - 42,000' },
+    { label: '42k - 44k', value: '43000', description: 'Ability Score: 42,001 - 44,000' },
+    { label: '44k - 46k', value: '45000', description: 'Ability Score: 44,001 - 46,000' },
+    { label: '46k - 48k', value: '47000', description: 'Ability Score: 46,001 - 48,000' },
+    { label: '48k - 50k', value: '49000', description: 'Ability Score: 48,001 - 50,000' },
+    { label: '50k - 52k', value: '51000', description: 'Ability Score: 50,001 - 52,000' },
+    { label: '52k - 54k', value: '53000', description: 'Ability Score: 52,001 - 54,000' },
+    { label: '54k - 56k', value: '55000', description: 'Ability Score: 54,001 - 56,000' },
+    { label: '56k+', value: '57000', description: 'Ability Score: 56,001+' }
+  ];
 
-  const row = new ActionRowBuilder().addComponents(abilityInput);
-  modal.addComponents(row);
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`update_ability_score_select_${userId}`)
+    .setPlaceholder('💪 Select your new ability score range')
+    .addOptions(abilityScoreRanges);
 
-  await interaction.showModal(modal);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_update_menu_${userId}`)
+    .setLabel('Back')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('✏️ Update Ability Score')
+    .setDescription('Select your new ability score range')
+    .addFields({
+      name: '💪 Current Ability Score',
+      value: mainChar.ability_score ? `~${mainChar.ability_score.toLocaleString()}` : 'Not set',
+      inline: false
+    })
+    .setFooter({ text: '💪 Choose the range closest to your ability score' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
   
   stateManager.setUpdateState(userId, { mainChar, updateType: 'ability_score' });
 }
 
-async function showTimezoneModal(interaction, userId, mainChar) {
-  const modal = new ModalBuilder()
-    .setCustomId(`update_timezone_modal_${userId}`)
-    .setTitle('Update Timezone');
+export async function handleUpdateAbilityScoreSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedScore = interaction.values[0];
+    const state = stateManager.getUpdateState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
 
-  const timezoneInput = new TextInputBuilder()
-    .setCustomId('timezone')
-    .setLabel('Timezone')
-    .setStyle(TextInputStyle.Short)
-    .setPlaceholder('e.g., America/New_York or EST')
-    .setValue(mainChar.timezone || '')
-    .setRequired(false);
+    await interaction.deferUpdate();
 
-  const row = new ActionRowBuilder().addComponents(timezoneInput);
-  modal.addComponents(row);
+    await queries.updateCharacter(state.mainChar.id, {
+      ability_score: parseInt(selectedScore)
+    });
 
-  await interaction.showModal(modal);
+    const embed = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('✅ Ability Score Updated!')
+      .setDescription('Your ability score has been updated.')
+      .addFields({
+        name: '💪 New Ability Score',
+        value: `~${parseInt(selectedScore).toLocaleString()}`,
+        inline: false
+      })
+      .setFooter({ text: '💡 Returning to menu...' })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed], components: [] });
+    
+    stateManager.clearUpdateState(userId);
+    
+    // Return to main menu
+    const editMemberDetails = await import('../commands/edit-member-details.js');
+    setTimeout(async () => {
+      await editMemberDetails.default.showMainMenu(interaction, false);
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error in handleUpdateAbilityScoreSelection:', error);
+    stateManager.clearUpdateState(interaction.user.id);
+  }
+}
+
+// ==================== TIMEZONE UPDATE (DROPDOWN) ====================
+
+async function showTimezoneRegionSelectionForUpdate(interaction, userId, mainChar) {
+  const regions = getTimezoneRegions();
+  
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`update_timezone_region_${userId}`)
+    .setPlaceholder('🌍 Select your region')
+    .addOptions(
+      regions.map(region => ({
+        label: region,
+        value: region,
+        emoji: getRegionEmoji(region)
+      }))
+    );
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_update_menu_${userId}`)
+    .setLabel('Back')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  // Get current timezone
+  const userTimezone = await queries.getUserTimezone(userId);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('✏️ Update Timezone')
+    .setDescription('Select your timezone region')
+    .addFields({
+      name: '🌍 Current Timezone',
+      value: userTimezone?.timezone || 'Not set',
+      inline: false
+    })
+    .setFooter({ text: '🌍 Choose your region' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
   
   stateManager.setUpdateState(userId, { mainChar, updateType: 'timezone' });
 }
+
+export async function handleUpdateTimezoneRegionSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedRegion = interaction.values[0];
+    const state = stateManager.getUpdateState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    const countries = getCountriesInRegion(selectedRegion);
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`update_timezone_country_${userId}`)
+      .setPlaceholder('🌍 Select your country')
+      .addOptions(
+        countries.map(country => ({
+          label: country,
+          value: country
+        }))
+      );
+
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_update_timezone_region_${userId}`)
+      .setLabel('Back to Regions')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('✏️ Update Timezone')
+      .setDescription('Select your country')
+      .addFields({
+        name: '🌍 Region',
+        value: selectedRegion,
+        inline: true
+      })
+      .setFooter({ text: '💡 Choose your country' })
+      .setTimestamp();
+
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    
+    stateManager.setUpdateState(userId, {
+      ...state,
+      selectedRegion: selectedRegion
+    });
+    
+  } catch (error) {
+    console.error('Error in handleUpdateTimezoneRegionSelection:', error);
+    stateManager.clearUpdateState(interaction.user.id);
+  }
+}
+
+export async function handleUpdateTimezoneCountrySelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedCountry = interaction.values[0];
+    const state = stateManager.getUpdateState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    const timezones = getTimezonesForCountry(selectedCountry);
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`update_timezone_final_${userId}`)
+      .setPlaceholder('🕐 Select your timezone')
+      .addOptions(
+        timezones.map(tz => ({
+          label: tz.label,
+          value: tz.value,
+          description: tz.utc
+        }))
+      );
+
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_update_timezone_country_${userId}`)
+      .setLabel('Back to Countries')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('◀️');
+
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('✏️ Update Timezone')
+      .setDescription('Select your specific timezone')
+      .addFields({
+        name: '🌍 Country',
+        value: selectedCountry,
+        inline: true
+      })
+      .setFooter({ text: '💡 Choose your timezone' })
+      .setTimestamp();
+
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    
+    stateManager.setUpdateState(userId, {
+      ...state,
+      selectedCountry: selectedCountry
+    });
+    
+  } catch (error) {
+    console.error('Error in handleUpdateTimezoneCountrySelection:', error);
+    stateManager.clearUpdateState(interaction.user.id);
+  }
+}
+
+export async function handleUpdateTimezoneFinalSelection(interaction) {
+  try {
+    const userId = interaction.user.id;
+    const selectedTimezone = interaction.values[0];
+    const state = stateManager.getUpdateState(userId);
+    
+    if (!state) {
+      return interaction.reply({
+        content: '❌ Session expired. Please start over.',
+        ephemeral: true
+      });
+    }
+
+    await interaction.deferUpdate();
+
+    // Update timezone in user_timezones table
+    await queries.setUserTimezone(userId, interaction.user.tag, selectedTimezone);
+
+    const embed = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('✅ Timezone Updated!')
+      .setDescription('Your timezone has been updated.')
+      .addFields({
+        name: '🌍 New Timezone',
+        value: selectedTimezone,
+        inline: false
+      })
+      .setFooter({ text: '💡 Returning to menu...' })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed], components: [] });
+    
+    stateManager.clearUpdateState(userId);
+    
+    // Return to main menu
+    const editMemberDetails = await import('../commands/edit-member-details.js');
+    setTimeout(async () => {
+      await editMemberDetails.default.showMainMenu(interaction, false);
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error in handleUpdateTimezoneFinalSelection:', error);
+    stateManager.clearUpdateState(interaction.user.id);
+  }
+}
+
+// ==================== GUILD UPDATE (DROPDOWN) ====================
 
 async function showGuildSelectionForUpdate(interaction, userId, mainChar) {
   const guilds = GAME_DATA.guilds;
@@ -362,7 +670,14 @@ async function showGuildSelectionForUpdate(interaction, userId, mainChar) {
       }))
     );
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_update_menu_${userId}`)
+    .setLabel('Back')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
 
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
@@ -375,7 +690,7 @@ async function showGuildSelectionForUpdate(interaction, userId, mainChar) {
     })
     .setTimestamp();
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
   
   stateManager.setUpdateState(userId, { mainChar, updateType: 'guild' });
 }
@@ -395,7 +710,7 @@ export async function handleUpdateGuildSelection(interaction) {
 
     await interaction.deferUpdate();
 
-    await queries.updateCharacter(userId, state.mainChar.ign, {
+    await queries.updateCharacter(state.mainChar.id, {
       guild: selectedGuild
     });
 
@@ -408,6 +723,7 @@ export async function handleUpdateGuildSelection(interaction) {
         value: selectedGuild,
         inline: false
       })
+      .setFooter({ text: '💡 Returning to menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
@@ -417,7 +733,7 @@ export async function handleUpdateGuildSelection(interaction) {
     // Return to main menu
     const editMemberDetails = await import('../commands/edit-member-details.js');
     setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, true);
+      await editMemberDetails.default.showMainMenu(interaction, false);
     }, 2000);
     
   } catch (error) {
@@ -425,6 +741,8 @@ export async function handleUpdateGuildSelection(interaction) {
     stateManager.clearUpdateState(interaction.user.id);
   }
 }
+
+// ==================== MODAL HANDLERS ====================
 
 export async function handleUpdateModal(interaction, updateType) {
   try {
@@ -449,19 +767,9 @@ export async function handleUpdateModal(interaction, updateType) {
       updates = { ign: newIGN };
       fieldName = '🎮 New IGN';
       newValue = newIGN;
-    } else if (updateType === 'ability_score') {
-      const abilityScore = interaction.fields.getTextInputValue('ability_score');
-      updates = { ability_score: abilityScore ? parseInt(abilityScore) : null };
-      fieldName = '💪 New Ability Score';
-      newValue = abilityScore || 'Not set';
-    } else if (updateType === 'timezone') {
-      const timezone = interaction.fields.getTextInputValue('timezone');
-      updates = { timezone: timezone || null };
-      fieldName = '🌍 New Timezone';
-      newValue = timezone || 'Not set';
     }
 
-    await queries.updateCharacter(userId, state.mainChar.ign, updates);
+    await queries.updateCharacter(state.mainChar.id, updates);
 
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
@@ -472,6 +780,7 @@ export async function handleUpdateModal(interaction, updateType) {
         value: newValue,
         inline: false
       })
+      .setFooter({ text: '💡 Returning to menu...' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -481,7 +790,7 @@ export async function handleUpdateModal(interaction, updateType) {
     // Return to main menu
     const editMemberDetails = await import('../commands/edit-member-details.js');
     setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, true);
+      await editMemberDetails.default.showMainMenu(interaction, false);
     }, 2000);
     
   } catch (error) {
@@ -489,6 +798,99 @@ export async function handleUpdateModal(interaction, updateType) {
     stateManager.clearUpdateState(interaction.user.id);
   }
 }
+
+// ==================== BACK BUTTON HANDLERS ====================
+
+export async function handleBackToUpdateMenu(interaction) {
+  const userId = interaction.user.id;
+  const state = stateManager.getUpdateState(userId);
+  
+  if (!state || !state.mainChar) {
+    return interaction.reply({
+      content: '❌ Session expired. Please start over.',
+      ephemeral: true
+    });
+  }
+
+  await showUpdateOptionsMenu(interaction, userId, state.mainChar);
+}
+
+export async function handleBackToUpdateClass(interaction) {
+  const userId = interaction.user.id;
+  const state = stateManager.getUpdateState(userId);
+  
+  if (!state || !state.mainChar) {
+    return interaction.reply({
+      content: '❌ Session expired. Please start over.',
+      ephemeral: true
+    });
+  }
+
+  await showClassSelectionForUpdate(interaction, userId, state.mainChar);
+}
+
+export async function handleBackToUpdateTimezoneRegion(interaction) {
+  const userId = interaction.user.id;
+  const state = stateManager.getUpdateState(userId);
+  
+  if (!state || !state.mainChar) {
+    return interaction.reply({
+      content: '❌ Session expired. Please start over.',
+      ephemeral: true
+    });
+  }
+
+  await showTimezoneRegionSelectionForUpdate(interaction, userId, state.mainChar);
+}
+
+export async function handleBackToUpdateTimezoneCountry(interaction) {
+  const userId = interaction.user.id;
+  const state = stateManager.getUpdateState(userId);
+  
+  if (!state || !state.selectedRegion) {
+    return interaction.reply({
+      content: '❌ Session expired. Please start over.',
+      ephemeral: true
+    });
+  }
+
+  const countries = getCountriesInRegion(state.selectedRegion);
+  
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`update_timezone_country_${userId}`)
+    .setPlaceholder('🌍 Select your country')
+    .addOptions(
+      countries.map(country => ({
+        label: country,
+        value: country
+      }))
+    );
+
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_update_timezone_region_${userId}`)
+    .setLabel('Back to Regions')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('◀️');
+
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle('✏️ Update Timezone')
+    .setDescription('Select your country')
+    .addFields({
+      name: '🌍 Region',
+      value: state.selectedRegion,
+      inline: true
+    })
+    .setFooter({ text: '💡 Choose your country' })
+    .setTimestamp();
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
+}
+
+// ==================== UTILITY FUNCTIONS ====================
 
 function getClassEmoji(className) {
   const emojis = {
@@ -502,4 +904,22 @@ function getClassEmoji(className) {
     'Wind Knight': '💨'
   };
   return emojis[className] || '⭐';
+}
+
+function getRegionEmoji(region) {
+  const emojis = {
+    'North America': '🌎',
+    'Europe (West)': '🇪🇺',
+    'Europe (North)': '❄️',
+    'Europe (East & Other)': '🇪🇺',
+    'Asia (East)': '🌏',
+    'Asia (Southeast)': '🌏',
+    'Asia (South & Central)': '🌏',
+    'Middle East': '🕌',
+    'Oceania': '🌏',
+    'Africa': '🌍',
+    'South America': '🌎',
+    'Other': '🌐'
+  };
+  return emojis[region] || '🌐';
 }
