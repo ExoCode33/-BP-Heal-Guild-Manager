@@ -9,6 +9,12 @@ class GoogleSheetsService {
     this.sheets = null;
     this.spreadsheetId = process.env.GOOGLE_SHEETS_ID;
     
+    // Rate limiting
+    this.lastSyncTime = 0;
+    this.minSyncInterval = 30000; // 30 seconds minimum between syncs
+    this.syncPending = false;
+    this.syncTimeout = null;
+    
     // 🎨 CLASS LOGO URLs - GitHub Raw URLs
     // Base URL for your GitHub repository's raw content
     const githubBaseUrl = 'https://raw.githubusercontent.com/ExoCode33/-BP-Heal-Guild-Helper/f0f9f7305c33cb299a202f115124248156acbf00/class-icons';
@@ -478,15 +484,42 @@ class GoogleSheetsService {
 
       // Batch update all the IMAGE formulas and timezone formulas
       if (valueUpdates.length > 0) {
-        for (const update of valueUpdates) {
-          await this.sheets.spreadsheets.values.update({
-            spreadsheetId: this.spreadsheetId,
-            range: update.range,
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-              values: update.values
+        const batchSize = 10; // Smaller batches for value updates
+        for (let i = 0; i < valueUpdates.length; i += batchSize) {
+          const batch = valueUpdates.slice(i, i + batchSize);
+          
+          // Use batchUpdate for multiple cell updates at once
+          const requests = batch.map(update => ({
+            updateCells: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: parseInt(update.range.match(/\d+/)[0]) - 1,
+                endRowIndex: parseInt(update.range.match(/\d+/)[0]),
+                startColumnIndex: update.range.charCodeAt(0) - 65,
+                endColumnIndex: update.range.charCodeAt(0) - 64
+              },
+              rows: [{
+                values: [{
+                  userEnteredValue: { formulaValue: update.values[0][0] }
+                }]
+              }],
+              fields: 'userEnteredValue'
             }
-          });
+          }));
+          
+          try {
+            await this.sheets.spreadsheets.batchUpdate({
+              spreadsheetId: this.spreadsheetId,
+              requestBody: { requests }
+            });
+            
+            // Add delay between batches
+            if (i + batchSize < valueUpdates.length) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          } catch (error) {
+            // Silently continue
+          }
         }
       }
 
@@ -499,6 +532,11 @@ class GoogleSheetsService {
               spreadsheetId: this.spreadsheetId,
               requestBody: { requests: batch }
             });
+            
+            // Add delay between batches
+            if (i + batchSize < requests.length) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
           } catch (batchError) {
             // Silently continue
           }
@@ -808,6 +846,11 @@ class GoogleSheetsService {
             spreadsheetId: this.spreadsheetId,
             requestBody: { requests: batch }
           });
+          
+          // Add delay between batches to avoid rate limit
+          if (i + batchSize < requests.length) {
+            await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+          }
         }
       }
     } catch (error) {
@@ -984,6 +1027,35 @@ class GoogleSheetsService {
   }
 
   async fullSync(allCharactersWithSubclasses) {
+    const now = Date.now();
+    const timeSinceLastSync = now - this.lastSyncTime;
+    
+    // If recently synced, debounce
+    if (timeSinceLastSync < this.minSyncInterval) {
+      if (!this.syncPending) {
+        this.syncPending = true;
+        const waitTime = this.minSyncInterval - timeSinceLastSync;
+        
+        console.log(`⏸️  [SHEETS] Rate limited - sync delayed ${Math.round(waitTime/1000)}s`);
+        
+        // Clear any existing timeout
+        if (this.syncTimeout) {
+          clearTimeout(this.syncTimeout);
+        }
+        
+        // Schedule sync
+        this.syncTimeout = setTimeout(async () => {
+          this.syncPending = false;
+          await this.performSync(allCharactersWithSubclasses);
+        }, waitTime);
+      }
+      return;
+    }
+    
+    await this.performSync(allCharactersWithSubclasses);
+  }
+
+  async performSync(allCharactersWithSubclasses) {
     const timestamp = new Date().toLocaleString('en-US', { 
       month: 'short', 
       day: 'numeric', 
@@ -992,9 +1064,19 @@ class GoogleSheetsService {
     });
     console.log(`🔄 [SHEETS] Sync started (${allCharactersWithSubclasses.length} chars) - ${timestamp}`);
     
-    await this.syncMemberList(allCharactersWithSubclasses);
-    
-    console.log(`✅ [SHEETS] Sync complete - ${timestamp}`);
+    try {
+      this.lastSyncTime = Date.now();
+      await this.syncMemberList(allCharactersWithSubclasses);
+      console.log(`✅ [SHEETS] Sync complete - ${timestamp}`);
+    } catch (error) {
+      console.error(`❌ [SHEETS] Sync error:`, error.message);
+      
+      // If quota exceeded, increase delay
+      if (error.message.includes('Quota exceeded')) {
+        this.minSyncInterval = Math.min(this.minSyncInterval * 2, 300000); // Max 5 min
+        console.log(`⚠️  [SHEETS] Quota exceeded - increased interval to ${this.minSyncInterval/1000}s`);
+      }
+    }
   }
 }
 
