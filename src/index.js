@@ -260,6 +260,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await characterHandlers.handleBackToTimezoneCountry(interaction);
       }
       
+      // Update back buttons
+      else if (interaction.customId.startsWith('back_to_update_menu_')) {
+        await updateHandlers.handleBackToUpdateMenu(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_update_class_')) {
+        await updateHandlers.handleBackToUpdateClass(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_update_timezone_region_')) {
+        await updateHandlers.handleBackToUpdateTimezoneRegion(interaction);
+      }
+      else if (interaction.customId.startsWith('back_to_update_timezone_country_')) {
+        await updateHandlers.handleBackToUpdateTimezoneCountry(interaction);
+      }
+      
       // Remove confirmation buttons
       else if (interaction.customId.startsWith('confirm_remove_main_')) {
         await removeHandlers.handleConfirmRemoveMain(interaction);
@@ -354,6 +368,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       else if (interaction.customId.startsWith('update_subclass_')) {
         await updateHandlers.handleUpdateSubclassSelection(interaction);
       }
+      else if (interaction.customId.startsWith('update_ability_score_select_')) {
+        await updateHandlers.handleUpdateAbilityScoreSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('update_timezone_region_')) {
+        await updateHandlers.handleUpdateTimezoneRegionSelection(interaction);
+      }
+      else if (interaction.customId.startsWith('update_timezone_country_')) {
+        await updateHandlers.handleUpdateTimezoneCountrySelection(interaction);
+      }
+      else if (interaction.customId.startsWith('update_timezone_final_')) {
+        await updateHandlers.handleUpdateTimezoneFinalSelection(interaction);
+      }
       else if (interaction.customId.startsWith('update_guild_')) {
         await updateHandlers.handleUpdateGuildSelection(interaction);
       }
@@ -390,15 +416,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await characterHandlers.handleIGNModal(interaction);
       }
       
-      // Update modals
+      // Update modals (only IGN uses modal now)
       else if (interaction.customId.startsWith('update_ign_modal_')) {
         await updateHandlers.handleUpdateModal(interaction, 'ign');
-      }
-      else if (interaction.customId.startsWith('update_ability_modal_')) {
-        await updateHandlers.handleUpdateModal(interaction, 'ability_score');
-      }
-      else if (interaction.customId.startsWith('update_timezone_modal_')) {
-        await updateHandlers.handleUpdateModal(interaction, 'timezone');
       }
       
       console.log(`✅ Modal handled: ${interaction.customId}`);
