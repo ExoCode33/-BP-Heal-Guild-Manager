@@ -117,7 +117,7 @@ export async function handleConfirmRemoveMain(interaction) {
     if (!state || !state.mainChar) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -265,7 +265,7 @@ export async function handleAltSelectionForRemoval(interaction) {
     if (!state || !state.alts) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -274,7 +274,7 @@ export async function handleAltSelectionForRemoval(interaction) {
     if (!selectedAlt) {
       return interaction.reply({
         content: '❌ Alt character not found.',
-        ephemeral: true
+        flags: 64
       });
     }
 
@@ -326,7 +326,7 @@ export async function handleConfirmRemoveAlt(interaction) {
     if (!state || !state.alt) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        ephemeral: true
+        flags: 64
       });
     }
 
