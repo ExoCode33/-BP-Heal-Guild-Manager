@@ -23,14 +23,15 @@ export default {
         .setDescription('An error occurred. Please try again.')
         .setTimestamp();
       
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed], flags: 64 }); // Private error message
     }
   },
 
   async showMainMenu(interaction, isUpdate = false) {
     const userId = interaction.user.id;
     const mainChar = await queries.getMainCharacter(userId);
-    const alts = mainChar ? await queries.getAlts(userId) : [];
+    const allCharacters = mainChar ? await queries.getAllCharactersWithSubclasses(userId) : [];
+    const alts = allCharacters.filter(char => char.character_type === 'alt');
     const userTimezone = await queries.getUserTimezone(userId);
 
     const embed = new EmbedBuilder()
@@ -196,13 +197,16 @@ export default {
 
     const components = mainChar ? [row1, row2] : [row1];
 
-    // ✅ Use ephemeral configuration
-    const ephemeralFlag = EPHEMERAL_CONFIG.editMemberDetails;
+    // ✅ Use flags instead of ephemeral (Discord.js deprecation fix)
+    const replyOptions = { embeds: [embed], components };
+    if (EPHEMERAL_CONFIG.editMemberDetails) {
+      replyOptions.flags = 64; // MessageFlags.Ephemeral
+    }
 
     if (isUpdate) {
-      await interaction.update({ embeds: [embed], components });
+      await interaction.update(replyOptions);
     } else {
-      await interaction.reply({ embeds: [embed], components, ephemeral: ephemeralFlag });
+      await interaction.reply(replyOptions);
     }
   },
 
