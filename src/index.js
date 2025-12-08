@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
 import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -105,6 +105,29 @@ commands.forEach(command => {
 
 console.log(`\n✅ Loaded ${commands.length} commands total\n`);
 
+// Auto-deploy commands to Discord on startup
+async function deployCommands() {
+  try {
+    console.log('🚀 Auto-deploying commands to Discord...');
+    
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    const commandsData = commands.map(cmd => cmd.data.toJSON());
+    
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commandsData }
+    );
+    
+    console.log('✅ Commands registered with Discord!\n');
+  } catch (error) {
+    console.error('❌ Failed to auto-deploy commands:', error.message);
+    console.log('⚠️  Commands may not appear in Discord. Run: npm run deploy\n');
+  }
+}
+
+// Deploy commands immediately
+deployCommands();
+
 // Auto-sync interval
 let autoSyncInterval = null;
 
@@ -161,10 +184,7 @@ client.once(Events.ClientReady, async (c) => {
 
   console.log('═══════════════════════════════════════════════════');
   console.log('🎮 Bot is ready to accept commands!');
-  console.log('═══════════════════════════════════════════════════');
-  console.log('\n⚠️  IMPORTANT: If commands are not showing in Discord:');
-  console.log('   Run: npm run deploy');
-  console.log('   This registers the slash commands with Discord.\n');
+  console.log('═══════════════════════════════════════════════════\n');
 });
 
 // Command interaction handler
