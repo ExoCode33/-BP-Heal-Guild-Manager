@@ -5,7 +5,8 @@ import stateManager from '../utils/stateManager.js';
 
 export async function handleUpdateMain(interaction) {
   try {
-    const userId = interaction.user.id;
+    // ✅ CRITICAL FIX: Extract userId from button customId
+    const userId = extractUserIdFromCustomId(interaction.customId);
     
     // Get current main character
     const mainChar = await queries.getMainCharacter(userId);
@@ -14,7 +15,7 @@ export async function handleUpdateMain(interaction) {
       const embed = new EmbedBuilder()
         .setColor('#FFA500')
         .setTitle('⚠️ No Main Character')
-        .setDescription('You don\'t have a main character to update!')
+        .setDescription('This user doesn\'t have a main character to update!')
         .setTimestamp();
       
       return interaction.reply({ embeds: [embed], ephemeral: true });
@@ -111,7 +112,7 @@ async function showUpdateOptionsMenu(interaction, userId, mainChar) {
 
 export async function handleUpdateOptionSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const option = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -142,7 +143,7 @@ export async function handleUpdateOptionSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleUpdateOptionSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
       ephemeral: true
@@ -194,7 +195,7 @@ async function showClassSelectionForUpdate(interaction, userId, mainChar) {
 
 export async function handleUpdateClassSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedClass = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -246,13 +247,13 @@ export async function handleUpdateClassSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleUpdateClassSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
 export async function handleUpdateSubclassSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedSubclass = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -276,27 +277,21 @@ export async function handleUpdateSubclassSelection(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Class Updated!')
-      .setDescription('Your main character\'s class has been updated.')
+      .setDescription('The main character\'s class has been updated.')
       .addFields(
         { name: '🎭 New Class', value: `${state.newClass} (${selectedSubclass})`, inline: true },
         { name: '⚔️ New Role', value: newRole, inline: true }
       )
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Update complete' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearUpdateState(userId);
     
-    // Return to main menu
-    const editMemberDetails = await import('../commands/edit-member-details.js');
-    setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleUpdateSubclassSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -388,7 +383,7 @@ async function showAbilityScoreSelectionForUpdate(interaction, userId, mainChar)
 
 export async function handleUpdateAbilityScoreSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedScore = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -408,28 +403,22 @@ export async function handleUpdateAbilityScoreSelection(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Ability Score Updated!')
-      .setDescription('Your ability score has been updated.')
+      .setDescription('The ability score has been updated.')
       .addFields({
         name: '💪 New Ability Score',
         value: `~${parseInt(selectedScore).toLocaleString()}`,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Update complete' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearUpdateState(userId);
     
-    // Return to main menu
-    const editMemberDetails = await import('../commands/edit-member-details.js');
-    setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleUpdateAbilityScoreSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -480,7 +469,7 @@ async function showTimezoneRegionSelectionForUpdate(interaction, userId, mainCha
 
 export async function handleUpdateTimezoneRegionSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedRegion = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -533,13 +522,13 @@ export async function handleUpdateTimezoneRegionSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleUpdateTimezoneRegionSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
 export async function handleUpdateTimezoneCountrySelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedCountry = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -593,13 +582,13 @@ export async function handleUpdateTimezoneCountrySelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleUpdateTimezoneCountrySelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
 export async function handleUpdateTimezoneFinalSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedTimezone = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -612,34 +601,31 @@ export async function handleUpdateTimezoneFinalSelection(interaction) {
 
     await interaction.deferUpdate();
 
+    // Get target user for their tag
+    const targetUser = await interaction.client.users.fetch(userId);
+
     // Update timezone in user_timezones table
-    await queries.setUserTimezone(userId, interaction.user.tag, selectedTimezone);
+    await queries.setUserTimezone(userId, targetUser.tag, selectedTimezone);
 
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Timezone Updated!')
-      .setDescription('Your timezone has been updated.')
+      .setDescription('The timezone has been updated.')
       .addFields({
         name: '🌍 New Timezone',
         value: selectedTimezone,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Update complete' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearUpdateState(userId);
     
-    // Return to main menu
-    const editMemberDetails = await import('../commands/edit-member-details.js');
-    setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleUpdateTimezoneFinalSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -697,7 +683,7 @@ async function showGuildSelectionForUpdate(interaction, userId, mainChar) {
 
 export async function handleUpdateGuildSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedGuild = interaction.values[0];
     const state = stateManager.getUpdateState(userId);
     
@@ -717,28 +703,22 @@ export async function handleUpdateGuildSelection(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Guild Updated!')
-      .setDescription('Your guild affiliation has been updated.')
+      .setDescription('The guild affiliation has been updated.')
       .addFields({
         name: '🏰 New Guild',
         value: selectedGuild,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Update complete' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearUpdateState(userId);
     
-    // Return to main menu
-    const editMemberDetails = await import('../commands/edit-member-details.js');
-    setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleUpdateGuildSelection:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -746,7 +726,7 @@ export async function handleUpdateGuildSelection(interaction) {
 
 export async function handleUpdateModal(interaction, updateType) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const state = stateManager.getUpdateState(userId);
     
     if (!state) {
@@ -774,35 +754,29 @@ export async function handleUpdateModal(interaction, updateType) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Character Updated!')
-      .setDescription('Your main character has been updated.')
+      .setDescription('The main character has been updated.')
       .addFields({
         name: fieldName,
         value: newValue,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Update complete' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
     
     stateManager.clearUpdateState(userId);
     
-    // Return to main menu
-    const editMemberDetails = await import('../commands/edit-member-details.js');
-    setTimeout(async () => {
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleUpdateModal:', error);
-    stateManager.clearUpdateState(interaction.user.id);
+    stateManager.clearUpdateState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
 // ==================== BACK BUTTON HANDLERS ====================
 
 export async function handleBackToUpdateMenu(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getUpdateState(userId);
   
   if (!state || !state.mainChar) {
@@ -816,7 +790,7 @@ export async function handleBackToUpdateMenu(interaction) {
 }
 
 export async function handleBackToUpdateClass(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getUpdateState(userId);
   
   if (!state || !state.mainChar) {
@@ -830,7 +804,7 @@ export async function handleBackToUpdateClass(interaction) {
 }
 
 export async function handleBackToUpdateTimezoneRegion(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getUpdateState(userId);
   
   if (!state || !state.mainChar) {
@@ -844,7 +818,7 @@ export async function handleBackToUpdateTimezoneRegion(interaction) {
 }
 
 export async function handleBackToUpdateTimezoneCountry(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getUpdateState(userId);
   
   if (!state || !state.selectedRegion) {
@@ -891,6 +865,16 @@ export async function handleBackToUpdateTimezoneCountry(interaction) {
 }
 
 // ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Extract user ID from customId pattern like "button_name_userId"
+ * @param {string} customId - The custom ID from the interaction
+ * @returns {string} - The extracted user ID
+ */
+function extractUserIdFromCustomId(customId) {
+  const parts = customId.split('_');
+  return parts[parts.length - 1];
+}
 
 function getClassEmoji(className) {
   const emojis = {
