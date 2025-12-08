@@ -85,7 +85,7 @@ export default {
         const abbrev = timezoneAbbreviations[userTimezone.timezone] || userTimezone.timezone;
         const offset = timezoneOffsets[abbrev] || 0;
         
-        // ✅ Calculate user's local time from UTC (corrected formula)
+        // Calculate user's local time from UTC
         const now = new Date();
         const utcHours = now.getUTCHours();
         const utcMinutes = now.getUTCMinutes();
@@ -110,20 +110,18 @@ export default {
       const mainRoleEmoji = this.getRoleEmoji(mainChar.role);
       const mainClassEmoji = this.getClassEmoji(mainChar.class);
       
+      // ✅ FIXED: Format ability score as range
+      const formattedAbilityScore = this.formatAbilityScore(mainChar.ability_score);
+      
       embed.addFields({
         name: '⭐ **MAIN CHARACTER**',
         value: 
-          '```ansi\n' +
-          `✨ \u001b[1;36mIGN:\u001b[0m       ${mainChar.ign}\n` +
-          `\n` +
-          `🏰 \u001b[1;34mGuild:\u001b[0m     ${mainChar.guild || 'None'}\n` +
-          `\n` +
-          `${mainClassEmoji} \u001b[1;32mClass:\u001b[0m     ${mainChar.class}\n` +
-          `📚 \u001b[1;33mSubclass:\u001b[0m  ${mainChar.subclass}\n` +
-          `${mainRoleEmoji} \u001b[1;35mRole:\u001b[0m      ${mainChar.role}\n` +
-          `\n` +
-          `💪 \u001b[1;31mAbility Score:\u001b[0m ${mainChar.ability_score?.toLocaleString() || 'N/A'}\n` +
-          '```',
+          `**${mainClassEmoji} IGN:** ${mainChar.ign}\n` +
+          `**🏰 Guild:** ${mainChar.guild || 'None'}\n` +
+          `**🎭 Class:** ${mainChar.class}\n` +
+          `**📚 Subclass:** ${mainChar.subclass}\n` +
+          `**${mainRoleEmoji} Role:** ${mainChar.role}\n` +
+          `**💪 Ability Score:** ${formattedAbilityScore}`,
         inline: false
       });
 
@@ -131,10 +129,11 @@ export default {
         const altsList = alts.map(alt => {
           const altRoleEmoji = this.getRoleEmoji(alt.role);
           const altClassEmoji = this.getClassEmoji(alt.class);
+          const altAbilityScore = this.formatAbilityScore(alt.ability_score);
           return (
-            `**${alt.ign}** ${altClassEmoji}\n` +
-            `${altRoleEmoji} ${alt.role} • ${alt.class}\n` +
-            `AS: ${alt.ability_score?.toLocaleString() || 'N/A'}`
+            `**${altClassEmoji} ${alt.ign}**\n` +
+            `${altRoleEmoji} ${alt.role} • ${alt.class} (${alt.subclass})\n` +
+            `💪 AS: ${altAbilityScore}`
           );
         }).join('\n\n');
 
@@ -147,7 +146,7 @@ export default {
 
       embed.addFields({
         name: '\u200B',
-        value: `**Registered:** ${alts.length + 1} character${alts.length > 0 ? 's' : ''}`,
+        value: `**Total Characters:** ${alts.length + 1}`,
         inline: false
       });
     }
@@ -166,6 +165,44 @@ export default {
     } else {
       await interaction.reply(replyOptions);
     }
+  },
+
+  // ✅ NEW: Format ability score to range display
+  formatAbilityScore(score) {
+    if (!score || score === '' || score === 0) return 'Not set';
+    
+    const numScore = parseInt(score);
+    
+    // Map stored values to display labels
+    const scoreRanges = {
+      10000: '≤10k',
+      11000: '10-12k',
+      13000: '12-14k',
+      15000: '14-16k',
+      17000: '16-18k',
+      19000: '18-20k',
+      21000: '20-22k',
+      23000: '22-24k',
+      25000: '24-26k',
+      27000: '26-28k',
+      29000: '28-30k',
+      31000: '30-32k',
+      33000: '32-34k',
+      35000: '34-36k',
+      37000: '36-38k',
+      39000: '38-40k',
+      41000: '40-42k',
+      43000: '42-44k',
+      45000: '44-46k',
+      47000: '46-48k',
+      49000: '48-50k',
+      51000: '50-52k',
+      53000: '52-54k',
+      55000: '54-56k',
+      57000: '56k+'
+    };
+    
+    return scoreRanges[numScore] || `~${numScore.toLocaleString()}`;
   },
 
   getClassEmoji(className) {
