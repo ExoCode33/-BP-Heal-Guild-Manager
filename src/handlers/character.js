@@ -16,15 +16,22 @@ console.log(`   /admin: ${EPHEMERAL_CONFIG.admin ? 'PRIVATE ✅' : 'PUBLIC ⚠�
 console.log(`   /edit-member-details: ${EPHEMERAL_CONFIG.editMemberDetails ? 'PRIVATE ✅' : 'PUBLIC ⚠️'}`);
 console.log(`   /view-char: ${EPHEMERAL_CONFIG.viewChar ? 'PRIVATE ✅' : 'PUBLIC ⚠️'}`);
 
-// Helper to get ephemeral flag based on context
+// Helper to get ephemeral flag based on context  
+// Returns 64 for private, null for public (null is ignored by Discord)
 function getEphemeralFlag(userId, interactionUserId) {
   const isAdminEdit = userId !== interactionUserId;
+  const shouldBePrivate = isAdminEdit ? EPHEMERAL_CONFIG.admin : EPHEMERAL_CONFIG.editMemberDetails;
   
-  if (isAdminEdit) {
-    return EPHEMERAL_CONFIG.admin ? 64 : undefined;
-  } else {
-    return EPHEMERAL_CONFIG.editMemberDetails ? 64 : undefined;
-  }
+  // Return 64 for private, or don't include flags at all for public
+  return shouldBePrivate ? 64 : null;
+}
+
+// New helper that returns options object to spread
+function getEphemeralOptions(userId, interactionUserId) {
+  const isAdminEdit = userId !== interactionUserId;
+  const shouldBePrivate = isAdminEdit ? EPHEMERAL_CONFIG.admin : EPHEMERAL_CONFIG.editMemberDetails;
+  
+  return shouldBePrivate ? { flags: 64 } : {};
 }
 
 // ==================== UTILITY FUNCTIONS ====================
