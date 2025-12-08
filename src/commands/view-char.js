@@ -73,19 +73,60 @@ export default {
             'MST': -7, 'MDT': -6,
             'CST': -6, 'CDT': -5,
             'EST': -5, 'EDT': -4,
+            'AST': -4, 'ADT': -3,
+            'NST': -3.5, 'NDT': -2.5,
+            'AKST': -9, 'AKDT': -8,
+            'HST': -10,
             'UTC': 0, 'GMT': 0,
+            'WET': 0, 'WEST': 1,
             'CET': 1, 'CEST': 2,
+            'EET': 2, 'EEST': 3,
+            'TRT': 3, 'MSK': 3,
+            'GST': 4, 'IST': 5.5,
+            'ICT': 7, 'WIB': 7,
+            'SGT': 8, 'HKT': 8,
+            'PHT': 8, 'MYT': 8,
             'JST': 9, 'KST': 9,
-            'AEST': 10, 'AEDT': 11
+            'AEST': 10, 'AEDT': 11,
+            'AWST': 8, 'NZDT': 13,
+            'NZST': 12
           };
           
-          const offset = timezoneOffsets[userTimezone.timezone] || 0;
+          const timezoneAbbreviations = {
+            'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Denver': 'MST',
+            'America/Los_Angeles': 'PST', 'America/Phoenix': 'MST', 'America/Anchorage': 'AKST',
+            'Pacific/Honolulu': 'HST', 'America/Toronto': 'EST', 'America/Vancouver': 'PST',
+            'America/Halifax': 'AST', 'America/St_Johns': 'NST', 'America/Edmonton': 'MST',
+            'America/Winnipeg': 'CST', 'Europe/London': 'GMT', 'Europe/Paris': 'CET',
+            'Europe/Berlin': 'CET', 'Europe/Rome': 'CET', 'Europe/Madrid': 'CET',
+            'Europe/Amsterdam': 'CET', 'Europe/Brussels': 'CET', 'Europe/Vienna': 'CET',
+            'Europe/Stockholm': 'CET', 'Europe/Oslo': 'CET', 'Europe/Copenhagen': 'CET',
+            'Europe/Helsinki': 'EET', 'Europe/Athens': 'EET', 'Europe/Istanbul': 'TRT',
+            'Europe/Moscow': 'MSK', 'Europe/Zurich': 'CET', 'Europe/Dublin': 'GMT',
+            'Europe/Lisbon': 'WET', 'Europe/Warsaw': 'CET', 'Asia/Tokyo': 'JST',
+            'Asia/Seoul': 'KST', 'Asia/Shanghai': 'CST', 'Asia/Hong_Kong': 'HKT',
+            'Asia/Singapore': 'SGT', 'Asia/Dubai': 'GST', 'Asia/Kolkata': 'IST',
+            'Asia/Bangkok': 'ICT', 'Asia/Jakarta': 'WIB', 'Asia/Manila': 'PHT',
+            'Asia/Kuala_Lumpur': 'MYT', 'Australia/Sydney': 'AEDT', 'Australia/Melbourne': 'AEDT',
+            'Australia/Brisbane': 'AEST', 'Australia/Perth': 'AWST', 'Pacific/Auckland': 'NZDT'
+          };
+          
+          const abbrev = timezoneAbbreviations[userTimezone.timezone] || userTimezone.timezone;
+          const offset = timezoneOffsets[abbrev] || 0;
+          
           const now = new Date();
-          const localTime = new Date(now.getTime() + (offset * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
-          const hours = localTime.getHours();
-          const minutes = localTime.getMinutes().toString().padStart(2, '0');
-          const ampm = hours >= 12 ? 'PM' : 'AM';
-          const displayHours = hours % 12 || 12;
+          const utcHours = now.getUTCHours();
+          const utcMinutes = now.getUTCMinutes();
+          
+          let localHours = utcHours + offset;
+          let localMinutes = utcMinutes;
+          
+          if (localHours >= 24) localHours -= 24;
+          if (localHours < 0) localHours += 24;
+          
+          const ampm = localHours >= 12 ? 'PM' : 'AM';
+          const displayHours = localHours % 12 || 12;
+          const minutes = localMinutes.toString().padStart(2, '0');
           
           timezoneDisplay = `🌍 ${userTimezone.timezone} • ${displayHours}:${minutes} ${ampm}`;
         }
@@ -124,7 +165,7 @@ export default {
             return (
               '```ansi\n' +
               `${numberEmoji} ${sc.class} › ${sc.subclass} › ${sc.role}\n` +
-              `   \u001b[1;31mAS:\u001b[0m ${scAbilityScore}\n` +
+              `   \u001b[1;31mAbility Score:\u001b[0m ${scAbilityScore}\n` +
               '```'
             );
           }).join('');
@@ -148,7 +189,7 @@ export default {
               '```ansi\n' +
               `${numberEmoji} \u001b[1;36mIGN:\u001b[0m ${alt.ign}  •  \u001b[1;34mGuild:\u001b[0m ${alt.guild || 'None'}\n` +
               `   ${alt.class} › ${alt.subclass} › ${alt.role}\n` +
-              `   \u001b[1;31mAS:\u001b[0m ${altAbilityScore}\n` +
+              `   \u001b[1;31mAbility Score:\u001b[0m ${altAbilityScore}\n` +
               '```'
             );
           }).join('');
@@ -186,7 +227,7 @@ export default {
     }
   },
 
-  // ✅ NEW: Format ability score to range display
+  // ✅ Format ability score to range display
   formatAbilityScore(score) {
     if (!score || score === '' || score === 0) return 'Not set';
     
