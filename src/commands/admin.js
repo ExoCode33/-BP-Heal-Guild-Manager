@@ -1,6 +1,11 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { queries } from '../database/queries.js';
 
+// ✅ Ephemeral configuration
+const EPHEMERAL_CONFIG = {
+  admin: process.env.ADMIN_EPHEMERAL !== 'false',
+};
+
 export default {
   data: new SlashCommandBuilder()
     .setName('admin')
@@ -226,7 +231,13 @@ export default {
     // ✅ CRITICAL FIX: Pass targetUser.id instead of interaction.user.id
     const rows = editMemberDetails.default.buildButtonRows(mainChar, alts, targetUser.id);
 
-    await interaction.reply({ embeds: [embed], components: rows, flags: 64 });
+    // ✅ Use conditional flags based on EPHEMERAL_CONFIG
+    const replyOptions = { embeds: [embed], components: rows };
+    if (EPHEMERAL_CONFIG.admin) {
+      replyOptions.flags = 64;
+    }
+
+    await interaction.reply(replyOptions);
   },
 
   async handleSync(interaction) {
@@ -239,7 +250,13 @@ export default {
         .setDescription('Syncing all character data to Google Sheets. This may take a moment.')
         .setTimestamp();
       
-      await interaction.deferReply({ flags: 64 });
+      // ✅ Use conditional flags based on EPHEMERAL_CONFIG
+      const deferOptions = {};
+      if (EPHEMERAL_CONFIG.admin) {
+        deferOptions.flags = 64;
+      }
+      
+      await interaction.deferReply(deferOptions);
       await interaction.editReply({ embeds: [startEmbed] });
 
       // Get all characters with subclasses
