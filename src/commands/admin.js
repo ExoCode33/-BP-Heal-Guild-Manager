@@ -90,7 +90,6 @@ export default {
       let timezoneDisplay = '🌍 *No timezone set*';
       
       if (userTimezone?.timezone) {
-        // Get timezone offset
         const timezoneOffsets = {
           'PST': -8, 'PDT': -7,
           'MST': -7, 'MDT': -6,
@@ -192,6 +191,7 @@ export default {
     }
 
     // === BUILD BUTTON ROWS (same as edit-member-details) ===
+    // ✅ CRITICAL FIX: Pass targetUser.id instead of interaction.user.id
     const rows = editMemberDetails.default.buildPremiumButtonRows(mainChar, mainSubclasses, altsWithSubclasses, targetUser.id);
 
     await interaction.reply({ embeds: [embed], components: rows, ephemeral: true });
