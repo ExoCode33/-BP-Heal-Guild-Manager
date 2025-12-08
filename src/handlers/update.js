@@ -3,13 +3,23 @@ import { GAME_DATA, getRoleFromClass, getSubclassesForClass, getTimezoneRegions,
 import { queries } from '../database/queries.js';
 import stateManager from '../utils/stateManager.js';
 
+// ✅ Extract userId from button customId
+function extractUserIdFromCustomId(customId) {
+  const parts = customId.split('_');
+  return parts[parts.length - 1];
+}
+
 export async function handleUpdateMain(interaction) {
+  console.log('[UPDATE_MAIN] Starting handler for:', interaction.customId);
+  
   try {
     // ✅ CRITICAL FIX: Extract userId from button customId
     const userId = extractUserIdFromCustomId(interaction.customId);
+    console.log('[UPDATE_MAIN] Extracted userId:', userId);
     
     // Get current main character
     const mainChar = await queries.getMainCharacter(userId);
+    console.log('[UPDATE_MAIN] Main char:', mainChar ? mainChar.ign : 'none');
     
     if (!mainChar) {
       const embed = new EmbedBuilder()
@@ -18,18 +28,38 @@ export async function handleUpdateMain(interaction) {
         .setDescription('This user doesn\'t have a main character to update!')
         .setTimestamp();
       
-      return interaction.reply({ embeds: [embed], flags: 64 });
+      // ✅ Use update for button interactions
+      console.log('[UPDATE_MAIN] No main char, sending update...');
+      await interaction.update({ embeds: [embed], components: [] });
+      console.log('[UPDATE_MAIN] Update sent');
+      return;
     }
 
     // Show update options menu
+    console.log('[UPDATE_MAIN] Showing options menu...');
     await showUpdateOptionsMenu(interaction, userId, mainChar);
+    console.log('[UPDATE_MAIN] Options menu shown');
     
   } catch (error) {
-    console.error('Error in handleUpdateMain:', error);
-    await interaction.reply({
-      content: '❌ An error occurred. Please try again.',
-      flags: 64
-    });
+    console.error('[UPDATE_MAIN] ERROR:', error);
+    console.error('[UPDATE_MAIN] Stack:', error.stack);
+    
+    const errorEmbed = new EmbedBuilder()
+      .setColor('#FF0000')
+      .setTitle('❌ Error')
+      .setDescription(`An error occurred: ${error.message}`)
+      .setTimestamp();
+    
+    try {
+      await interaction.update({ embeds: [errorEmbed], components: [] });
+    } catch (updateError) {
+      console.error('[UPDATE_MAIN] Update failed:', updateError);
+      try {
+        await interaction.reply({ embeds: [errorEmbed], flags: 64 });
+      } catch (replyError) {
+        console.error('[UPDATE_MAIN] Reply also failed:', replyError);
+      }
+    }
   }
 }
 
@@ -117,9 +147,16 @@ export async function handleUpdateOptionSelection(interaction) {
     const state = stateManager.getUpdateState(userId);
     
     if (!state || !state.mainChar) {
-      return interaction.reply({
-        content: '❌ Session expired. Please start over.',
-        flags: 64
+      const embed = new EmbedBuilder()
+        .setColor('#FFA500')
+        .setTitle('❌ Session Expired')
+        .setDescription('Session expired. Please start over.')
+        .setTimestamp();
+      
+      // ✅ Use update for select menu interactions
+      return interaction.update({
+        embeds: [embed],
+        components: []
       });
     }
 
