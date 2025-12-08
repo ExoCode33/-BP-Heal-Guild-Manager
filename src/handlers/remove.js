@@ -84,7 +84,7 @@ async function showRemoveMainConfirmation(interaction, userId, mainChar, altCoun
   const embed = new EmbedBuilder()
     .setColor('#FF0000')
     .setTitle('⚠️ Confirm Removal')
-    .setDescription('Are you sure you want to remove your main character?')
+    .setDescription('Are you sure you want to remove this main character?')
     .addFields(
       { name: '🎮 IGN', value: mainChar.ign, inline: true },
       { name: '🎭 Class', value: `${mainChar.class} (${mainChar.subclass})`, inline: true },
@@ -111,7 +111,7 @@ async function showRemoveMainConfirmation(interaction, userId, mainChar, altCoun
 
 export async function handleConfirmRemoveMain(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const state = stateManager.getRemovalState(userId);
     
     if (!state || !state.mainChar) {
@@ -128,36 +128,28 @@ export async function handleConfirmRemoveMain(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Character Removed')
-      .setDescription('Your main character (and all alt characters) have been successfully removed.')
+      .setDescription('The main character (and all alt characters) have been successfully removed.')
       .addFields({
         name: '🎮 Removed IGN',
         value: state.mainChar.ign,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 You can now register a new main character using /edit-member-details' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearRemovalState(userId);
     
-    setTimeout(async () => {
-      try {
-        const editMemberDetails = await import('../commands/edit-member-details.js');
-        await editMemberDetails.default.showMainMenu(interaction, false);
-      } catch (error) {
-        console.error('Error returning to menu after removal:', error);
-      }
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleConfirmRemoveMain:', error);
-    stateManager.clearRemovalState(interaction.user.id);
+    const userId = extractUserIdFromCustomId(interaction.customId);
+    stateManager.clearRemovalState(userId);
     
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
       .setTitle('❌ Removal Failed')
-      .setDescription('An error occurred while removing your character.')
+      .setDescription('An error occurred while removing the character.')
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed], components: [] });
@@ -165,27 +157,18 @@ export async function handleConfirmRemoveMain(interaction) {
 }
 
 export async function handleCancelRemoveMain(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
     .setTitle('❌ Removal Cancelled')
-    .setDescription('Your main character was not removed.')
-    .setFooter({ text: '💡 Returning to menu...' })
+    .setDescription('The main character was not removed.')
+    .setFooter({ text: '💡 Use /edit-member-details to manage your characters' })
     .setTimestamp();
 
   await interaction.update({ embeds: [embed], components: [] });
   
   stateManager.clearRemovalState(userId);
-  
-  setTimeout(async () => {
-    try {
-      const editMemberDetails = await import('../commands/edit-member-details.js');
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    } catch (error) {
-      console.error('Error returning to menu after cancel:', error);
-    }
-  }, 1500);
 }
 
 export async function handleRemoveAlt(interaction) {
@@ -258,7 +241,7 @@ async function showAltSelectionForRemoval(interaction, userId, alts) {
 
 export async function handleAltSelectionForRemoval(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedAltId = parseInt(interaction.values[0]); // ✅ FIXED: Parse as ID
     const state = stateManager.getRemovalState(userId);
     
@@ -282,7 +265,7 @@ export async function handleAltSelectionForRemoval(interaction) {
     
   } catch (error) {
     console.error('Error in handleAltSelectionForRemoval:', error);
-    stateManager.clearRemovalState(interaction.user.id);
+    stateManager.clearRemovalState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -320,7 +303,7 @@ async function showRemoveAltConfirmation(interaction, userId, alt) {
 
 export async function handleConfirmRemoveAlt(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const state = stateManager.getRemovalState(userId);
     
     if (!state || !state.alt) {
@@ -338,36 +321,28 @@ export async function handleConfirmRemoveAlt(interaction) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Alt Character Removed')
-      .setDescription('Your alt character has been successfully removed.')
+      .setDescription('The alt character has been successfully removed.')
       .addFields({
         name: '🎮 Removed IGN',
         value: state.alt.ign,
         inline: false
       })
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Use /edit-member-details to manage your characters' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed], components: [] });
     
     stateManager.clearRemovalState(userId);
     
-    setTimeout(async () => {
-      try {
-        const editMemberDetails = await import('../commands/edit-member-details.js');
-        await editMemberDetails.default.showMainMenu(interaction, false);
-      } catch (error) {
-        console.error('Error returning to menu after alt removal:', error);
-      }
-    }, 2000);
-    
   } catch (error) {
     console.error('Error in handleConfirmRemoveAlt:', error);
-    stateManager.clearRemovalState(interaction.user.id);
+    const userId = extractUserIdFromCustomId(interaction.customId);
+    stateManager.clearRemovalState(userId);
     
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
       .setTitle('❌ Removal Failed')
-      .setDescription('An error occurred while removing your alt character.')
+      .setDescription('An error occurred while removing the alt character.')
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed], components: [] });
@@ -375,27 +350,18 @@ export async function handleConfirmRemoveAlt(interaction) {
 }
 
 export async function handleCancelRemoveAlt(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
     .setTitle('❌ Removal Cancelled')
-    .setDescription('Your alt character was not removed.')
-    .setFooter({ text: '💡 Returning to menu...' })
+    .setDescription('The alt character was not removed.')
+    .setFooter({ text: '💡 Use /edit-member-details to manage your characters' })
     .setTimestamp();
 
   await interaction.update({ embeds: [embed], components: [] });
   
   stateManager.clearRemovalState(userId);
-  
-  setTimeout(async () => {
-    try {
-      const editMemberDetails = await import('../commands/edit-member-details.js');
-      await editMemberDetails.default.showMainMenu(interaction, false);
-    } catch (error) {
-      console.error('Error returning to menu after cancel:', error);
-    }
-  }, 1500);
 }
 
 function getClassEmoji(className) {
