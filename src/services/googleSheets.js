@@ -486,15 +486,16 @@ class GoogleSheetsService {
                   maxIterations: 50,
                   convergenceThreshold: 0.05
                 },
-                autoRecalc: 'MINUTE'
+                autoRecalc: 'ON_CHANGE' // ✅ Changed from MINUTE to ON_CHANGE for immediate recalc
               },
               fields: 'iterativeCalculationSettings,autoRecalc'
             }
           }]
         }
       });
+      console.log('✅ [SHEETS] Auto-recalculation enabled (ON_CHANGE)');
     } catch (error) {
-      // Silently fail
+      console.error('⚠️  [SHEETS] Auto-recalc setting failed:', error.message);
     }
   }
 
@@ -534,12 +535,13 @@ class GoogleSheetsService {
           });
         }
 
-        // ✅ UPDATED: Formula shows "EST 7:01 PM" (abbreviation + their local time)
+        // ✅ FIXED: Force immediate calculation with proper formula
         if (meta.timezone && meta.timezone !== '') {
           const offset = this.getTimezoneOffset(meta.timezone);
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
-          // This calculates their local time based on offset
-          const formula = `="${abbrev} " & TEXT(NOW() + (${offset}/24), "h:mm AM/PM")`;
+          
+          // Use TEXT formula to force calculation and format
+          const formula = `=CONCATENATE("${abbrev} ", TEXT(NOW() + (${offset}/24), "h:mm AM/PM"))`;
           
           valueUpdates.push({
             range: `J${rowIndex}`,
