@@ -17,21 +17,20 @@ console.log(`   /edit-member-details: ${EPHEMERAL_CONFIG.editMemberDetails ? 'PR
 console.log(`   /view-char: ${EPHEMERAL_CONFIG.viewChar ? 'PRIVATE ✅' : 'PUBLIC ⚠️'}`);
 
 // Helper to get ephemeral flag based on context  
-// Returns 64 for private, null for public (null is ignored by Discord)
-function getEphemeralFlag(userId, interactionUserId) {
-  const isAdminEdit = userId !== interactionUserId;
-  const shouldBePrivate = isAdminEdit ? EPHEMERAL_CONFIG.admin : EPHEMERAL_CONFIG.editMemberDetails;
-  
-  // Return 64 for private, or don't include flags at all for public
-  return shouldBePrivate ? 64 : null;
-}
-
-// New helper that returns options object to spread
+// Returns options object to spread - either {flags: 64} or {}
 function getEphemeralOptions(userId, interactionUserId) {
   const isAdminEdit = userId !== interactionUserId;
   const shouldBePrivate = isAdminEdit ? EPHEMERAL_CONFIG.admin : EPHEMERAL_CONFIG.editMemberDetails;
   
+  // Only include flags property if it should be private
+  // DO NOT include flags: null or flags: undefined - Discord rejects these!
   return shouldBePrivate ? { flags: 64 } : {};
+}
+
+// Backwards compatibility - returns boolean for if statements
+function getEphemeralFlag(userId, interactionUserId) {
+  const isAdminEdit = userId !== interactionUserId;
+  return isAdminEdit ? EPHEMERAL_CONFIG.admin : EPHEMERAL_CONFIG.editMemberDetails;
 }
 
 // ==================== UTILITY FUNCTIONS ====================
@@ -219,7 +218,7 @@ export async function handleClassSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -237,7 +236,7 @@ export async function handleClassSelection(interaction) {
     stateManager.clearRegistrationState(userId);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 }
@@ -290,7 +289,7 @@ export async function handleSubclassSelection(interaction) {
     if (!state || !state.class) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -312,7 +311,7 @@ export async function handleSubclassSelection(interaction) {
     stateManager.clearRegistrationState(userId);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 }
@@ -324,7 +323,7 @@ async function showAbilityScoreSelection(interaction, userId, state) {
     console.error('Invalid state in showAbilityScoreSelection:', state);
     return interaction.reply({
       content: '❌ Session data is incomplete. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -393,7 +392,7 @@ export async function handleAbilityScoreSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -475,7 +474,7 @@ export async function handleGuildSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -556,7 +555,7 @@ export async function handleTimezoneRegionSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -624,7 +623,7 @@ export async function handleTimezoneCountrySelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -683,7 +682,7 @@ export async function handleTimezoneSelection(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -730,7 +729,7 @@ export async function handleIGNModal(interaction) {
     if (!state) {
       return interaction.reply({
         content: '❌ Session expired. Please start over.',
-        flags: getEphemeralFlag(userId, interaction.user.id)
+        ...getEphemeralOptions(userId, interaction.user.id)
       });
     }
 
@@ -751,7 +750,7 @@ export async function handleIGNModal(interaction) {
     stateManager.clearRegistrationState(userId);
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 }
@@ -760,7 +759,7 @@ export async function handleIGNModal(interaction) {
 
 async function saveMainCharacter(interaction, userId, targetUser, state, ign) {
   try {
-    await interaction.deferReply({ flags: getEphemeralFlag(userId, interaction.user.id) });
+    await interaction.deferReply({ ...getEphemeralOptions(userId, interaction.user.id) });
 
     const characterData = {
       discordId: userId,
@@ -837,7 +836,7 @@ async function saveMainCharacter(interaction, userId, targetUser, state, ign) {
 
 async function saveAltCharacter(interaction, userId, targetUser, state, ign) {
   try {
-    await interaction.deferReply({ flags: getEphemeralFlag(userId, interaction.user.id) });
+    await interaction.deferReply({ ...getEphemeralOptions(userId, interaction.user.id) });
 
     const altData = {
       discordId: userId,
@@ -1070,7 +1069,7 @@ async function showAdminEditMenu(interaction, targetUserId, targetUser) {
     const editMemberDetails = await import('../commands/edit-member-details.js');
     const rows = editMemberDetails.default.buildPremiumButtonRows(mainChar, mainSubclasses, altsWithSubclasses, targetUserId);
 
-    await interaction.followUp({ embeds: [embed], components: rows, flags: getEphemeralFlag(targetUserId, interaction.user.id) });
+    await interaction.followUp({ embeds: [embed], components: rows, ...getEphemeralOptions(targetUserId, interaction.user.id) });
     
   } catch (error) {
     console.error('Error showing admin edit menu:', error);
@@ -1099,7 +1098,7 @@ export async function handleBackToClass(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -1113,7 +1112,7 @@ export async function handleBackToSubclass(interaction) {
   if (!state || !state.class) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -1127,7 +1126,7 @@ export async function handleBackToAbility(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -1141,7 +1140,7 @@ export async function handleBackToGuild(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -1155,7 +1154,7 @@ export async function handleBackToTimezoneRegion(interaction) {
   if (!state) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
@@ -1169,7 +1168,7 @@ export async function handleBackToTimezoneCountry(interaction) {
   if (!state || !state.selectedRegion) {
     return interaction.reply({
       content: '❌ Session expired. Please start over.',
-      flags: getEphemeralFlag(userId, interaction.user.id)
+      ...getEphemeralOptions(userId, interaction.user.id)
     });
   }
 
