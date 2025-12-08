@@ -15,8 +15,7 @@ class GoogleSheetsService {
     this.syncPending = false;
     this.syncTimeout = null;
     
-    // 🎨 CLASS LOGO URLs - GitHub Raw URLs
-    // Base URL for your GitHub repository's raw content
+    // Class logo URLs
     const githubBaseUrl = 'https://raw.githubusercontent.com/ExoCode33/-BP-Heal-Guild-Helper/f0f9f7305c33cb299a202f115124248156acbf00/class-icons';
     
     this.classLogos = {
@@ -58,6 +57,93 @@ class GoogleSheetsService {
     }
   }
 
+  // ✅ NEW: Timezone abbreviation mapping
+  getTimezoneAbbreviation(timezone) {
+    const abbreviations = {
+      'America/New_York': 'EST',
+      'America/Chicago': 'CST',
+      'America/Denver': 'MST',
+      'America/Los_Angeles': 'PST',
+      'America/Phoenix': 'MST',
+      'America/Anchorage': 'AKST',
+      'Pacific/Honolulu': 'HST',
+      'America/Toronto': 'EST',
+      'America/Vancouver': 'PST',
+      'America/Halifax': 'AST',
+      'America/St_Johns': 'NST',
+      'America/Edmonton': 'MST',
+      'America/Winnipeg': 'CST',
+      'Europe/London': 'GMT',
+      'Europe/Paris': 'CET',
+      'Europe/Berlin': 'CET',
+      'Europe/Rome': 'CET',
+      'Europe/Madrid': 'CET',
+      'Europe/Amsterdam': 'CET',
+      'Europe/Brussels': 'CET',
+      'Europe/Vienna': 'CET',
+      'Europe/Stockholm': 'CET',
+      'Europe/Oslo': 'CET',
+      'Europe/Copenhagen': 'CET',
+      'Europe/Helsinki': 'EET',
+      'Europe/Athens': 'EET',
+      'Europe/Istanbul': 'TRT',
+      'Europe/Moscow': 'MSK',
+      'Europe/Zurich': 'CET',
+      'Europe/Dublin': 'GMT',
+      'Europe/Lisbon': 'WET',
+      'Europe/Warsaw': 'CET',
+      'Asia/Tokyo': 'JST',
+      'Asia/Seoul': 'KST',
+      'Asia/Shanghai': 'CST',
+      'Asia/Hong_Kong': 'HKT',
+      'Asia/Singapore': 'SGT',
+      'Asia/Dubai': 'GST',
+      'Asia/Kolkata': 'IST',
+      'Asia/Bangkok': 'ICT',
+      'Asia/Manila': 'PHT',
+      'Asia/Jakarta': 'WIB',
+      'Asia/Taipei': 'CST',
+      'Asia/Kuala_Lumpur': 'MYT',
+      'Australia/Sydney': 'AEDT',
+      'Australia/Melbourne': 'AEDT',
+      'Australia/Brisbane': 'AEST',
+      'Australia/Perth': 'AWST',
+      'Pacific/Auckland': 'NZDT',
+    };
+    return abbreviations[timezone] || timezone;
+  }
+
+  // ✅ UPDATED: Timezone offset with abbreviation support
+  getTimezoneOffset(timezone) {
+    const abbrev = this.getTimezoneAbbreviation(timezone);
+    
+    const timezoneOffsets = {
+      'PST': -8, 'PDT': -7,
+      'MST': -7, 'MDT': -6,
+      'CST': -6, 'CDT': -5,
+      'EST': -5, 'EDT': -4,
+      'AST': -4, 'ADT': -3,
+      'NST': -3.5, 'NDT': -2.5,
+      'AKST': -9, 'AKDT': -8,
+      'HST': -10,
+      'UTC': 0, 'GMT': 0,
+      'WET': 0, 'WEST': 1,
+      'CET': 1, 'CEST': 2,
+      'EET': 2, 'EEST': 3,
+      'TRT': 3, 'MSK': 3,
+      'GST': 4, 'IST': 5.5,
+      'ICT': 7, 'WIB': 7,
+      'SGT': 8, 'HKT': 8,
+      'PHT': 8, 'MYT': 8,
+      'JST': 9, 'KST': 9,
+      'AEST': 10, 'AEDT': 11,
+      'AWST': 8, 'NZDT': 13,
+      'NZST': 12,
+    };
+    
+    return timezoneOffsets[abbrev] || 0;
+  }
+
   getAbilityScoreColor(score) {
     if (!score || score === '') return null;
     
@@ -72,14 +158,14 @@ class GoogleSheetsService {
 
   getClassColor(className) {
     const classColors = {
-      'Beat Performer': { red: 0.58, green: 0.29, blue: 0.82 }, // Purple
-      'Frost Mage': { red: 0.26, green: 0.71, blue: 0.89 }, // Light Blue
-      'Heavy Guardian': { red: 0.42, green: 0.56, blue: 0.14 }, // Olive/Green
-      'Marksman': { red: 0.80, green: 0.47, blue: 0.13 }, // Orange/Brown
-      'Shield Knight': { red: 0.13, green: 0.59, blue: 0.95 }, // Blue
-      'Stormblade': { red: 0.61, green: 0.15, blue: 0.69 }, // Purple/Magenta
-      'Verdant Oracle': { red: 0.98, green: 0.74, blue: 0.02 }, // Gold/Yellow
-      'Wind Knight': { red: 0.40, green: 0.85, blue: 0.92 } // Cyan
+      'Beat Performer': { red: 0.58, green: 0.29, blue: 0.82 },
+      'Frost Mage': { red: 0.26, green: 0.71, blue: 0.89 },
+      'Heavy Guardian': { red: 0.42, green: 0.56, blue: 0.14 },
+      'Marksman': { red: 0.80, green: 0.47, blue: 0.13 },
+      'Shield Knight': { red: 0.13, green: 0.59, blue: 0.95 },
+      'Stormblade': { red: 0.61, green: 0.15, blue: 0.69 },
+      'Verdant Oracle': { red: 0.98, green: 0.74, blue: 0.02 },
+      'Wind Knight': { red: 0.40, green: 0.85, blue: 0.92 }
     };
     return classColors[className] || { red: 0.62, green: 0.64, blue: 0.66 };
   }
@@ -91,30 +177,6 @@ class GoogleSheetsService {
       'Support': { red: 0.30, green: 0.69, blue: 0.31 }
     };
     return roleColors[role] || { red: 0.62, green: 0.64, blue: 0.66 };
-  }
-
-  getTimezoneOffset(timezone) {
-    // Common timezone offsets from UTC
-    const timezoneOffsets = {
-      'PST': -8, 'PDT': -7,
-      'MST': -7, 'MDT': -6,
-      'CST': -6, 'CDT': -5,
-      'EST': -5, 'EDT': -4,
-      'UTC': 0, 'GMT': 0,
-      'CET': 1, 'CEST': 2,
-      'JST': 9, 'KST': 9,
-      'AEST': 10, 'AEDT': 11,
-      // Add more as needed
-    };
-    
-    // Try to extract timezone abbreviation
-    const tzMatch = timezone.match(/\b([A-Z]{3,4})\b/);
-    if (tzMatch) {
-      const tz = tzMatch[1];
-      return timezoneOffsets[tz] || 0;
-    }
-    
-    return 0;
   }
 
   async formatCleanSheet(sheetName, headerCount, dataRowCount) {
@@ -237,7 +299,6 @@ class GoogleSheetsService {
       const rows = [];
       const rowMetadata = [];
 
-      // Group characters by discord_id
       const userGroups = {};
       allCharactersWithSubclasses.forEach(char => {
         if (!userGroups[char.discord_id]) {
@@ -246,7 +307,6 @@ class GoogleSheetsService {
         userGroups[char.discord_id].push(char);
       });
 
-      // Process each user's characters
       for (const [discordId, userChars] of Object.entries(userGroups)) {
         const mainChar = userChars.find(c => c.character_type === 'main');
         const mainSubclasses = userChars.filter(c => c.character_type === 'main_subclass');
@@ -265,24 +325,27 @@ class GoogleSheetsService {
         if (mainChar) {
           discordName = mainChar.discord_name;
           
+          // ✅ UPDATED: Format timezone - we'll add the time via formula later
+          const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
+          
           rows.push([
             discordName,
             mainChar.ign,
             'Main',
-            '', // Icon column (will be replaced with IMAGE)
+            '',
             mainChar.class,
             mainChar.subclass,
             mainChar.role,
             mainChar.ability_score || '',
             mainChar.guild || '',
-            userTimezone || '',
+            '', // Empty - will be filled by formula
             `'${this.formatDate(mainChar.created_at)}`
           ]);
 
           rowMetadata.push({
             character: mainChar,
             discordName: discordName,
-            timezone: userTimezone,
+            timezone: userTimezone, // Keep full timezone for formula
             registeredDate: this.formatDate(mainChar.created_at),
             isSubclass: false,
             isMain: true,
@@ -295,13 +358,13 @@ class GoogleSheetsService {
               discordName,
               mainChar.ign,
               'Subclass',
-              '', // Icon column
+              '',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
               mainChar.guild || '',
-              userTimezone || '',
+              '', // Empty - will be filled by formula
               `'${this.formatDate(mainChar.created_at)}`
             ]);
 
@@ -325,13 +388,13 @@ class GoogleSheetsService {
             discordName,
             alt.ign,
             'Alt',
-            '', // Icon column
+            '',
             alt.class,
             alt.subclass,
             alt.role,
             alt.ability_score || '',
             alt.guild || '',
-            userTimezone || '',
+            '', // Empty - will be filled by formula
             `'${this.formatDate(alt.created_at)}`
           ]);
 
@@ -356,13 +419,13 @@ class GoogleSheetsService {
               discordName,
               alt.ign,
               'Subclass',
-              '', // Icon column
+              '',
               subclass.class,
               subclass.subclass,
               subclass.role,
               subclass.ability_score || '',
               alt.guild || '',
-              userTimezone || '',
+              '', // Empty - will be filled by formula
               `'${this.formatDate(alt.created_at)}`
             ]);
 
@@ -382,26 +445,29 @@ class GoogleSheetsService {
         });
       }
 
-      // Clear and write data
+      // ✅ UPDATED: Clear ALL data before writing (not just A:K, but entire used range)
+      console.log('🗑️  [SHEETS] Clearing existing data from Member List...');
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A:K',
+        range: 'Member List!A1:Z1000', // Clear more rows to ensure everything is gone
       });
 
+      console.log('📝 [SHEETS] Writing fresh data to Member List...');
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: 'Member List!A1',
-        valueInputOption: 'RAW',
+        valueInputOption: 'USER_ENTERED', // ✅ Changed from RAW to USER_ENTERED for formulas
         resource: {
           values: [headers, ...rows],
         },
       });
 
-      // Apply formatting
       await this.formatCleanSheet('Member List', headers.length, rows.length);
       await this.applyCleanDesign('Member List', rowMetadata);
       await this.addClassLogos('Member List', rowMetadata);
       await this.enableAutoRecalculation();
+
+      console.log(`✅ [SHEETS] Synced ${rows.length} rows successfully`);
 
     } catch (error) {
       console.error('❌ [SHEETS] Sync error:', error.message);
@@ -452,9 +518,6 @@ class GoogleSheetsService {
       if (!sheet) return;
 
       const sheetId = sheet.properties.sheetId;
-      const requests = [];
-
-      // Update values to include IMAGE formula in Icon column (D) and timezone formulas
       const valueUpdates = [];
       
       for (let i = 0; i < rowMetadata.length; i++) {
@@ -471,9 +534,12 @@ class GoogleSheetsService {
           });
         }
 
+        // ✅ UPDATED: Formula shows "EST 7:01 PM" (abbreviation + their local time)
         if (meta.timezone && meta.timezone !== '') {
           const offset = this.getTimezoneOffset(meta.timezone);
-          const formula = `="${meta.timezone} " & TEXT(NOW() + (${offset}/24), "h:mm AM/PM")`;
+          const abbrev = this.getTimezoneAbbreviation(meta.timezone);
+          // This calculates their local time based on offset
+          const formula = `="${abbrev} " & TEXT(NOW() + (${offset}/24), "h:mm AM/PM")`;
           
           valueUpdates.push({
             range: `J${rowIndex}`,
@@ -482,13 +548,11 @@ class GoogleSheetsService {
         }
       }
 
-      // Batch update all the IMAGE formulas and timezone formulas
       if (valueUpdates.length > 0) {
-        const batchSize = 10; // Smaller batches for value updates
+        const batchSize = 10;
         for (let i = 0; i < valueUpdates.length; i += batchSize) {
           const batch = valueUpdates.slice(i, i + batchSize);
           
-          // Use batchUpdate for multiple cell updates at once
           const requests = batch.map(update => ({
             updateCells: {
               range: {
@@ -513,7 +577,6 @@ class GoogleSheetsService {
               requestBody: { requests }
             });
             
-            // Add delay between batches
             if (i + batchSize < valueUpdates.length) {
               await new Promise(resolve => setTimeout(resolve, 300));
             }
@@ -523,25 +586,6 @@ class GoogleSheetsService {
         }
       }
 
-      if (requests.length > 0) {
-        const batchSize = 50;
-        for (let i = 0; i < requests.length; i += batchSize) {
-          const batch = requests.slice(i, i + batchSize);
-          try {
-            await this.sheets.spreadsheets.batchUpdate({
-              spreadsheetId: this.spreadsheetId,
-              requestBody: { requests: batch }
-            });
-            
-            // Add delay between batches
-            if (i + batchSize < requests.length) {
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-          } catch (batchError) {
-            // Silently continue
-          }
-        }
-      }
     } catch (error) {
       console.error('❌ [SHEETS] Error adding icons:', error.message);
     }
@@ -561,7 +605,6 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      // Merge Icon (D) and Class (E) header cells to display "Class"
       requests.push({
         mergeCells: {
           range: {
@@ -618,7 +661,6 @@ class GoogleSheetsService {
         }
       });
       
-      // Column widths
       const columnWidths = [160, 150, 95, 50, 180, 145, 85, 125, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
@@ -637,7 +679,6 @@ class GoogleSheetsService {
         });
       });
 
-      // Row heights
       for (let i = 0; i < rowMetadata.length; i++) {
         const meta = rowMetadata[i];
         const rowHeight = meta.isSubclass ? 34 : 38;
@@ -847,9 +888,8 @@ class GoogleSheetsService {
             requestBody: { requests: batch }
           });
           
-          // Add delay between batches to avoid rate limit
           if (i + batchSize < requests.length) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
       }
@@ -1030,7 +1070,6 @@ class GoogleSheetsService {
     const now = Date.now();
     const timeSinceLastSync = now - this.lastSyncTime;
     
-    // If recently synced, debounce
     if (timeSinceLastSync < this.minSyncInterval) {
       if (!this.syncPending) {
         this.syncPending = true;
@@ -1038,12 +1077,10 @@ class GoogleSheetsService {
         
         console.log(`⏸️  [SHEETS] Rate limited - sync delayed ${Math.round(waitTime/1000)}s`);
         
-        // Clear any existing timeout
         if (this.syncTimeout) {
           clearTimeout(this.syncTimeout);
         }
         
-        // Schedule sync
         this.syncTimeout = setTimeout(async () => {
           this.syncPending = false;
           await this.performSync(allCharactersWithSubclasses);
@@ -1071,9 +1108,8 @@ class GoogleSheetsService {
     } catch (error) {
       console.error(`❌ [SHEETS] Sync error:`, error.message);
       
-      // If quota exceeded, increase delay
       if (error.message.includes('Quota exceeded')) {
-        this.minSyncInterval = Math.min(this.minSyncInterval * 2, 300000); // Max 5 min
+        this.minSyncInterval = Math.min(this.minSyncInterval * 2, 300000);
         console.log(`⚠️  [SHEETS] Quota exceeded - increased interval to ${this.minSyncInterval/1000}s`);
       }
     }
