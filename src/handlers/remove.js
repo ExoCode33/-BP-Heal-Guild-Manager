@@ -103,7 +103,6 @@ export async function handleConfirmRemoveMain(interaction) {
     
     stateManager.clearRemovalState(userId);
     
-    // ✅ FIXED: Show menu as followUp
     setTimeout(async () => {
       try {
         const editMemberDetails = await import('../commands/edit-member-details.js');
@@ -141,11 +140,8 @@ export async function handleCancelRemoveMain(interaction) {
   
   stateManager.clearRemovalState(userId);
   
-  // ✅ NEW: Delete cancel message and show clean menu
   setTimeout(async () => {
     try {
-      
-      
       const editMemberDetails = await import('../commands/edit-member-details.js');
       await editMemberDetails.default.showMainMenu(interaction, false);
     } catch (error) {
@@ -188,7 +184,7 @@ async function showAltSelectionForRemoval(interaction, userId, alts) {
     .addOptions(
       alts.map((alt, index) => ({
         label: alt.ign,
-        value: alt.ign,
+        value: alt.id.toString(), // ✅ FIXED: Use alt.id instead of ign
         description: `${alt.class} (${alt.subclass}) - ${alt.role}`,
         emoji: getClassEmoji(alt.class)
       }))
@@ -215,7 +211,7 @@ async function showAltSelectionForRemoval(interaction, userId, alts) {
 export async function handleAltSelectionForRemoval(interaction) {
   try {
     const userId = interaction.user.id;
-    const selectedIGN = interaction.values[0];
+    const selectedAltId = parseInt(interaction.values[0]); // ✅ FIXED: Parse as ID
     const state = stateManager.getRemovalState(userId);
     
     if (!state || !state.alts) {
@@ -225,7 +221,7 @@ export async function handleAltSelectionForRemoval(interaction) {
       });
     }
 
-    const selectedAlt = state.alts.find(alt => alt.ign === selectedIGN);
+    const selectedAlt = state.alts.find(alt => alt.id === selectedAltId); // ✅ FIXED: Find by ID
     
     if (!selectedAlt) {
       return interaction.reply({
@@ -288,7 +284,8 @@ export async function handleConfirmRemoveAlt(interaction) {
 
     await interaction.deferUpdate();
 
-    await queries.deleteAltCharacter(userId, state.alt.ign);
+    // ✅ FIXED: Use deleteCharacter with alt's ID
+    await queries.deleteCharacter(state.alt.id);
 
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
@@ -306,11 +303,8 @@ export async function handleConfirmRemoveAlt(interaction) {
     
     stateManager.clearRemovalState(userId);
     
-    // ✅ NEW: Delete success message and show clean menu
     setTimeout(async () => {
       try {
-        
-        
         const editMemberDetails = await import('../commands/edit-member-details.js');
         await editMemberDetails.default.showMainMenu(interaction, false);
       } catch (error) {
@@ -346,11 +340,8 @@ export async function handleCancelRemoveAlt(interaction) {
   
   stateManager.clearRemovalState(userId);
   
-  // ✅ NEW: Delete cancel message and show clean menu
   setTimeout(async () => {
     try {
-      
-      
       const editMemberDetails = await import('../commands/edit-member-details.js');
       await editMemberDetails.default.showMainMenu(interaction, false);
     } catch (error) {
