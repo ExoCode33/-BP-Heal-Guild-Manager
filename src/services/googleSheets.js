@@ -445,18 +445,22 @@ class GoogleSheetsService {
         });
       }
 
-      // ✅ UPDATED: Clear ALL data before writing (not just A:K, but entire used range)
+      // ✅ UPDATED: Clear ALL data AND formatting before writing
       console.log('🗑️  [SHEETS] Clearing existing data from Member List...');
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A1:Z1000', // Clear more rows to ensure everything is gone
+        range: 'Member List!A1:Z1000',
       });
+      
+      // ✅ NEW: Clear all formatting to prevent broken layout after deletions
+      console.log('🧹 [SHEETS] Clearing all formatting...');
+      await this.clearAllFormatting('Member List');
 
       console.log('📝 [SHEETS] Writing fresh data to Member List...');
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: 'Member List!A1',
-        valueInputOption: 'USER_ENTERED', // ✅ Changed from RAW to USER_ENTERED for formulas
+        valueInputOption: 'USER_ENTERED',
         resource: {
           values: [headers, ...rows],
         },
@@ -496,6 +500,61 @@ class GoogleSheetsService {
       console.log('✅ [SHEETS] Auto-recalculation enabled (ON_CHANGE)');
     } catch (error) {
       console.error('⚠️  [SHEETS] Auto-recalc setting failed:', error.message);
+    }
+  }
+
+  async clearAllFormatting(sheetName) {
+    if (!this.sheets) return;
+
+    try {
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      if (!sheet) return;
+
+      const sheetId = sheet.properties.sheetId;
+
+      // Clear all formatting from the entire sheet (except headers which we'll reformat)
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              updateCells: {
+                range: {
+                  sheetId: sheetId,
+                  startRowIndex: 0,
+                  endRowIndex: 1000,
+                  startColumnIndex: 0,
+                  endColumnIndex: 26
+                },
+                fields: 'userEnteredFormat'
+              }
+            },
+            {
+              updateBorders: {
+                range: {
+                  sheetId: sheetId,
+                  startRowIndex: 0,
+                  endRowIndex: 1000,
+                  startColumnIndex: 0,
+                  endColumnIndex: 26
+                },
+                top: { style: 'NONE' },
+                bottom: { style: 'NONE' },
+                left: { style: 'NONE' },
+                right: { style: 'NONE' },
+                innerHorizontal: { style: 'NONE' },
+                innerVertical: { style: 'NONE' }
+              }
+            }
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('⚠️  [SHEETS] Error clearing formatting:', error.message);
     }
   }
 
