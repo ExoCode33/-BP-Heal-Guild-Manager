@@ -1060,10 +1060,11 @@ class GoogleSheetsService {
               fontFamily: 'Google Sans',
               foregroundColor: { red: 0.38, green: 0.42, blue: 0.45 }
             },
-            horizontalAlignment: 'LEFT',
+            horizontalAlignment: 'CENTER', // ✅ Changed from LEFT to CENTER
             verticalAlignment: 'MIDDLE',
             padding: {
-              left: 12
+              left: 12,
+              right: 12 // ✅ Added right padding for balance
             }
           }
         },
