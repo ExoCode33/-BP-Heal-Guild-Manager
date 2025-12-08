@@ -7,7 +7,8 @@ import stateManager from '../utils/stateManager.js';
 
 export async function handleAddMain(interaction) {
   try {
-    const userId = interaction.user.id;
+    // ✅ CRITICAL FIX: Extract userId from button customId
+    const userId = extractUserIdFromCustomId(interaction.customId);
     
     // Check if they already have a main
     const existingMain = await queries.getMainCharacter(userId);
@@ -15,17 +16,17 @@ export async function handleAddMain(interaction) {
       const embed = new EmbedBuilder()
         .setColor('#FFA500')
         .setTitle('⚠️ Already Registered')
-        .setDescription('You already have a main character registered!')
+        .setDescription('This user already has a main character registered!')
         .addFields({
           name: '💡 Tip',
-          value: 'Use the **Edit Main** button to update your main character.',
+          value: 'Use the **Edit Main** button to update the main character.',
           inline: false
         })
         .setTimestamp();
       
       return interaction.reply({ 
         embeds: [embed], 
-        flags: 64 // MessageFlags.Ephemeral
+        flags: 64
       });
     }
 
@@ -51,7 +52,8 @@ export async function handleAddMain(interaction) {
 
 export async function handleAddAlt(interaction) {
   try {
-    const userId = interaction.user.id;
+    // ✅ CRITICAL FIX: Extract userId from button customId
+    const userId = extractUserIdFromCustomId(interaction.customId);
     
     // Check if they have a main character
     const mainChar = await queries.getMainCharacter(userId);
@@ -59,7 +61,7 @@ export async function handleAddAlt(interaction) {
       const embed = new EmbedBuilder()
         .setColor('#FFA500')
         .setTitle('⚠️ No Main Character')
-        .setDescription('You need to register a main character before adding alt characters!')
+        .setDescription('This user needs to register a main character before adding alt characters!')
         .addFields({
           name: '💡 Next Step',
           value: 'Use the **Add Main Character** button first.',
@@ -130,7 +132,7 @@ async function showClassSelection(interaction, userId, type) {
 
 export async function handleClassSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedClass = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -153,7 +155,7 @@ export async function handleClassSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleClassSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
       flags: 64
@@ -204,7 +206,7 @@ async function showSubclassSelection(interaction, userId, type, selectedClass) {
 
 export async function handleSubclassSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedSubclass = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -239,7 +241,7 @@ export async function handleSubclassSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleSubclassSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
       flags: 64
@@ -319,7 +321,7 @@ async function showAbilityScoreSelection(interaction, userId, state) {
 
 export async function handleAbilityScoreSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedScore = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -342,7 +344,7 @@ export async function handleAbilityScoreSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleAbilityScoreSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -406,7 +408,7 @@ async function showGuildSelection(interaction, userId, state) {
 
 export async function handleGuildSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedGuild = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -433,7 +435,7 @@ export async function handleGuildSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleGuildSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -490,7 +492,7 @@ async function showTimezoneRegionSelection(interaction, userId, state) {
 
 export async function handleTimezoneRegionSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedRegion = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -553,7 +555,7 @@ export async function handleTimezoneRegionSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleTimezoneRegionSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -561,7 +563,7 @@ export async function handleTimezoneRegionSelection(interaction) {
 
 export async function handleTimezoneCountrySelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedCountry = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -613,7 +615,7 @@ export async function handleTimezoneCountrySelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleTimezoneCountrySelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -621,7 +623,7 @@ export async function handleTimezoneCountrySelection(interaction) {
 
 export async function handleTimezoneSelection(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const selectedTimezone = interaction.values[0];
     const state = stateManager.getRegistrationState(userId);
     
@@ -643,7 +645,7 @@ export async function handleTimezoneSelection(interaction) {
     
   } catch (error) {
     console.error('Error in handleTimezoneSelection:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
   }
 }
 
@@ -672,7 +674,7 @@ async function showIGNModal(interaction, userId, type) {
 
 export async function handleIGNModal(interaction) {
   try {
-    const userId = interaction.user.id;
+    const userId = extractUserIdFromCustomId(interaction.customId);
     const state = stateManager.getRegistrationState(userId);
     
     if (!state) {
@@ -684,16 +686,19 @@ export async function handleIGNModal(interaction) {
 
     const ign = interaction.fields.getTextInputValue('ign');
     const type = state.type;
+    
+    // ✅ CRITICAL: Get the target user to save with correct discord_id
+    const targetUser = await interaction.client.users.fetch(userId);
 
     if (type === 'main') {
-      await saveMainCharacter(interaction, userId, state, ign);
+      await saveMainCharacter(interaction, userId, targetUser, state, ign);
     } else {
-      await saveAltCharacter(interaction, userId, state, ign);
+      await saveAltCharacter(interaction, userId, targetUser, state, ign);
     }
     
   } catch (error) {
     console.error('Error in handleIGNModal:', error);
-    stateManager.clearRegistrationState(interaction.user.id);
+    stateManager.clearRegistrationState(extractUserIdFromCustomId(interaction.customId));
     await interaction.reply({
       content: '❌ An error occurred. Please try again.',
       flags: 64
@@ -703,14 +708,14 @@ export async function handleIGNModal(interaction) {
 
 // ==================== SAVE MAIN CHARACTER ====================
 
-async function saveMainCharacter(interaction, userId, state, ign) {
+async function saveMainCharacter(interaction, userId, targetUser, state, ign) {
   try {
     await interaction.deferReply({ flags: 64 });
 
-    // Save main character
+    // Save main character with TARGET user's discord_id
     const characterData = {
-      discordId: userId,
-      discordName: interaction.user.tag,
+      discordId: userId, // ✅ Use extracted userId, not interaction.user.id
+      discordName: targetUser.tag, // ✅ Use target user's tag
       ign: ign,
       role: state.role,
       className: state.class,
@@ -724,19 +729,19 @@ async function saveMainCharacter(interaction, userId, state, ign) {
 
     // Save timezone separately if provided
     if (state.timezone) {
-      await queries.setUserTimezone(userId, interaction.user.tag, state.timezone);
+      await queries.setUserTimezone(userId, targetUser.tag, state.timezone);
     }
 
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Main Character Registered!')
-      .setDescription('Your main character has been successfully registered.')
+      .setDescription(`Main character has been successfully registered for **${targetUser.tag}**.`)
       .addFields(
         { name: '🎮 IGN', value: ign, inline: true },
         { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
         { name: '⚔️ Role', value: state.role, inline: true }
       )
-      .setFooter({ text: '💡 Loading your profile...' })
+      .setFooter({ text: '💡 Registration complete' })
       .setTimestamp();
 
     if (state.guild) {
@@ -755,16 +760,6 @@ async function saveMainCharacter(interaction, userId, state, ign) {
     
     stateManager.clearRegistrationState(userId);
     
-    // Show main menu
-    setTimeout(async () => {
-      try {
-        const editMemberDetails = await import('../commands/edit-member-details.js');
-        await editMemberDetails.default.showMainMenu(interaction, false);
-      } catch (error) {
-        console.error('Error returning to menu after registration:', error);
-      }
-    }, 2000);
-    
   } catch (error) {
     console.error('Error saving main character:', error);
     stateManager.clearRegistrationState(userId);
@@ -772,7 +767,7 @@ async function saveMainCharacter(interaction, userId, state, ign) {
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
       .setTitle('❌ Registration Failed')
-      .setDescription('An error occurred while saving your main character.')
+      .setDescription('An error occurred while saving the main character.')
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed] });
@@ -781,14 +776,14 @@ async function saveMainCharacter(interaction, userId, state, ign) {
 
 // ==================== SAVE ALT CHARACTER ====================
 
-async function saveAltCharacter(interaction, userId, state, ign) {
+async function saveAltCharacter(interaction, userId, targetUser, state, ign) {
   try {
     await interaction.deferReply({ flags: 64 });
 
-    // Save alt character
+    // Save alt character with TARGET user's discord_id
     const altData = {
-      discordId: userId,
-      discordName: interaction.user.tag,
+      discordId: userId, // ✅ Use extracted userId
+      discordName: targetUser.tag, // ✅ Use target user's tag
       ign: ign,
       role: state.role,
       className: state.class,
@@ -803,13 +798,13 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     const embed = new EmbedBuilder()
       .setColor('#00FF00')
       .setTitle('✅ Alt Character Added!')
-      .setDescription('Your alt character has been successfully registered.')
+      .setDescription(`Alt character has been successfully registered for **${targetUser.tag}**.`)
       .addFields(
         { name: '🎮 IGN', value: ign, inline: true },
         { name: '🎭 Class', value: `${state.class} (${state.subclass})`, inline: true },
         { name: '⚔️ Role', value: state.role, inline: true }
       )
-      .setFooter({ text: '💡 Returning to menu...' })
+      .setFooter({ text: '💡 Registration complete' })
       .setTimestamp();
 
     if (state.abilityScore) {
@@ -824,16 +819,6 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     
     stateManager.clearRegistrationState(userId);
     
-    // Show menu
-    setTimeout(async () => {
-      try {
-        const editMemberDetails = await import('../commands/edit-member-details.js');
-        await editMemberDetails.default.showMainMenu(interaction, false);
-      } catch (error) {
-        console.error('Error returning to menu after alt registration:', error);
-      }
-    }, 2000);
-    
   } catch (error) {
     console.error('Error saving alt character:', error);
     stateManager.clearRegistrationState(userId);
@@ -841,7 +826,7 @@ async function saveAltCharacter(interaction, userId, state, ign) {
     const embed = new EmbedBuilder()
       .setColor('#FF0000')
       .setTitle('❌ Registration Failed')
-      .setDescription('An error occurred while saving your alt character.')
+      .setDescription('An error occurred while saving the alt character.')
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed] });
@@ -851,12 +836,28 @@ async function saveAltCharacter(interaction, userId, state, ign) {
 // ==================== BACK BUTTON HANDLERS ====================
 
 export async function handleBackToMenu(interaction) {
+  const userId = extractUserIdFromCustomId(interaction.customId);
+  
+  // If admin is editing someone else, we can't show the menu
+  // So just acknowledge and clear state
+  if (userId !== interaction.user.id) {
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('✅ Cancelled')
+      .setDescription('Character registration cancelled.')
+      .setTimestamp();
+    
+    await interaction.update({ embeds: [embed], components: [] });
+    stateManager.clearRegistrationState(userId);
+    return;
+  }
+  
   const editMemberDetails = await import('../commands/edit-member-details.js');
   await editMemberDetails.default.showMainMenu(interaction, true);
 }
 
 export async function handleBackToClass(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state) {
@@ -870,7 +871,7 @@ export async function handleBackToClass(interaction) {
 }
 
 export async function handleBackToSubclass(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state || !state.class) {
@@ -884,7 +885,7 @@ export async function handleBackToSubclass(interaction) {
 }
 
 export async function handleBackToAbility(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state) {
@@ -898,7 +899,7 @@ export async function handleBackToAbility(interaction) {
 }
 
 export async function handleBackToGuild(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state) {
@@ -912,7 +913,7 @@ export async function handleBackToGuild(interaction) {
 }
 
 export async function handleBackToTimezoneRegion(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state) {
@@ -926,7 +927,7 @@ export async function handleBackToTimezoneRegion(interaction) {
 }
 
 export async function handleBackToTimezoneCountry(interaction) {
-  const userId = interaction.user.id;
+  const userId = extractUserIdFromCustomId(interaction.customId);
   const state = stateManager.getRegistrationState(userId);
   
   if (!state || !state.selectedRegion) {
@@ -971,6 +972,17 @@ export async function handleBackToTimezoneCountry(interaction) {
 }
 
 // ==================== UTILITY FUNCTIONS ====================
+
+/**
+ * Extract user ID from customId pattern like "button_name_userId"
+ * @param {string} customId - The custom ID from the interaction
+ * @returns {string} - The extracted user ID
+ */
+function extractUserIdFromCustomId(customId) {
+  // Pattern: anything_userId where userId is at the end
+  const parts = customId.split('_');
+  return parts[parts.length - 1];
+}
 
 function getClassEmoji(className) {
   const emojis = {
