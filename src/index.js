@@ -5,13 +5,39 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
 
-// Import handlers
-import { handleCreateCharacter, handleMainCharacterModal, handleMainSubclassModal } from './handlers/create.js';
-import { handleUpdateMain, handleUpdateAlt, handleUpdateSubclass, handleAltSelectionForUpdate, handleSubclassSelectionForUpdate, handleUpdateOptionSelection, handleUpdateModal, handleUpdateClassSelection, handleUpdateSubclassSelection, handleUpdateAbilityScoreSelection, handleUpdateGuildSelection, handleUpdateTimezoneRegionSelection, handleUpdateTimezoneCountrySelection, handleUpdateTimezoneFinalSelection, handleBackToUpdateMenu, handleBackToUpdateClass, handleBackToUpdateTimezoneRegion, handleBackToUpdateTimezoneCountry } from './handlers/update.js';
-import { handleAddAlt, handleAddAltModal, handleAddAltSubclassModal } from './handlers/addAlt.js';
-import { handleAddSubclass, handleSelectMainOrAlt, handleSelectAltForSubclass, handleAddSubclassModal } from './handlers/addSubclass.js';
-import { handleViewCharacter, handleDeleteMain, handleDeleteAlt, handleDeleteSubclass, handleSelectDeleteAlt, handleSelectDeleteSubclass, handleConfirmDeleteMain, handleConfirmDeleteAlt, handleConfirmDeleteSubclass } from './handlers/character.js';
-import { syncToSheets } from './services/sheets.js';
+// Dynamic handler imports with error handling
+let handlers = {};
+
+async function loadHandlers() {
+  const handlerFiles = [
+    { path: './handlers/create.js', name: 'create' },
+    { path: './handlers/update.js', name: 'update' },
+    { path: './handlers/addAlt.js', name: 'addAlt' },
+    { path: './handlers/addSubclass.js', name: 'addSubclass' },
+    { path: './handlers/character.js', name: 'character' }
+  ];
+
+  for (const handler of handlerFiles) {
+    try {
+      const module = await import(handler.path);
+      handlers[handler.name] = module;
+      console.log(`✅ Loaded handler: ${handler.name}`);
+    } catch (error) {
+      console.log(`⚠️ Handler not found: ${handler.name} - Skipping`);
+      handlers[handler.name] = null;
+    }
+  }
+}
+
+// Dynamic sheets import
+let syncToSheets = null;
+try {
+  const sheetsModule = await import('./services/sheets.js');
+  syncToSheets = sheetsModule.syncToSheets;
+  console.log('✅ Loaded sheets service');
+} catch (error) {
+  console.log('⚠️ Sheets service not found - Auto-sync disabled');
+}
 
 dotenv.config();
 
@@ -108,6 +134,9 @@ if (process.env.LOG_CHANNEL_ID) {
 }
 // ============================================
 
+// Load handlers
+await loadHandlers();
+
 // Load commands
 const commandsPath = join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -162,19 +191,23 @@ client.once(Events.ClientReady, async (c) => {
   // Register commands
   await registerCommands();
   
-  // Start auto-sync if configured
-  const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000; // Default 5 minutes
-  if (autoSyncInterval > 0) {
-    console.log(`⏰ Auto-sync enabled: every ${autoSyncInterval / 1000} seconds`);
-    setInterval(async () => {
-      try {
-        console.log('⏰ Auto-sync started - Syncing to Google Sheets...');
-        await syncToSheets(client);
-        console.log('✅ Auto-sync completed successfully');
-      } catch (error) {
-        console.error('❌ Auto-sync failed:', error);
-      }
-    }, autoSyncInterval);
+  // Start auto-sync if configured and sheets service is available
+  if (syncToSheets) {
+    const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000; // Default 5 minutes
+    if (autoSyncInterval > 0) {
+      console.log(`⏰ Auto-sync enabled: every ${autoSyncInterval / 1000} seconds`);
+      setInterval(async () => {
+        try {
+          console.log('⏰ Auto-sync started - Syncing to Google Sheets...');
+          await syncToSheets(client);
+          console.log('✅ Auto-sync completed successfully');
+        } catch (error) {
+          console.error('❌ Auto-sync failed:', error);
+        }
+      }, autoSyncInterval);
+    }
+  } else {
+    console.log('⚠️ Auto-sync disabled - sheets service not available');
   }
 });
 
@@ -207,6 +240,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+// Safe handler call helper
+function safeCall(handlerName, functionName, ...args) {
+  if (handlers[handlerName] && handlers[handlerName][functionName]) {
+    return handlers[handlerName][functionName](...args);
+  }
+  console.log(`⚠️ Handler not available: ${handlerName}.${functionName}`);
+  return Promise.resolve();
+}
+
 // Handle button interactions
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
@@ -216,65 +258,65 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     // Create character flow
     if (customId === 'create_character') {
-      await handleCreateCharacter(interaction);
+      await safeCall('create', 'handleCreateCharacter', interaction);
     }
     
     // View character
     else if (customId.startsWith('view_character_')) {
-      await handleViewCharacter(interaction);
+      await safeCall('character', 'handleViewCharacter', interaction);
     }
     
     // Update handlers
     else if (customId.startsWith('update_main_')) {
-      await handleUpdateMain(interaction);
+      await safeCall('update', 'handleUpdateMain', interaction);
     }
     else if (customId.startsWith('update_alt_')) {
-      await handleUpdateAlt(interaction);
+      await safeCall('update', 'handleUpdateAlt', interaction);
     }
     else if (customId.startsWith('update_subclass_')) {
-      await handleUpdateSubclass(interaction);
+      await safeCall('update', 'handleUpdateSubclass', interaction);
     }
     else if (customId.startsWith('back_to_update_menu_')) {
-      await handleBackToUpdateMenu(interaction);
+      await safeCall('update', 'handleBackToUpdateMenu', interaction);
     }
     else if (customId.startsWith('back_to_update_class_')) {
-      await handleBackToUpdateClass(interaction);
+      await safeCall('update', 'handleBackToUpdateClass', interaction);
     }
     else if (customId.startsWith('back_to_update_timezone_region_')) {
-      await handleBackToUpdateTimezoneRegion(interaction);
+      await safeCall('update', 'handleBackToUpdateTimezoneRegion', interaction);
     }
     else if (customId.startsWith('back_to_update_timezone_country_')) {
-      await handleBackToUpdateTimezoneCountry(interaction);
+      await safeCall('update', 'handleBackToUpdateTimezoneCountry', interaction);
     }
     
     // Add alt character
     else if (customId.startsWith('add_alt_')) {
-      await handleAddAlt(interaction);
+      await safeCall('addAlt', 'handleAddAlt', interaction);
     }
     
     // Add subclass
     else if (customId.startsWith('add_subclass_')) {
-      await handleAddSubclass(interaction);
+      await safeCall('addSubclass', 'handleAddSubclass', interaction);
     }
     
     // Delete handlers
     else if (customId.startsWith('delete_main_')) {
-      await handleDeleteMain(interaction);
+      await safeCall('character', 'handleDeleteMain', interaction);
     }
     else if (customId.startsWith('delete_alt_')) {
-      await handleDeleteAlt(interaction);
+      await safeCall('character', 'handleDeleteAlt', interaction);
     }
     else if (customId.startsWith('delete_subclass_')) {
-      await handleDeleteSubclass(interaction);
+      await safeCall('character', 'handleDeleteSubclass', interaction);
     }
     else if (customId.startsWith('confirm_delete_main_')) {
-      await handleConfirmDeleteMain(interaction);
+      await safeCall('character', 'handleConfirmDeleteMain', interaction);
     }
     else if (customId.startsWith('confirm_delete_alt_')) {
-      await handleConfirmDeleteAlt(interaction);
+      await safeCall('character', 'handleConfirmDeleteAlt', interaction);
     }
     else if (customId.startsWith('confirm_delete_subclass_')) {
-      await handleConfirmDeleteSubclass(interaction);
+      await safeCall('character', 'handleConfirmDeleteSubclass', interaction);
     }
     else if (customId.startsWith('cancel_delete_')) {
       await interaction.update({ 
@@ -286,7 +328,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     
     // Back to menu
     else if (customId.startsWith('back_to_menu_')) {
-      await handleViewCharacter(interaction);
+      await safeCall('character', 'handleViewCharacter', interaction);
     }
 
   } catch (error) {
@@ -319,57 +361,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     // Update option selection
     if (customId.startsWith('update_option_')) {
-      await handleUpdateOptionSelection(interaction);
+      await safeCall('update', 'handleUpdateOptionSelection', interaction);
     }
     // Update class selection
     else if (customId.startsWith('update_class_')) {
-      await handleUpdateClassSelection(interaction);
+      await safeCall('update', 'handleUpdateClassSelection', interaction);
     }
     // Update subclass selection
     else if (customId.startsWith('update_subclass_')) {
-      await handleUpdateSubclassSelection(interaction);
+      await safeCall('update', 'handleUpdateSubclassSelection', interaction);
     }
     // Update ability score selection
     else if (customId.startsWith('update_ability_score_select_')) {
-      await handleUpdateAbilityScoreSelection(interaction);
+      await safeCall('update', 'handleUpdateAbilityScoreSelection', interaction);
     }
     // Update guild selection
     else if (customId.startsWith('update_guild_')) {
-      await handleUpdateGuildSelection(interaction);
+      await safeCall('update', 'handleUpdateGuildSelection', interaction);
     }
     // Update timezone selections
     else if (customId.startsWith('update_timezone_region_')) {
-      await handleUpdateTimezoneRegionSelection(interaction);
+      await safeCall('update', 'handleUpdateTimezoneRegionSelection', interaction);
     }
     else if (customId.startsWith('update_timezone_country_')) {
-      await handleUpdateTimezoneCountrySelection(interaction);
+      await safeCall('update', 'handleUpdateTimezoneCountrySelection', interaction);
     }
     else if (customId.startsWith('update_timezone_final_')) {
-      await handleUpdateTimezoneFinalSelection(interaction);
+      await safeCall('update', 'handleUpdateTimezoneFinalSelection', interaction);
     }
     // Select alt to update
     else if (customId.startsWith('select_alt_update_')) {
-      await handleAltSelectionForUpdate(interaction);
+      await safeCall('update', 'handleAltSelectionForUpdate', interaction);
     }
     // Select subclass to update
     else if (customId.startsWith('select_subclass_update_')) {
-      await handleSubclassSelectionForUpdate(interaction);
+      await safeCall('update', 'handleSubclassSelectionForUpdate', interaction);
     }
     // Select main or alt for subclass
     else if (customId.startsWith('select_main_or_alt_')) {
-      await handleSelectMainOrAlt(interaction);
+      await safeCall('addSubclass', 'handleSelectMainOrAlt', interaction);
     }
     // Select alt for subclass
     else if (customId.startsWith('select_alt_for_subclass_')) {
-      await handleSelectAltForSubclass(interaction);
+      await safeCall('addSubclass', 'handleSelectAltForSubclass', interaction);
     }
     // Select alt to delete
     else if (customId.startsWith('select_delete_alt_')) {
-      await handleSelectDeleteAlt(interaction);
+      await safeCall('character', 'handleSelectDeleteAlt', interaction);
     }
     // Select subclass to delete
     else if (customId.startsWith('select_delete_subclass_')) {
-      await handleSelectDeleteSubclass(interaction);
+      await safeCall('character', 'handleSelectDeleteSubclass', interaction);
     }
 
   } catch (error) {
@@ -402,27 +444,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     // Main character modal
     if (customId.startsWith('main_character_modal')) {
-      await handleMainCharacterModal(interaction);
+      await safeCall('create', 'handleMainCharacterModal', interaction);
     }
     // Main subclass modal
     else if (customId.startsWith('main_subclass_modal_')) {
-      await handleMainSubclassModal(interaction);
+      await safeCall('create', 'handleMainSubclassModal', interaction);
     }
     // Alt character modal
     else if (customId.startsWith('alt_character_modal_')) {
-      await handleAddAltModal(interaction);
+      await safeCall('addAlt', 'handleAddAltModal', interaction);
     }
     // Alt subclass modal
     else if (customId.startsWith('alt_subclass_modal_')) {
-      await handleAddAltSubclassModal(interaction);
+      await safeCall('addAlt', 'handleAddAltSubclassModal', interaction);
     }
     // Add subclass modal
     else if (customId.startsWith('add_subclass_modal_')) {
-      await handleAddSubclassModal(interaction);
+      await safeCall('addSubclass', 'handleAddSubclassModal', interaction);
     }
     // Update IGN modal
     else if (customId.startsWith('update_ign_modal_')) {
-      await handleUpdateModal(interaction, 'ign');
+      await safeCall('update', 'handleUpdateModal', interaction, 'ign');
     }
 
   } catch (error) {
