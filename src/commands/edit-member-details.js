@@ -202,6 +202,13 @@ export default {
     }
 
     // ✅ Build buttons with proper counts
+    console.log('📍 About to build buttons:', { 
+      userId, 
+      hasMainChar: !!mainChar,
+      altCount: alts.length,
+      subclassCount: totalSubclasses 
+    });
+    
     const components = this.buildButtonRows(mainChar, alts.length, totalSubclasses, userId);
 
     // ✅ Use flags instead of ephemeral (Discord.js deprecation fix)
@@ -280,7 +287,16 @@ export default {
 
   // ✅ COMPLETELY REWRITTEN: Single Edit button + smart disabling based on counts
   buildButtonRows(mainChar, altCount, subclassCount, userId) {
+    // ✅ Safety check for undefined userId
+    if (!userId) {
+      console.error('❌ buildButtonRows called with undefined userId!');
+      console.trace('Stack trace:');
+      // Use a placeholder that will be obvious if it fails
+      userId = 'ERROR_UNDEFINED_USER';
+    }
+    
     console.log('🔧 Building buttons with counts:', { 
+      userId,
       altCount, 
       subclassCount,
       altCountType: typeof altCount,
@@ -343,8 +359,39 @@ export default {
 
   // ✅ NEW: Show edit menu when Edit button is clicked
   async showEditMenu(interaction, userId) {
-    const allCharacters = await queries.getAllCharactersWithSubclasses(userId);
+    // ✅ If userId is undefined, use interaction user's ID
+    const targetUserId = userId || interaction.user.id;
+    
+    console.log('🔍 showEditMenu called with:', { 
+      providedUserId: userId, 
+      interactionUserId: interaction.user.id,
+      targetUserId 
+    });
+    
+    const allCharacters = await queries.getAllCharactersWithSubclasses(targetUserId);
+    
+    if (!allCharacters || allCharacters.length === 0) {
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FFA500')
+        .setTitle('⚠️ No Characters Found')
+        .setDescription('No characters found for this user!')
+        .setTimestamp();
+      
+      return await interaction.update({ embeds: [errorEmbed], components: [] });
+    }
+    
     const mainChar = allCharacters.find(c => c.character_type === 'main');
+    
+    if (!mainChar) {
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FFA500')
+        .setTitle('⚠️ No Main Character')
+        .setDescription('This user doesn\'t have a main character yet!')
+        .setTimestamp();
+      
+      return await interaction.update({ embeds: [errorEmbed], components: [] });
+    }
+    
     const alts = allCharacters.filter(c => c.character_type === 'alt');
     const totalSubclasses = allCharacters.filter(c => 
       c.character_type === 'main_subclass' || c.character_type === 'alt_subclass'
@@ -381,12 +428,12 @@ export default {
     }
 
     const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`edit_type_select_${userId}`)
+      .setCustomId(`edit_type_select_${targetUserId}`)
       .setPlaceholder('✏️ What would you like to edit?')
       .addOptions(options);
 
     const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_menu_${userId}`)
+      .setCustomId(`back_to_menu_${targetUserId}`)
       .setLabel('◀️ Back')
       .setStyle(ButtonStyle.Secondary);
 
