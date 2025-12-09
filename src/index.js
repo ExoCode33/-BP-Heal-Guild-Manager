@@ -6,7 +6,6 @@ import { dirname, join } from 'path';
 import fs from 'fs';
 import logger from './utils/logger.js';
 
-// Dynamic handler imports with error handling
 let handlers = {};
 
 async function loadHandlers() {
@@ -35,7 +34,6 @@ async function loadHandlers() {
   logger.handlers(loaded, missing);
 }
 
-// Dynamic sheets import
 let syncToSheets = null;
 try {
   const sheetsModule = await import('./services/sheets.js');
@@ -49,7 +47,6 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Create Discord client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -60,7 +57,6 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Create Express app for health checks
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -80,10 +76,8 @@ const server = app.listen(PORT, () => {
   logger.server(PORT);
 });
 
-// Load handlers
 await loadHandlers();
 
-// Load commands
 const commandsPath = join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -99,7 +93,6 @@ for (const file of commandFiles) {
   });
 }
 
-// Register commands with Discord
 async function registerCommands() {
   const commands = [];
   const commandsPath = join(__dirname, 'commands');
@@ -128,13 +121,11 @@ async function registerCommands() {
   }
 }
 
-// Bot ready event
 client.once(Events.ClientReady, async (c) => {
   logger.init(client);
   logger.botReady(c.user.tag);
   await registerCommands();
   
-  // Start auto-sync if configured
   if (syncToSheets) {
     const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000;
     if (autoSyncInterval > 0) {
@@ -152,7 +143,6 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
-// Handle slash commands
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -182,10 +172,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Safe handler call with timeout protection
 async function safeCall(handlerName, functionName, interaction, ...args) {
   if (handlers[handlerName] && handlers[handlerName][functionName]) {
-    // Defer immediately to prevent "interaction failed" errors
     if (!interaction.deferred && !interaction.replied) {
       try {
         await interaction.deferUpdate();
@@ -198,7 +186,6 @@ async function safeCall(handlerName, functionName, interaction, ...args) {
   return Promise.resolve();
 }
 
-// Handle button interactions
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -310,7 +297,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Handle select menu interactions
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
 
@@ -422,7 +408,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Handle modal submissions
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
 
@@ -458,7 +443,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Error handling
 process.on('unhandledRejection', error => {
   logger.error(`Unhandled rejection: ${error.message}`);
 });
@@ -467,7 +451,6 @@ process.on('uncaughtException', error => {
   logger.error(`Uncaught exception: ${error.message}`);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
   logger.shutdown();
   server.close(() => {
@@ -484,5 +467,4 @@ process.on('SIGTERM', () => {
   });
 });
 
-// Login to Discord
 client.login(process.env.DISCORD_TOKEN);
