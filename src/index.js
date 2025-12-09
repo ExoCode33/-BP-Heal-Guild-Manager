@@ -94,7 +94,7 @@ for (const file of commandFiles) {
     if ('data' in command && 'execute' in command) {
       client.commands.set(command.data.name, command);
     } else {
-      logger.warning(`⚠️ Command at ${file} missing data/execute`);
+      logger.warning(`⚠️ Command at ${file} missing data/execute`, false);
     }
   });
 }
@@ -124,13 +124,13 @@ async function registerCommands() {
 
     logger.commands(data.length);
   } catch (error) {
-    logger.error(`❌ Command registration failed: ${error.message}`);
+    logger.error(`Command registration failed: ${error.message}`);
   }
 }
 
 // Bot ready event
 client.once(Events.ClientReady, async (c) => {
-  // Initialize logger with client
+  // Initialize logger with client FIRST
   logger.init(client);
   
   logger.botReady(c.user.tag);
@@ -142,7 +142,7 @@ client.once(Events.ClientReady, async (c) => {
   if (syncToSheets) {
     const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000;
     if (autoSyncInterval > 0) {
-      logger.info(`⏰ Auto-sync: every ${autoSyncInterval / 1000}s`);
+      logger.info(`⏰ Auto-sync: every ${autoSyncInterval / 1000}s`, false);
       setInterval(async () => {
         try {
           logger.syncStarted();
@@ -163,7 +163,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const command = client.commands.get(interaction.commandName);
 
   if (!command) {
-    logger.error(`❌ No command: ${interaction.commandName}`);
+    logger.error(`No command: ${interaction.commandName}`);
     return;
   }
 
@@ -293,7 +293,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    logger.error(`❌ Button error (${customId}): ${error.message}`);
+    logger.error(`Button error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -308,7 +308,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      logger.error(`❌ Error sending error message: ${followupError.message}`);
+      logger.error(`Error sending error message: ${followupError.message}`, false);
     }
   }
 });
@@ -416,7 +416,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    logger.error(`❌ Select error (${customId}): ${error.message}`);
+    logger.error(`Select error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -431,7 +431,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      logger.error(`❌ Error sending error message: ${followupError.message}`);
+      logger.error(`Error sending error message: ${followupError.message}`, false);
     }
   }
 });
@@ -454,7 +454,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    logger.error(`❌ Modal error (${customId}): ${error.message}`);
+    logger.error(`Modal error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -469,18 +469,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      logger.error(`❌ Error sending error message: ${followupError.message}`);
+      logger.error(`Error sending error message: ${followupError.message}`, false);
     }
   }
 });
 
 // Error handling
 process.on('unhandledRejection', error => {
-  logger.error(`❌ Unhandled rejection: ${error.message}`);
+  logger.error(`Unhandled rejection: ${error.message}`);
 });
 
 process.on('uncaughtException', error => {
-  logger.error(`❌ Uncaught exception: ${error.message}`);
+  logger.error(`Uncaught exception: ${error.message}`);
 });
 
 // Graceful shutdown
