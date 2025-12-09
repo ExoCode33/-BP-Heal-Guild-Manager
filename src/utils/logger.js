@@ -30,16 +30,22 @@ class Logger {
       return;
     }
 
-    const message = 
-      '```ansi\n' +
-      '\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n' +
-      '\u001b[1;32m           BOT STARTED\u001b[0m\n' +
-      '\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n' +
-      '\n' +
-      `\u001b[1;36mBot:\u001b[0m ${this.startup.bot}\n` +
-      `\u001b[1;36mServer:\u001b[0m ${this.startup.server}\n` +
-      `\u001b[1;36mCommands:\u001b[0m ${this.startup.commands}\n` +
-      `\u001b[1;36mHandlers:\u001b[0m ${this.startup.handlers}\n` +
+    // Get current timestamp
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+
+    // Format with [BOT STARTED] prefix on each line
+    const message = '```ansi\n' +
+      `\u001b[1;32m[BOT STARTED]\u001b[0m ${time}\n` +
+      `\u001b[1;32m[BOT STARTED]\u001b[0m Logged in as: \u001b[1;36m${this.startup.bot}\u001b[0m\n` +
+      `\u001b[1;32m[BOT STARTED]\u001b[0m Server: \u001b[1;36m${this.startup.server}\u001b[0m\n` +
+      `\u001b[1;32m[BOT STARTED]\u001b[0m Commands: \u001b[1;36m${this.startup.commands}\u001b[0m\n` +
+      `\u001b[1;32m[BOT STARTED]\u001b[0m Activated Handlers: \u001b[1;36m${this.startup.handlers}\u001b[0m\n` +
       '```';
 
     await this.toDiscord(message);
@@ -157,13 +163,20 @@ class Logger {
     this.sendStartupSummary();
   }
 
-  // Command execution with colored text
+  // Command execution with timestamp
   commandExecuted(commandName, username) {
     const msg = `/${commandName} by ${username}`;
     this.verbose(msg);
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;35m[COMMAND]\u001b[0m /${commandName} by \u001b[1;36m${username}\u001b[0m\n` +
+      `\u001b[1;35m[COMMAND]\u001b[0m ${time} - /${commandName} by \u001b[1;36m${username}\u001b[0m\n` +
       '```';
     
     this.toDiscord(colored);
@@ -173,8 +186,15 @@ class Logger {
     const msg = `Command /${commandName} failed: ${error.message}`;
     this.error(msg, false);
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;31m[ERROR]\u001b[0m Command /${commandName} failed\n` +
+      `\u001b[1;31m[ERROR]\u001b[0m ${time} - Command /${commandName} failed\n` +
       `\u001b[0;31m${error.message}\u001b[0m\n` +
       '```';
     
@@ -186,12 +206,19 @@ class Logger {
     this.verbose(`${type} interaction: ${action}`);
   }
 
-  // Sync logs with colored text
+  // Sync logs with timestamp
   syncStarted() {
     console.log('[SYNC] Sync started');
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;36m[SYNC]\u001b[0m Syncing to Google Sheets...\n` +
+      `\u001b[1;36m[SYNC]\u001b[0m ${time} - Syncing to Google Sheets...\n` +
       '```';
     
     this.toDiscord(colored);
@@ -200,8 +227,15 @@ class Logger {
   syncComplete() {
     console.log('[SUCCESS] Sync completed');
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;32m[SUCCESS]\u001b[0m Sync complete - All data synced to Google Sheets\n` +
+      `\u001b[1;32m[SUCCESS]\u001b[0m ${time} - Sync complete\n` +
       '```';
     
     this.toDiscord(colored);
@@ -210,8 +244,15 @@ class Logger {
   syncFailed(error) {
     console.error(`[ERROR] Sync failed: ${error.message}`);
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;31m[ERROR]\u001b[0m Sync failed\n` +
+      `\u001b[1;31m[ERROR]\u001b[0m ${time} - Sync failed\n` +
       `\u001b[0;31m${error.message}\u001b[0m\n` +
       '```';
     
@@ -225,8 +266,15 @@ class Logger {
   shutdown() {
     console.log('[SHUTDOWN] Bot shutting down');
     
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
+    
     const colored = '```ansi\n' +
-      `\u001b[1;33m[SHUTDOWN]\u001b[0m Bot shutting down...\n` +
+      `\u001b[1;33m[SHUTDOWN]\u001b[0m ${time} - Bot shutting down\n` +
       '```';
     
     this.toDiscord(colored);
