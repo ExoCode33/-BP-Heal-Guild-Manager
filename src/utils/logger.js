@@ -1,5 +1,4 @@
 // src/utils/logger.js
-import { EmbedBuilder } from 'discord.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -31,78 +30,92 @@ class Logger {
       return;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor('#00FF00')
-      .setTitle('Bot Started')
-      .addFields(
-        { name: 'Bot', value: `\`${this.startup.bot}\``, inline: true },
-        { name: 'Server', value: `\`${this.startup.server}\``, inline: true },
-        { name: 'Commands', value: `\`${this.startup.commands}\``, inline: true },
-        { name: 'Handlers', value: `\`${this.startup.handlers}\``, inline: false }
-      )
-      .setTimestamp();
+    const message = 
+      '```ansi\n' +
+      '\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n' +
+      '\u001b[1;32m           BOT STARTED\u001b[0m\n' +
+      '\u001b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n' +
+      '\n' +
+      `\u001b[1;36mBot:\u001b[0m ${this.startup.bot}\n` +
+      `\u001b[1;36mServer:\u001b[0m ${this.startup.server}\n` +
+      `\u001b[1;36mCommands:\u001b[0m ${this.startup.commands}\n` +
+      `\u001b[1;36mHandlers:\u001b[0m ${this.startup.handlers}\n` +
+      '```';
 
-    await this.sendEmbed(embed);
+    await this.toDiscord(message);
   }
 
-  async sendEmbed(embed) {
+  async toDiscord(message) {
     if (!this.logChannelId || !this.client || !this.logToDiscord) return;
     
     try {
       const channel = await this.client.channels.fetch(this.logChannelId);
       if (!channel) return;
-      await channel.send({ embeds: [embed] });
+      await channel.send(message);
     } catch (error) {
       // Silently fail
     }
   }
 
-  async toDiscord(title, description, color) {
-    const embed = new EmbedBuilder()
-      .setColor(color)
-      .setTitle(title)
-      .setDescription(description)
-      .setTimestamp();
-    
-    await this.sendEmbed(embed);
-  }
-
   // Console logging methods
   info(message, sendToDiscord = false) {
     console.log(`[INFO] ${message}`);
-    if (sendToDiscord) this.toDiscord('Info', message, '#3498DB');
+    if (sendToDiscord) {
+      const colored = '```ansi\n' +
+        `\u001b[1;34m[INFO]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
+    }
   }
 
   success(message, sendToDiscord = true) {
     console.log(`[SUCCESS] ${message}`);
-    if (sendToDiscord) this.toDiscord('Success', message, '#00FF00');
+    if (sendToDiscord) {
+      const colored = '```ansi\n' +
+        `\u001b[1;32m[SUCCESS]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
+    }
   }
 
   error(message, sendToDiscord = true) {
     console.error(`[ERROR] ${message}`);
-    if (sendToDiscord) this.toDiscord('Error', message, '#FF0000');
+    if (sendToDiscord) {
+      const colored = '```ansi\n' +
+        `\u001b[1;31m[ERROR]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
+    }
   }
 
   warning(message, sendToDiscord = true) {
     console.log(`[WARNING] ${message}`);
-    if (sendToDiscord) this.toDiscord('Warning', message, '#FFA500');
+    if (sendToDiscord) {
+      const colored = '```ansi\n' +
+        `\u001b[1;33m[WARNING]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
+    }
   }
 
   command(message, sendToDiscord = true) {
     console.log(`[COMMAND] ${message}`);
     if (sendToDiscord) {
-      const embed = new EmbedBuilder()
-        .setColor('#9B59B6')
-        .setTitle('Command Executed')
-        .setDescription(`\`${message}\``)
-        .setTimestamp();
-      this.sendEmbed(embed);
+      const colored = '```ansi\n' +
+        `\u001b[1;35m[COMMAND]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
     }
   }
 
   sync(message, sendToDiscord = true) {
     console.log(`[SYNC] ${message}`);
-    if (sendToDiscord) this.toDiscord('Sync', message, '#3498DB');
+    if (sendToDiscord) {
+      const colored = '```ansi\n' +
+        `\u001b[1;36m[SYNC]\u001b[0m ${message}\n` +
+        '```';
+      this.toDiscord(colored);
+    }
   }
 
   verbose(message) {
@@ -144,37 +157,28 @@ class Logger {
     this.sendStartupSummary();
   }
 
-  // Command execution with clean embed
+  // Command execution with colored text
   commandExecuted(commandName, username) {
     const msg = `/${commandName} by ${username}`;
     this.verbose(msg);
     
-    const embed = new EmbedBuilder()
-      .setColor('#9B59B6')
-      .setTitle('Command Executed')
-      .addFields(
-        { name: 'Command', value: `\`/${commandName}\``, inline: true },
-        { name: 'User', value: `**${username}**`, inline: true }
-      )
-      .setTimestamp();
+    const colored = '```ansi\n' +
+      `\u001b[1;35m[COMMAND]\u001b[0m /${commandName} by \u001b[1;36m${username}\u001b[0m\n` +
+      '```';
     
-    this.sendEmbed(embed);
+    this.toDiscord(colored);
   }
 
   commandError(commandName, error) {
     const msg = `Command /${commandName} failed: ${error.message}`;
     this.error(msg, false);
     
-    const embed = new EmbedBuilder()
-      .setColor('#FF0000')
-      .setTitle('Command Failed')
-      .addFields(
-        { name: 'Command', value: `\`/${commandName}\``, inline: true },
-        { name: 'Error', value: `\`\`\`${error.message}\`\`\``, inline: false }
-      )
-      .setTimestamp();
+    const colored = '```ansi\n' +
+      `\u001b[1;31m[ERROR]\u001b[0m Command /${commandName} failed\n` +
+      `\u001b[0;31m${error.message}\u001b[0m\n` +
+      '```';
     
-    this.sendEmbed(embed);
+    this.toDiscord(colored);
   }
 
   interaction(type, customId) {
@@ -182,41 +186,36 @@ class Logger {
     this.verbose(`${type} interaction: ${action}`);
   }
 
-  // Sync logs with embeds
+  // Sync logs with colored text
   syncStarted() {
     console.log('[SYNC] Sync started');
     
-    const embed = new EmbedBuilder()
-      .setColor('#3498DB')
-      .setTitle('Sync Started')
-      .setDescription('Syncing data to Google Sheets...')
-      .setTimestamp();
+    const colored = '```ansi\n' +
+      `\u001b[1;36m[SYNC]\u001b[0m Syncing to Google Sheets...\n` +
+      '```';
     
-    this.sendEmbed(embed);
+    this.toDiscord(colored);
   }
 
   syncComplete() {
     console.log('[SUCCESS] Sync completed');
     
-    const embed = new EmbedBuilder()
-      .setColor('#00FF00')
-      .setTitle('Sync Complete')
-      .setDescription('All data successfully synced to Google Sheets')
-      .setTimestamp();
+    const colored = '```ansi\n' +
+      `\u001b[1;32m[SUCCESS]\u001b[0m Sync complete - All data synced to Google Sheets\n` +
+      '```';
     
-    this.sendEmbed(embed);
+    this.toDiscord(colored);
   }
 
   syncFailed(error) {
     console.error(`[ERROR] Sync failed: ${error.message}`);
     
-    const embed = new EmbedBuilder()
-      .setColor('#FF0000')
-      .setTitle('Sync Failed')
-      .setDescription(`\`\`\`${error.message}\`\`\``)
-      .setTimestamp();
+    const colored = '```ansi\n' +
+      `\u001b[1;31m[ERROR]\u001b[0m Sync failed\n` +
+      `\u001b[0;31m${error.message}\u001b[0m\n` +
+      '```';
     
-    this.sendEmbed(embed);
+    this.toDiscord(colored);
   }
 
   dbConnected() {
@@ -225,7 +224,12 @@ class Logger {
 
   shutdown() {
     console.log('[SHUTDOWN] Bot shutting down');
-    this.warning('Bot shutting down');
+    
+    const colored = '```ansi\n' +
+      `\u001b[1;33m[SHUTDOWN]\u001b[0m Bot shutting down...\n` +
+      '```';
+    
+    this.toDiscord(colored);
   }
 }
 
