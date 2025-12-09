@@ -2,7 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.
 import { queries } from '../database/queries.js';
 import logger from '../utils/logger.js';
 
-// ✅ Ephemeral configuration
+// Ephemeral configuration
 const EPHEMERAL_CONFIG = {
   admin: process.env.ADMIN_EPHEMERAL !== 'false',
 };
@@ -58,21 +58,17 @@ export default {
   async handleEditCharacter(interaction) {
     const targetUser = interaction.options.getUser('user');
     
-    // Import the edit-member-details module to use its showMainMenu function
     const editMemberDetails = await import('./edit-member-details.js');
     
-    // Get all user data
     const allCharacters = await queries.getAllCharactersWithSubclasses(targetUser.id);
     const userTimezone = await queries.getUserTimezone(targetUser.id);
 
-    // Organize characters by hierarchy
     const mainChar = allCharacters.find(c => c.character_type === 'main');
     const mainSubclasses = allCharacters.filter(c => c.character_type === 'main_subclass');
     const alts = allCharacters.filter(c => c.character_type === 'alt');
     const altSubclasses = allCharacters.filter(c => c.character_type === 'alt_subclass');
     const totalSubclasses = mainSubclasses.length + altSubclasses.length;
     
-    // Get subclasses for each alt
     const altsWithSubclasses = alts.map(alt => ({
       ...alt,
       subclasses: allCharacters.filter(c => 
@@ -80,7 +76,6 @@ export default {
       )
     }));
 
-    // Build premium embed
     const embed = new EmbedBuilder()
       .setColor(mainChar ? '#6640D9' : '#5865F2')
       .setAuthor({ 
@@ -94,7 +89,6 @@ export default {
     if (!mainChar) {
       embed.setDescription('**No main character registered yet.**\n\nThis user needs to register a main character first.');
     } else {
-      // === PROFILE HEADER ===
       let timezoneDisplay = '🌍 *No timezone set*';
       
       if (userTimezone?.timezone) {
@@ -109,7 +103,6 @@ export default {
           'NZDT': 13, 'NZST': 12
         };
         
-        // Map full timezone names to abbreviations
         const timezoneAbbreviations = {
           'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Denver': 'MST',
           'America/Los_Angeles': 'PST', 'America/Phoenix': 'MST', 'America/Anchorage': 'AKST',
@@ -132,16 +125,13 @@ export default {
         const abbrev = timezoneAbbreviations[userTimezone.timezone] || userTimezone.timezone;
         const offset = timezoneOffsets[abbrev] || 0;
         
-        // Calculate user's local time from UTC
         const now = new Date();
         const utcHours = now.getUTCHours();
         const utcMinutes = now.getUTCMinutes();
         
-        // Add offset to UTC to get user's local time
         let localHours = utcHours + offset;
         let localMinutes = utcMinutes;
         
-        // Handle day overflow
         if (localHours >= 24) localHours -= 24;
         if (localHours < 0) localHours += 24;
         
@@ -152,11 +142,8 @@ export default {
         timezoneDisplay = `🌍 ${userTimezone.timezone} • ${displayHours}:${minutes} ${ampm}`;
       }
       
-      embed.setDescription(
-        `${timezoneDisplay}\n`
-      );
+      embed.setDescription(`${timezoneDisplay}\n`);
 
-      // === MAIN CHARACTER CARD ===
       const mainRoleEmoji = this.getRoleEmoji(mainChar.role);
       
       embed.addFields({
@@ -175,7 +162,6 @@ export default {
         inline: false
       });
 
-      // === MAIN SUBCLASSES (if any) ===
       if (mainSubclasses.length > 0) {
         const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         
@@ -196,7 +182,6 @@ export default {
         });
       }
 
-      // === ALT CHARACTERS (if any) ===
       if (altsWithSubclasses.length > 0) {
         const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         
@@ -220,7 +205,6 @@ export default {
       }
     }
 
-    // Footer
     const totalChars = allCharacters.length;
     if (totalChars > 0) {
       embed.setFooter({ 
@@ -230,11 +214,8 @@ export default {
       embed.setFooter({ text: `Admin: ${interaction.user.tag}` });
     }
 
-    // === BUILD BUTTON ROWS (same as edit-member-details) ===
-    // ✅ FIXED: Pass counts (alts.length, totalSubclasses) instead of arrays
     const rows = editMemberDetails.default.buildButtonRows(mainChar, alts.length, totalSubclasses, targetUser.id);
 
-    // ✅ Use conditional flags based on EPHEMERAL_CONFIG
     const replyOptions = { embeds: [embed], components: rows };
     if (EPHEMERAL_CONFIG.admin) {
       replyOptions.flags = 64;
@@ -253,7 +234,6 @@ export default {
         .setDescription('Syncing all character data to Google Sheets. This may take a moment.')
         .setTimestamp();
       
-      // ✅ Use conditional flags based on EPHEMERAL_CONFIG
       const deferOptions = {};
       if (EPHEMERAL_CONFIG.admin) {
         deferOptions.flags = 64;
@@ -262,13 +242,9 @@ export default {
       await interaction.deferReply(deferOptions);
       await interaction.editReply({ embeds: [startEmbed] });
 
-      // Log sync start
       logger.syncStarted();
 
-      // Get all characters with subclasses
       const allChars = await queries.getAllCharacters();
-
-      // Sync to Google Sheets
       await googleSheets.default.fullSync(allChars);
 
       const successEmbed = new EmbedBuilder()
@@ -283,7 +259,6 @@ export default {
 
       await interaction.editReply({ embeds: [successEmbed] });
       
-      // Log sync complete
       logger.syncComplete();
 
     } catch (error) {
@@ -305,7 +280,6 @@ export default {
     }
   },
 
-  // Helper: Get role emoji
   getRoleEmoji(role) {
     const roleEmojis = {
       'Tank': '🛡️',
