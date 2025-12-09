@@ -78,7 +78,7 @@ class Logger {
         await channel.send(`${icon} **[${timestamp}]** ${message}`);
       }
     } catch (error) {
-      // Silently fail
+      // Silently fail - don't crash bot if Discord logging fails
     }
   }
 
