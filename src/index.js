@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import logger from './utils/logger.js';
 
 // Dynamic handler imports with error handling
 let handlers = {};
@@ -17,16 +18,21 @@ async function loadHandlers() {
     { path: './handlers/character.js', name: 'character' }
   ];
 
+  const loaded = [];
+  const missing = [];
+
   for (const handler of handlerFiles) {
     try {
       const module = await import(handler.path);
       handlers[handler.name] = module;
-      console.log(`✅ Loaded handler: ${handler.name}`);
+      loaded.push(handler.name);
     } catch (error) {
-      console.log(`⚠️ Handler not found: ${handler.name} - Skipping`);
       handlers[handler.name] = null;
+      missing.push(handler.name);
     }
   }
+
+  logger.handlers(loaded, missing);
 }
 
 // Dynamic sheets import
@@ -34,9 +40,8 @@ let syncToSheets = null;
 try {
   const sheetsModule = await import('./services/sheets.js');
   syncToSheets = sheetsModule.syncToSheets;
-  console.log('✅ Loaded sheets service');
 } catch (error) {
-  console.log('⚠️ Sheets service not found - Auto-sync disabled');
+  // Sheets service not available
 }
 
 dotenv.config();
@@ -72,67 +77,11 @@ app.get('/health', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`✅ Express server running on port ${PORT}`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+  logger.server(PORT);
 });
 
-// ============================================
-// DISCORD LOGGING FEATURE
-// ============================================
-async function logToDiscord(message, level = 'INFO') {
-  if (!process.env.LOG_CHANNEL_ID) return;
-  
-  try {
-    const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
-    if (!channel) return;
-    
-    const colors = {
-      'INFO': '🔵',
-      'SUCCESS': '✅',
-      'ERROR': '❌',
-      'WARNING': '⚠️',
-      'SYNC': '🔄'
-    };
-    
-    const icon = colors[level] || '📝';
-    const timestamp = new Date().toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    
-    await channel.send(`${icon} **[${level}]** ${timestamp}\n\`\`\`${message}\`\`\``);
-  } catch (error) {
-    // Silently fail to avoid log loops
-  }
-}
-
-// Override console.log for Railway logging to Discord
-if (process.env.LOG_CHANNEL_ID) {
-  const originalLog = console.log;
-  const originalError = console.error;
-  
-  console.log = function(...args) {
-    originalLog.apply(console, args);
-    const message = args.join(' ');
-    
-    // Detect log level from message content
-    if (message.includes('✅')) logToDiscord(message, 'SUCCESS');
-    else if (message.includes('🔄')) logToDiscord(message, 'SYNC');
-    else if (message.includes('⏰')) logToDiscord(message, 'SYNC');
-    else logToDiscord(message, 'INFO');
-  };
-  
-  console.error = function(...args) {
-    originalError.apply(console, args);
-    logToDiscord(args.join(' '), 'ERROR');
-  };
-  
-  console.log('📡 Discord logging enabled - Railway logs will appear in Discord');
-}
-// ============================================
+// Initialize logger with Discord client (will be set when bot is ready)
+// This happens after bot login
 
 // Load handlers
 await loadHandlers();
@@ -148,7 +97,7 @@ for (const file of commandFiles) {
     if ('data' in command && 'execute' in command) {
       client.commands.set(command.data.name, command);
     } else {
-      console.log(`⚠️ Warning: Command at ${filePath} is missing required "data" or "execute" property.`);
+      logger.warning(`⚠️ Command at ${file} missing data/execute`);
     }
   });
 }
@@ -171,43 +120,42 @@ async function registerCommands() {
   const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
   try {
-    console.log(`🔄 Registering ${commands.length} slash commands...`);
-    
     const data = await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
     );
 
-    console.log(`✅ Successfully registered ${data.length} slash commands!`);
+    logger.commands(data.length);
   } catch (error) {
-    console.error('❌ Error registering commands:', error);
+    logger.error(`❌ Command registration failed: ${error.message}`);
   }
 }
 
 // Bot ready event
 client.once(Events.ClientReady, async (c) => {
-  console.log(`✅ Discord bot logged in as ${c.user.tag}`);
+  // Initialize logger with client
+  logger.init(client);
+  
+  logger.botReady(c.user.tag);
   
   // Register commands
   await registerCommands();
   
   // Start auto-sync if configured and sheets service is available
   if (syncToSheets) {
-    const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000; // Default 5 minutes
+    const autoSyncInterval = parseInt(process.env.AUTO_SYNC_INTERVAL) || 300000;
     if (autoSyncInterval > 0) {
-      console.log(`⏰ Auto-sync enabled: every ${autoSyncInterval / 1000} seconds`);
+      logger.info(`⏰ Auto-sync: every ${autoSyncInterval / 1000}s`);
       setInterval(async () => {
         try {
-          console.log('⏰ Auto-sync started - Syncing to Google Sheets...');
+          logger.syncStarted();
           await syncToSheets(client);
-          console.log('✅ Auto-sync completed successfully');
+          logger.syncComplete();
         } catch (error) {
-          console.error('❌ Auto-sync failed:', error);
+          logger.syncFailed(error);
         }
       }, autoSyncInterval);
     }
-  } else {
-    console.log('⚠️ Auto-sync disabled - sheets service not available');
   }
 });
 
@@ -218,14 +166,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const command = client.commands.get(interaction.commandName);
 
   if (!command) {
-    console.error(`❌ No command matching ${interaction.commandName} was found.`);
+    logger.error(`❌ No command: ${interaction.commandName}`);
     return;
   }
 
   try {
+    logger.commandExecuted(interaction.commandName, interaction.user.tag);
     await command.execute(interaction);
   } catch (error) {
-    console.error(`❌ Error executing ${interaction.commandName}:`, error);
+    logger.commandError(interaction.commandName, error);
     
     const errorResponse = {
       content: '❌ There was an error executing this command!',
@@ -245,7 +194,6 @@ function safeCall(handlerName, functionName, ...args) {
   if (handlers[handlerName] && handlers[handlerName][functionName]) {
     return handlers[handlerName][functionName](...args);
   }
-  console.log(`⚠️ Handler not available: ${handlerName}.${functionName}`);
   return Promise.resolve();
 }
 
@@ -254,6 +202,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
   const customId = interaction.customId;
+  logger.interaction('Button', customId);
 
   try {
     // Create character flow
@@ -332,7 +281,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    console.error(`❌ Error handling button ${customId}:`, error);
+    logger.error(`❌ Button error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -347,7 +296,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      console.error('❌ Error sending error message:', followupError);
+      logger.error(`❌ Error sending error message: ${followupError.message}`);
     }
   }
 });
@@ -357,6 +306,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isStringSelectMenu()) return;
 
   const customId = interaction.customId;
+  logger.interaction('Select', customId);
 
   try {
     // Update option selection
@@ -415,7 +365,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    console.error(`❌ Error handling select menu ${customId}:`, error);
+    logger.error(`❌ Select error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -430,7 +380,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      console.error('❌ Error sending error message:', followupError);
+      logger.error(`❌ Error sending error message: ${followupError.message}`);
     }
   }
 });
@@ -440,6 +390,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
 
   const customId = interaction.customId;
+  logger.interaction('Modal', customId);
 
   try {
     // Main character modal
@@ -468,7 +419,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
   } catch (error) {
-    console.error(`❌ Error handling modal ${customId}:`, error);
+    logger.error(`❌ Modal error (${customId}): ${error.message}`);
     
     try {
       if (interaction.replied || interaction.deferred) {
@@ -483,34 +434,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     } catch (followupError) {
-      console.error('❌ Error sending error message:', followupError);
+      logger.error(`❌ Error sending error message: ${followupError.message}`);
     }
   }
 });
 
 // Error handling
 process.on('unhandledRejection', error => {
-  console.error('❌ Unhandled promise rejection:', error);
+  logger.error(`❌ Unhandled rejection: ${error.message}`);
 });
 
 process.on('uncaughtException', error => {
-  console.error('❌ Uncaught exception:', error);
+  logger.error(`❌ Uncaught exception: ${error.message}`);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully...');
+  logger.shutdown();
   server.close(() => {
-    console.log('✅ Express server closed');
     client.destroy();
     process.exit(0);
   });
 });
 
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  logger.shutdown();
   server.close(() => {
-    console.log('✅ Express server closed');
     client.destroy();
     process.exit(0);
   });
