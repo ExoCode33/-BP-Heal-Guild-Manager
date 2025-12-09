@@ -48,6 +48,13 @@ export default {
       totalSubclasses
     });
     
+    console.log('📋 All characters:', allCharacters.map(c => ({
+      id: c.id,
+      ign: c.ign,
+      type: c.character_type,
+      class: c.class
+    })));
+    
     const userTimezone = await queries.getUserTimezone(userId);
 
     const embed = new EmbedBuilder()
@@ -273,11 +280,19 @@ export default {
 
   // ✅ COMPLETELY REWRITTEN: Single Edit button + smart disabling based on counts
   buildButtonRows(mainChar, altCount, subclassCount, userId) {
+    console.log('🔧 Building buttons with counts:', { 
+      altCount, 
+      subclassCount,
+      altCountType: typeof altCount,
+      subclassCountType: typeof subclassCount,
+      altDisabled: altCount === 0,
+      subclassDisabled: subclassCount === 0
+    });
+    
     const row1 = new ActionRowBuilder();
     const row2 = new ActionRowBuilder();
 
     if (mainChar) {
-      console.log('🔧 Building buttons with counts:', { altCount, subclassCount });
       
       // Row 1: Edit button (always active) + Add buttons
       row1.addComponents(
