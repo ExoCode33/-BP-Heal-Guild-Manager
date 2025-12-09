@@ -7,7 +7,7 @@ class Logger {
     this.client = null;
     this.logChannelId = process.env.LOG_CHANNEL_ID;
     this.verboseMode = process.env.LOG_VERBOSE === 'true';
-    this.logToDiscord = process.env.LOG_TO_DISCORD !== 'false'; // Default true
+    this.logToDiscord = process.env.LOG_TO_DISCORD !== 'false';
     
     // Track startup to send one summary
     this.startup = {
@@ -22,7 +22,7 @@ class Logger {
   init(client) {
     this.client = client;
     if (this.logChannelId && this.logToDiscord) {
-      console.log('📡 Discord logging → enabled');
+      console.log('[INFO] Discord logging enabled');
       this.sendStartupSummary();
     }
   }
@@ -30,21 +30,21 @@ class Logger {
   // Send consolidated startup summary to Discord
   async sendStartupSummary() {
     if (!this.startup.handlers || !this.startup.server || !this.startup.bot || !this.startup.commands) {
-      return; // Wait until all startup info is collected
+      return;
     }
 
     const summary = [
-      '**🚀 BOT STARTED**',
-      `├─ 🤖 ${this.startup.bot}`,
-      `├─ 🔧 ${this.startup.handlers}`,
-      `├─ 📝 ${this.startup.commands}`,
-      `└─ 🌐 ${this.startup.server}`
+      '**BOT STARTED**',
+      `Bot: ${this.startup.bot}`,
+      `Handlers: ${this.startup.handlers}`,
+      `Commands: ${this.startup.commands}`,
+      `Server: ${this.startup.server}`
     ].join('\n');
 
     await this.toDiscord(summary, 'SUCCESS');
   }
 
-  // Send to Discord with compact format
+  // Send to Discord with professional format
   async toDiscord(message, level = 'INFO') {
     if (!this.logChannelId || !this.client || !this.logToDiscord) return;
     
@@ -52,64 +52,59 @@ class Logger {
       const channel = await this.client.channels.fetch(this.logChannelId);
       if (!channel) return;
       
-      const icons = {
-        'INFO': '🔵',
-        'SUCCESS': '✅',
-        'ERROR': '❌',
-        'WARNING': '⚠️',
-        'COMMAND': '⚡',
-        'SYNC': '🔄'
+      const prefix = {
+        'INFO': '[INFO]',
+        'SUCCESS': '[SUCCESS]',
+        'ERROR': '[ERROR]',
+        'WARNING': '[WARNING]',
+        'COMMAND': '[COMMAND]',
+        'SYNC': '[SYNC]'
       };
       
-      const icon = icons[level] || '📝';
-      const timestamp = new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+      const logPrefix = prefix[level] || '[LOG]';
+      const timestamp = new Date().toISOString();
       
-      // Compact format: icon [time] message
+      // Professional format: [LEVEL] YYYY-MM-DD HH:MM:SS - message
       if (level === 'SUCCESS' || level === 'ERROR') {
-        // Multi-line messages (like startup summary)
-        await channel.send(`${icon} **[${timestamp}]**\n${message}`);
+        // Multi-line messages
+        await channel.send(`**${logPrefix}** ${timestamp}\n${message}`);
       } else {
         // Single line messages
-        await channel.send(`${icon} **[${timestamp}]** ${message}`);
+        await channel.send(`**${logPrefix}** ${timestamp} - ${message}`);
       }
     } catch (error) {
-      // Silently fail - don't crash bot if Discord logging fails
+      // Silently fail
     }
   }
 
   // Core logging methods
   info(message, sendToDiscord = false) {
-    console.log(message);
+    console.log(`[INFO] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'INFO');
   }
 
   success(message, sendToDiscord = true) {
-    console.log(message);
+    console.log(`[SUCCESS] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'SUCCESS');
   }
 
   error(message, sendToDiscord = true) {
-    console.error(message);
+    console.error(`[ERROR] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'ERROR');
   }
 
   warning(message, sendToDiscord = true) {
-    console.log(message);
+    console.log(`[WARNING] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'WARNING');
   }
 
   command(message, sendToDiscord = true) {
-    console.log(message);
+    console.log(`[COMMAND] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'COMMAND');
   }
 
   sync(message, sendToDiscord = true) {
-    console.log(message);
+    console.log(`[SYNC] ${message}`);
     if (sendToDiscord) this.toDiscord(message, 'SYNC');
   }
 
@@ -123,9 +118,9 @@ class Logger {
   // Startup logs (compact)
   handlers(loaded, missing) {
     const loadedStr = loaded.length > 0 ? loaded.join(', ') : 'none';
-    const msg = `Handlers: ${loadedStr}`;
-    this.info(`✅ ${msg}`);
-    this.startup.handlers = msg;
+    const msg = `Handlers loaded: ${loadedStr}`;
+    this.info(msg);
+    this.startup.handlers = loadedStr;
     if (missing.length > 0) {
       this.warning(`Missing handlers: ${missing.join(', ')}`, false);
     }
@@ -133,73 +128,72 @@ class Logger {
   }
 
   server(port) {
-    const msg = `Server: port ${port}`;
-    this.info(`✅ ${msg}`);
-    this.startup.server = msg;
+    const msg = `Server running on port ${port}`;
+    this.info(msg);
+    this.startup.server = `port ${port}`;
     this.sendStartupSummary();
   }
 
   botReady(username) {
-    const msg = `Bot: ${username}`;
-    this.info(`✅ ${msg}`);
-    this.startup.bot = msg;
+    const msg = `Bot ready: ${username}`;
+    this.info(msg);
+    this.startup.bot = username;
     this.sendStartupSummary();
   }
 
   commands(count) {
-    const msg = `Commands: ${count} registered`;
-    this.info(`✅ ${msg}`);
-    this.startup.commands = msg;
+    const msg = `Commands registered: ${count}`;
+    this.info(msg);
+    this.startup.commands = `${count} commands`;
     this.sendStartupSummary();
   }
 
-  // Command execution (compact, to Discord)
+  // Command execution
   commandExecuted(commandName, username) {
-    const msg = `\`/${commandName}\` by **${username}**`;
+    const msg = `Command /${commandName} executed by ${username}`;
     this.command(msg);
     this.verbose(`/${commandName} by ${username}`);
   }
 
   commandError(commandName, error) {
-    const msg = `**Command Failed:** \`/${commandName}\`\n└─ ${error.message}`;
+    const msg = `Command /${commandName} failed: ${error.message}`;
     this.error(msg);
   }
 
-  // Button/Select/Modal interactions (compact)
+  // Button/Select/Modal interactions
   interaction(type, customId) {
-    // Extract just the action, not the full ID
     const action = customId.split('_').slice(0, -1).join('_') || customId;
-    this.verbose(`${type}: ${action}`);
+    this.verbose(`${type} interaction: ${action}`);
     
-    // Only log important interactions to Discord
+    // Log important interactions to Discord
     if (type === 'Button' && (customId.includes('confirm') || customId.includes('remove'))) {
-      this.command(`**${type}:** \`${action}\``);
+      this.command(`${type} interaction: ${action}`);
     }
   }
 
   // Sync logs
   syncStarted() {
-    this.sync('Syncing to Sheets...');
+    this.sync('Sync to Google Sheets started');
   }
 
   syncComplete() {
-    this.success('Sync complete');
+    this.success('Sync to Google Sheets completed');
   }
 
   syncFailed(error) {
-    this.error(`**Sync Failed:** ${error.message}`);
+    this.error(`Sync to Google Sheets failed: ${error.message}`);
   }
 
   // Database connection
   dbConnected() {
-    this.info('✅ Database connected', false);
+    this.verbose('Database connected');
   }
 
   // Shutdown
   shutdown() {
-    const msg = 'Bot shutting down...';
+    const msg = 'Bot shutting down';
     this.warning(msg);
-    console.log('🛑 Shutting down...');
+    console.log('[SHUTDOWN] Bot shutting down');
   }
 }
 
