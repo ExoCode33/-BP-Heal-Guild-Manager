@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Embe
 import { queries } from '../database/queries.js';
 import logger from '../utils/logger.js';
 
-// ✅ Ephemeral configuration (matches character.js)
+// Ephemeral configuration
 const EPHEMERAL_CONFIG = {
   editMemberDetails: process.env.EDIT_MEMBER_DETAILS_EPHEMERAL !== 'false',
 };
@@ -24,7 +24,7 @@ export default {
         .setDescription('An error occurred. Please try again.')
         .setTimestamp();
       
-      await interaction.reply({ embeds: [errorEmbed], flags: 64 }); // Private error message
+      await interaction.reply({ embeds: [errorEmbed], flags: 64 });
     }
   },
 
@@ -32,16 +32,13 @@ export default {
     const userId = interaction.user.id;
     const mainChar = await queries.getMainCharacter(userId);
     
-    // Get ALL characters to properly count
     const allCharacters = mainChar ? await queries.getAllCharactersWithSubclasses(userId) : [];
     
-    // Properly filter by character_type
     const alts = allCharacters.filter(char => char.character_type === 'alt');
     const mainSubclasses = allCharacters.filter(char => char.character_type === 'main_subclass');
     const altSubclasses = allCharacters.filter(char => char.character_type === 'alt_subclass');
     const totalSubclasses = mainSubclasses.length + altSubclasses.length;
     
-    // Only log in verbose mode
     logger.verbose(`Character counts for ${userId}: total=${allCharacters.length}, alts=${alts.length}, subclasses=${totalSubclasses}`);
     
     const userTimezone = await queries.getUserTimezone(userId);
@@ -59,7 +56,6 @@ export default {
     if (!mainChar) {
       embed.setDescription('**No main character registered yet.**\n\nUse the button below to register your first character!');
     } else {
-      // ✅ Timezone display
       let timezoneDisplay = '🌍 *No timezone set*';
       
       if (userTimezone?.timezone) {
@@ -118,7 +114,6 @@ export default {
       const mainRoleEmoji = this.getRoleEmoji(mainChar.role);
       const mainClassEmoji = this.getClassEmoji(mainChar.class);
       
-      // ✅ FIXED: Format ability score as range
       const formattedAbilityScore = this.formatAbilityScore(mainChar.ability_score);
       
       embed.addFields({
@@ -137,7 +132,6 @@ export default {
         inline: false
       });
 
-      // === MAIN SUBCLASSES (if any) ===
       if (mainSubclasses.length > 0) {
         const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         
@@ -159,7 +153,6 @@ export default {
         });
       }
 
-      // === ALT CHARACTERS (if any) ===
       if (alts.length > 0) {
         const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
         
@@ -190,15 +183,13 @@ export default {
       });
     }
 
-    // ✅ Build buttons with proper counts
     logger.verbose(`Building button rows for ${userId}: hasMainChar=${!!mainChar}, alts=${alts.length}, subclasses=${totalSubclasses}`);
     
     const components = this.buildButtonRows(mainChar, alts.length, totalSubclasses, userId);
 
-    // ✅ Use flags instead of ephemeral (Discord.js deprecation fix)
     const replyOptions = { embeds: [embed], components };
     if (EPHEMERAL_CONFIG.editMemberDetails) {
-      replyOptions.flags = 64; // MessageFlags.Ephemeral
+      replyOptions.flags = 64;
     }
 
     if (isUpdate) {
@@ -208,13 +199,11 @@ export default {
     }
   },
 
-  // ✅ NEW: Format ability score to range display
   formatAbilityScore(score) {
     if (!score || score === '' || score === 0) return 'Not set';
     
     const numScore = parseInt(score);
     
-    // Map stored values to display labels
     const scoreRanges = {
       10000: '≤10k',
       11000: '10-12k',
@@ -269,28 +258,23 @@ export default {
     return emojis[role] || '⭐';
   },
 
-  // ✅ COMPLETELY REWRITTEN: Single Edit button + smart disabling based on counts
   buildButtonRows(mainChar, altCount, subclassCount, userId) {
-    // ✅ Safety check for undefined userId
     if (!userId) {
-      logger.error('buildButtonRows called with undefined userId!');
+      logger.error('buildButtonRows called with undefined userId');
       userId = 'ERROR_UNDEFINED_USER';
     }
     
-    // Only log in verbose mode
     logger.verbose(`buildButtonRows: userId=${userId}, alts=${altCount}, subclasses=${subclassCount}`);
     
     const row1 = new ActionRowBuilder();
     const row2 = new ActionRowBuilder();
 
     if (mainChar) {
-      
-      // Row 1: Edit button (always active) + Add buttons
       row1.addComponents(
         new ButtonBuilder()
           .setCustomId(`show_edit_menu_${userId}`)
           .setLabel('✏️ Edit')
-          .setStyle(ButtonStyle.Primary), // Always active - will show options
+          .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId(`add_subclass_${userId}`)
           .setLabel('➕ Add Subclass')
@@ -301,18 +285,17 @@ export default {
           .setStyle(ButtonStyle.Success)
       );
 
-      // Row 2: Remove buttons with smart disabling
       row2.addComponents(
         new ButtonBuilder()
           .setCustomId(`remove_alt_${userId}`)
           .setLabel('❌ Remove Alt')
           .setStyle(ButtonStyle.Danger)
-          .setDisabled(altCount === 0), // ✅ Disable if no alts
+          .setDisabled(altCount === 0),
         new ButtonBuilder()
           .setCustomId(`remove_subclass_${userId}`)
           .setLabel('🗑️ Remove Subclass')
           .setStyle(ButtonStyle.Danger)
-          .setDisabled(subclassCount === 0), // ✅ Disable if no subclasses
+          .setDisabled(subclassCount === 0),
         new ButtonBuilder()
           .setCustomId(`remove_main_${userId}`)
           .setLabel('⚠️ Remove Main')
@@ -332,9 +315,7 @@ export default {
     }
   },
 
-  // ✅ NEW: Show edit menu when Edit button is clicked
   async showEditMenu(interaction, userId) {
-    // ✅ If userId is undefined, use interaction user's ID
     const targetUserId = userId || interaction.user.id;
     
     logger.verbose(`showEditMenu: userId=${targetUserId}`);
@@ -370,7 +351,6 @@ export default {
 
     const options = [];
 
-    // Always add Main option
     options.push({
       label: 'Edit Main Character',
       value: 'edit_main',
@@ -378,7 +358,6 @@ export default {
       emoji: '⭐'
     });
 
-    // Add Alt option if alts exist
     if (alts.length > 0) {
       options.push({
         label: `Edit Alt Character (${alts.length} available)`,
@@ -388,7 +367,6 @@ export default {
       });
     }
 
-    // Add Subclass option if subclasses exist
     if (totalSubclasses > 0) {
       options.push({
         label: `Edit Subclass (${totalSubclasses} available)`,
