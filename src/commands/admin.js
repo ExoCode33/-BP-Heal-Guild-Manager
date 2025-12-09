@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { queries } from '../database/queries.js';
+import logger from '../utils/logger.js';
 
 // ✅ Ephemeral configuration
 const EPHEMERAL_CONFIG = {
@@ -41,7 +42,7 @@ export default {
           break;
       }
     } catch (error) {
-      console.error('Error in admin command:', error);
+      logger.commandError(`admin ${subcommand}`, error);
       
       const errorEmbed = new EmbedBuilder()
         .setColor('#FF0000')
@@ -261,6 +262,9 @@ export default {
       await interaction.deferReply(deferOptions);
       await interaction.editReply({ embeds: [startEmbed] });
 
+      // Log sync start
+      logger.syncStarted();
+
       // Get all characters with subclasses
       const allChars = await queries.getAllCharacters();
 
@@ -278,9 +282,12 @@ export default {
         .setTimestamp();
 
       await interaction.editReply({ embeds: [successEmbed] });
+      
+      // Log sync complete
+      logger.syncComplete();
 
     } catch (error) {
-      console.error('Error in admin sync command:', error);
+      logger.syncFailed(error);
       
       const errorEmbed = new EmbedBuilder()
         .setColor('#FF0000')
