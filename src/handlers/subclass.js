@@ -470,12 +470,12 @@ async function saveSubclass(interaction, userId, state, abilityScore) {
       .setFooter({ text: '💡 Returning to profile...' })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed], components: [] });
     
     // Clear state
     stateManager.clearRegistrationState(userId);
     
-    // ✅ Return to menu using followUp after 2 seconds
+    // ✅ Wait 2 seconds, then show the menu while keeping the success message visible
     setTimeout(async () => {
       try {
         if (state.isAdminEdit) {
