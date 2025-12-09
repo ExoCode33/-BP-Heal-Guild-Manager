@@ -182,7 +182,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Safe handler call helper with timeout protection
+// Safe handler call with timeout protection
 async function safeCall(handlerName, functionName, interaction, ...args) {
   if (handlers[handlerName] && handlers[handlerName][functionName]) {
     // Defer immediately to prevent "interaction failed" errors
@@ -206,7 +206,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   logger.interaction('Button', customId);
 
   try {
-    // Registration flow buttons
     if (customId.startsWith('register_main_')) {
       await safeCall('character', 'handleAddMain', interaction);
     }
@@ -216,8 +215,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else if (customId.startsWith('add_subclass_')) {
       await safeCall('subclass', 'handleAddSubclassToMain', interaction);
     }
-    
-    // Update handlers
     else if (customId.startsWith('show_edit_menu_')) {
       const editMemberDetails = await import('./commands/edit-member-details.js');
       await editMemberDetails.default.showEditMenu(interaction, customId.split('_').pop());
@@ -243,8 +240,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else if (customId.startsWith('back_to_update_timezone_country_')) {
       await safeCall('update', 'handleBackToUpdateTimezoneCountry', interaction);
     }
-    
-    // Remove handlers
     else if (customId.startsWith('remove_main_')) {
       await safeCall('remove', 'handleRemoveMain', interaction);
     }
@@ -272,8 +267,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else if (customId.startsWith('cancel_remove_subclass_')) {
       await safeCall('remove', 'handleCancelRemoveSubclass', interaction);
     }
-    
-    // Back buttons
     else if (customId.startsWith('back_to_menu_')) {
       await safeCall('character', 'handleBackToMenu', interaction);
     }
@@ -325,7 +318,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   logger.interaction('Select', customId);
 
   try {
-    // Registration flow
     if (customId.startsWith('select_class_')) {
       await safeCall('character', 'handleClassSelection', interaction);
     }
@@ -347,8 +339,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else if (customId.startsWith('select_timezone_')) {
       await safeCall('character', 'handleTimezoneSelection', interaction);
     }
-    
-    // Edit menu selection
     else if (customId.startsWith('edit_type_select_')) {
       const editMemberDetails = await import('./commands/edit-member-details.js');
       const userId = customId.split('_').pop();
@@ -362,8 +352,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await safeCall('update', 'handleUpdateSubclass', interaction);
       }
     }
-    
-    // Update option selection
     else if (customId.startsWith('update_option_')) {
       await safeCall('update', 'handleUpdateOptionSelection', interaction);
     }
@@ -388,24 +376,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else if (customId.startsWith('update_timezone_final_')) {
       await safeCall('update', 'handleUpdateTimezoneFinalSelection', interaction);
     }
-    
-    // Select alt/subclass for update
     else if (customId.startsWith('select_alt_update_')) {
       await safeCall('update', 'handleAltSelectionForUpdate', interaction);
     }
     else if (customId.startsWith('select_subclass_update_')) {
       await safeCall('update', 'handleSubclassSelectionForUpdate', interaction);
     }
-    
-    // Select alt/subclass for removal
     else if (customId.startsWith('select_alt_remove_')) {
       await safeCall('remove', 'handleAltSelectionForRemoval', interaction);
     }
     else if (customId.startsWith('select_subclass_remove_')) {
       await safeCall('remove', 'handleSubclassSelectionForRemoval', interaction);
     }
-    
-    // Subclass handlers
     else if (customId.startsWith('select_alt_for_subclass_')) {
       await safeCall('subclass', 'handleAltSelectionForSubclass', interaction);
     }
@@ -448,11 +430,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
   logger.interaction('Modal', customId);
 
   try {
-    // IGN modals
     if (customId.startsWith('ign_modal_')) {
       await safeCall('character', 'handleIGNModal', interaction);
     }
-    // Update IGN modal
     else if (customId.startsWith('update_ign_modal_')) {
       await safeCall('update', 'handleUpdateModal', interaction, 'ign');
     }
