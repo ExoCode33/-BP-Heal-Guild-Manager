@@ -15,18 +15,47 @@ export async function handleButtonInteraction(interaction) {
   console.log('User ID:', userId);
 
   try {
+    // Registration buttons
     if (customId.startsWith('register_main_')) {
       console.log('-> Calling registration.handleRegisterMain');
       await registration.handleRegisterMain(interaction, userId);
     }
+    // Registration back buttons
+    else if (customId.startsWith('back_to_region_')) {
+      console.log('-> Back to region selection');
+      await registration.handleBackToRegion(interaction, userId);
+    }
+    else if (customId.startsWith('back_to_country_')) {
+      console.log('-> Back to country selection');
+      await registration.handleBackToCountry(interaction, userId);
+    }
+    else if (customId.startsWith('back_to_timezone_')) {
+      console.log('-> Back to timezone selection');
+      await registration.handleBackToTimezone(interaction, userId);
+    }
+    else if (customId.startsWith('back_to_class_')) {
+      console.log('-> Back to class selection');
+      await registration.handleBackToClass(interaction, userId);
+    }
+    else if (customId.startsWith('back_to_subclass_')) {
+      console.log('-> Back to subclass selection');
+      await registration.handleBackToSubclass(interaction, userId);
+    }
+    else if (customId.startsWith('back_to_ability_score_')) {
+      console.log('-> Back to ability score selection');
+      await registration.handleBackToAbilityScore(interaction, userId);
+    }
+    // Edit buttons
     else if (customId.startsWith('edit_character_')) {
       console.log('-> Calling editing.handleEditCharacter');
       await editing.handleEditCharacter(interaction, userId);
     }
+    // Add character
     else if (customId.startsWith('add_character_')) {
       console.log('-> Showing add character menu');
       await handleAddCharacterMenu(interaction, userId);
     }
+    // Remove character
     else if (customId.startsWith('remove_character_')) {
       console.log('-> Calling editing.handleRemoveCharacter');
       await editing.handleRemoveCharacter(interaction, userId);
@@ -39,6 +68,7 @@ export async function handleButtonInteraction(interaction) {
       console.log('-> Calling editing.handleCancelRemove');
       await editing.handleCancelRemove(interaction, userId);
     }
+    // Navigation back buttons
     else if (customId.startsWith('back_to_profile_')) {
       console.log('-> Calling handleBackToProfile');
       await handleBackToProfile(interaction, userId);
@@ -334,6 +364,11 @@ export async function handleModalSubmit(interaction) {
 }
 
 async function handleBackToProfile(interaction, userId) {
+  const stateManager = (await import('../utils/stateManager.js')).default;
+  stateManager.clearRegistrationState(userId);
+  stateManager.clearUpdateState(userId);
+  stateManager.clearRemovalState(userId);
+  
   const characters = await db.getAllCharactersWithSubclasses(userId);
   const mainChar = characters.find(c => c.character_type === 'main');
   const alts = characters.filter(c => c.character_type === 'alt');
