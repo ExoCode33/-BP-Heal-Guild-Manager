@@ -18,7 +18,7 @@ export async function handleButtonInteraction(interaction) {
       console.log('-> Calling registration.handleRegisterMain');
       await registration.handleRegisterMain(interaction, userId);
     }
-    else if (customId.startsWith('edit_main_')) {
+    else if (customId.startsWith('edit_main_') || customId.startsWith('edit_character_')) {
       console.log('-> Calling editing.handleEditMain');
       await editing.handleEditMain(interaction, userId);
     }
@@ -60,6 +60,7 @@ export async function handleButtonInteraction(interaction) {
     }
     else {
       console.log('-> Unknown button:', customId);
+      console.log('-> Available handlers: register_main_, edit_main_, edit_character_, add_alt_, add_subclass_, remove_main_, remove_alt_, remove_subclass_, confirm_remove_, cancel_remove_, back_to_profile_, back_to_edit_menu_');
     }
     
     console.log('=== BUTTON SUCCESS ===');
