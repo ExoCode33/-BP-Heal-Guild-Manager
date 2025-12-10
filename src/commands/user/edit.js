@@ -8,6 +8,8 @@ export default {
   data: new SlashCommandBuilder().setName('edit-user').setDescription('Manage your characters'),
   async execute(interaction) {
     try {
+      await interaction.deferReply({ ephemeral: true });
+      
       const userId = interaction.user.id;
       const characters = await db.getAllCharactersWithSubclasses(userId);
       const mainChar = characters.find(c => c.character_type === 'main');
@@ -15,11 +17,16 @@ export default {
       const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
       const embed = await buildCharacterProfileEmbed(interaction.user, characters);
       const buttons = buildCharacterButtons(mainChar, alts.length, subclasses.length, userId);
-      await interaction.reply({ embeds: [embed], components: buttons, ephemeral: true });
+      
+      await interaction.editReply({ embeds: [embed], components: buttons });
       logger.log(`User ${userId} opened edit`);
     } catch (error) {
       logger.error(`Edit error: ${error.message}`);
-      await interaction.reply({ content: '❌ Error.', ephemeral: true });
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '❌ Error.', ephemeral: true });
+      } else {
+        await interaction.editReply({ content: '❌ Error.' });
+      }
     }
   }
 };
