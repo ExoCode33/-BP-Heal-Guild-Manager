@@ -63,7 +63,7 @@ async function handleBackToProfile(interaction, userId) {
   const alts = characters.filter(c => c.character_type === 'alt');
   const subs = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
   const targetUser = await interaction.client.users.fetch(userId);
-  const embed = await buildCharacterProfileEmbed(targetUser, characters);
+  const embed = await buildCharacterProfileEmbed(targetUser, characters, interaction);
   const buttons = buildCharacterButtons(mainChar, alts.length, subs.length, userId);
   await interaction.update({ embeds: [embed], components: buttons });
 }
