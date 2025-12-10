@@ -4,7 +4,9 @@ import {
   ModalBuilder, 
   TextInputBuilder, 
   TextInputStyle,
-  EmbedBuilder 
+  EmbedBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } from 'discord.js';
 import logger from '../utils/logger.js';
 import db from '../services/database.js';
@@ -177,12 +179,18 @@ export async function handleRegisterMain(interaction, userId) {
       .setPlaceholder('🎭 Pick your class')
       .addOptions(classOptions);
     
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_profile_${userId}`)
+      .setLabel('❌ Cancel')
+      .setStyle(ButtonStyle.Secondary);
+    
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
     
     if (interaction.replied || interaction.deferred) {
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      await interaction.editReply({ embeds: [embed], components: [row1, row2] });
     } else {
-      await interaction.update({ embeds: [embed], components: [row] });
+      await interaction.update({ embeds: [embed], components: [row1, row2] });
     }
     return;
   }
@@ -201,9 +209,15 @@ export async function handleRegisterMain(interaction, userId) {
     .setPlaceholder('🌍 Pick your region')
     .addOptions(regionOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_profile_${userId}`)
+    .setLabel('❌ Cancel')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleRegionSelect(interaction, userId) {
@@ -224,9 +238,15 @@ export async function handleRegionSelect(interaction, userId) {
     .setPlaceholder('🏳️ Pick your country')
     .addOptions(countryOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_region_${userId}`)
+    .setLabel('◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleCountrySelect(interaction, userId) {
@@ -247,9 +267,15 @@ export async function handleCountrySelect(interaction, userId) {
     .setPlaceholder('🕐 Pick your timezone')
     .addOptions(timezoneOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_country_${userId}`)
+    .setLabel('◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleTimezoneSelect(interaction, userId) {
@@ -289,9 +315,15 @@ export async function handleTimezoneSelect(interaction, userId) {
     .setPlaceholder('🎭 Pick your class')
     .addOptions(classOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_timezone_${userId}`)
+    .setLabel('◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleClassSelect(interaction, userId) {
@@ -324,9 +356,15 @@ export async function handleClassSelect(interaction, userId) {
     .setPlaceholder('📋 Pick your subclass')
     .addOptions(subclassOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(isSubclass ? `back_to_profile_${userId}` : (isAlt ? `back_to_profile_${userId}` : `back_to_class_${userId}`))
+    .setLabel(isSubclass || isAlt ? '❌ Cancel' : '◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleSubclassSelect(interaction, userId) {
@@ -352,9 +390,15 @@ export async function handleSubclassSelect(interaction, userId) {
     .setPlaceholder('💪 Pick your score')
     .addOptions(scoreOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_subclass_${userId}`)
+    .setLabel('◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleAbilityScoreSelect(interaction, userId) {
@@ -434,9 +478,15 @@ export async function handleAbilityScoreSelect(interaction, userId) {
     .setPlaceholder('🏰 Pick your guild')
     .addOptions(guildOptions);
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`back_to_ability_score_${userId}`)
+    .setLabel('◀️ Back')
+    .setStyle(ButtonStyle.Secondary);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 function formatAbilityScore(score) {
@@ -528,6 +578,69 @@ export async function handleIGNModal(interaction, userId) {
   }
 }
 
+// Back button handlers
+export async function handleBackToRegion(interaction, userId) {
+  await handleRegisterMain(interaction, userId);
+}
+
+export async function handleBackToCountry(interaction, userId) {
+  const state = stateManager.getRegistrationState(userId);
+  if (!state || !state.region) {
+    await handleRegisterMain(interaction, userId);
+    return;
+  }
+  
+  await handleRegionSelect(interaction, userId);
+}
+
+export async function handleBackToTimezone(interaction, userId) {
+  const state = stateManager.getRegistrationState(userId);
+  if (!state || !state.country) {
+    await handleRegisterMain(interaction, userId);
+    return;
+  }
+  
+  // Simulate country selection
+  interaction.values = [state.country];
+  await handleCountrySelect(interaction, userId);
+}
+
+export async function handleBackToClass(interaction, userId) {
+  const state = stateManager.getRegistrationState(userId);
+  if (!state || !state.timezone) {
+    await handleRegisterMain(interaction, userId);
+    return;
+  }
+  
+  // Simulate timezone selection
+  interaction.values = [state.timezone];
+  await handleTimezoneSelect(interaction, userId);
+}
+
+export async function handleBackToSubclass(interaction, userId) {
+  const state = stateManager.getRegistrationState(userId);
+  if (!state || !state.class) {
+    await handleRegisterMain(interaction, userId);
+    return;
+  }
+  
+  // Simulate class selection
+  interaction.values = [state.class];
+  await handleClassSelect(interaction, userId);
+}
+
+export async function handleBackToAbilityScore(interaction, userId) {
+  const state = stateManager.getRegistrationState(userId);
+  if (!state || !state.subclass) {
+    await handleRegisterMain(interaction, userId);
+    return;
+  }
+  
+  // Simulate subclass selection
+  interaction.values = [state.subclass];
+  await handleSubclassSelect(interaction, userId);
+}
+
 export default {
   handleRegisterMain,
   handleRegionSelect,
@@ -537,5 +650,11 @@ export default {
   handleSubclassSelect,
   handleAbilityScoreSelect,
   handleGuildSelect,
-  handleIGNModal
+  handleIGNModal,
+  handleBackToRegion,
+  handleBackToCountry,
+  handleBackToTimezone,
+  handleBackToClass,
+  handleBackToSubclass,
+  handleBackToAbilityScore
 };
