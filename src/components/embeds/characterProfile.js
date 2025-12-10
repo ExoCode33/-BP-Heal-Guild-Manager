@@ -10,8 +10,8 @@ export async function buildCharacterProfileEmbed(user, characters) {
   const guildName = mainChar?.guild || 'heal';
 
   const embed = new EmbedBuilder()
-    .setColor('#D946EF')
-    .setDescription(`\`\`\`ansi\n\u001b[1;35m\u001b[4mJOIN ${guildName.toUpperCase()}\u001b[0m\n\`\`\`\n**${user.username}'s Profile**`);
+    .setColor('#EC4899')
+    .setDescription(`\`\`\`ansi\n\u001b[0;35mJOIN ${guildName.toUpperCase()}\u001b[0m\n\`\`\`\n**${user.username}'s Profile**`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -40,34 +40,4 @@ export async function buildCharacterProfileEmbed(user, characters) {
       subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class} - ${sub.subclass} ${subRoleEmoji}\n`;
       subSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
     });
-    subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-    subSection += '```';
-    embed.addFields({ name: '📊 Subclass', value: subSection, inline: false });
-  }
-
-  if (alts.length > 0) {
-    let altSection = '```ansi\n';
-    alts.forEach((alt, i) => {
-      const altRoleEmoji = alt.role === 'Tank' ? '🛡️' : alt.role === 'DPS' ? '⚔️' : '💚';
-      if (i > 0) altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      else altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}\n`;
-      altSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
-      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class} - ${alt.subclass} ${altRoleEmoji}\n`;
-      altSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
-    });
-    altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-    altSection += '```';
-    embed.addFields({ name: `🎭 Alts (${alts.length})`, value: altSection, inline: false });
-  }
-
-  const timezone = await db.getUserTimezone(user.id);
-  if (timezone) {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
-    embed.setFooter({ text: `🌍 ${timezone} • ${timeString}` });
-  }
-
-  embed.setTimestamp();
-  return embed;
-}
+    subSection += `\u001
