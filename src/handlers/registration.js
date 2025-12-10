@@ -128,7 +128,7 @@ async function completeSubclassRegistration(interaction, userId, state) {
     await interaction.editReply({ embeds: [embed], components: [] });
     stateManager.clearRegistrationState(userId);
     logger.success(`Subclass added for user ${userId}`);
-    logger.logAction(userId, 'Added subclass', `${state.class} (${state.subclass})`);
+    logger.logAction(interaction.user.username, 'Added subclass', `${state.class} (${state.subclass})`);
 
     setTimeout(async () => {
       try {
@@ -198,7 +198,7 @@ export async function handleIGNModal(interaction, userId) {
     await interaction.editReply({ embeds: [embed], components: [] });
     stateManager.clearRegistrationState(userId);
     logger.success(`Character registered for user ${userId}`);
-    logger.logAction(userId, 'Registered character', `${ign} - ${state.class}`);
+    logger.logAction(interaction.user.username, 'Registered character', `${ign} - ${state.class}`);
 
     setTimeout(async () => {
       try {
