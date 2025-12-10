@@ -50,7 +50,8 @@ const config = {
     admin: process.env.ADMIN_EPHEMERAL !== 'false'
   },
   logging: {
-    toChannel: process.env.LOG_TO_CHANNEL === 'true'
+    toChannel: process.env.LOG_TO_CHANNEL === 'true',
+    clearOnStart: process.env.CLEAR_LOG_ON_START === 'true'
   }
 };
 
