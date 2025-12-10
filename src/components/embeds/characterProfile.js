@@ -21,11 +21,10 @@ export async function buildCharacterProfileEmbed(user, characters) {
 
   let mainSection = '```ansi\n';
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-  mainSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${mainChar.ign}\n`;
+  mainSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${mainChar.ign} ${roleEmoji}\n`;
   mainSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${mainChar.guild || 'None'}\n`;
   mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${mainChar.class}\n`;
   mainSection += `\u001b[1;34m📊 Subclass:\u001b[0m ${mainChar.subclass}\n`;
-  mainSection += `\u001b[1;34m${roleEmoji} Role:\u001b[0m ${mainChar.role}\n`;
   mainSection += `\u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(mainChar.ability_score)}\n`;
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
@@ -35,9 +34,11 @@ export async function buildCharacterProfileEmbed(user, characters) {
   if (subclasses.length > 0) {
     let subSection = '```ansi\n';
     subclasses.forEach((sub, i) => {
-      subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      subSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${sub.ign}\n`;
-      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class}-${sub.subclass}-${sub.role}\n`;
+      const subRoleEmoji = sub.role === 'Tank' ? '🛡️' : sub.role === 'DPS' ? '⚔️' : '💚';
+      if (i > 0) subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+      else subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+      subSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${sub.ign} ${subRoleEmoji}\n`;
+      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class}-${sub.subclass}\n`;
       subSection += `\u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
     });
     subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
@@ -48,9 +49,11 @@ export async function buildCharacterProfileEmbed(user, characters) {
   if (alts.length > 0) {
     let altSection = '```ansi\n';
     alts.forEach((alt, i) => {
-      altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}  \u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
-      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class}-${alt.subclass}-${alt.role}\n`;
+      const altRoleEmoji = alt.role === 'Tank' ? '🛡️' : alt.role === 'DPS' ? '⚔️' : '💚';
+      if (i > 0) altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+      else altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+      altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign} ${altRoleEmoji}  \u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
+      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class}-${alt.subclass}\n`;
       altSection += `\u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
     });
     altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
