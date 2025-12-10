@@ -77,17 +77,3 @@ export async function buildCharacterProfileEmbed(user, characters) {
   embed.setTimestamp();
   return embed;
 }
-```
-
-**Key fixes:**
-✅ Added `\n` after the number label (line 45 and 61) to put fields on separate lines
-✅ Each label now appears on its own line with proper spacing
-✅ ANSI codes are properly closed with `\u001b[0m`
-
-Now it will display as:
-```
-1.
-🎭 Class: Verdant Oracle
-📊 Subclass: Smite
-💚 Role: Support
-💪 Ability Score: 30-32k
