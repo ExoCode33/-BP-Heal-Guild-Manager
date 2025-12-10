@@ -20,7 +20,12 @@ async function showClassSelection(interaction, userId) {
     .addOptions(classes.map(className => ({ label: className, value: className, emoji: getClassEmoji(className), description: `${gameData.classes[className].role}` })));
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 1').setDescription('Select your class:').setTimestamp();
+  
+  const state = stateManager.getRegistrationState(userId);
+  const isSubclass = state?.type === 'subclass';
+  const stepTitle = isSubclass ? '📊 Add Subclass - Step 1' : '📝 Character Registration - Step 1';
+  
+  const embed = new EmbedBuilder().setColor('#6640D9').setTitle(stepTitle).setDescription('Select your class:').setTimestamp();
 
   if (interaction.deferred || interaction.replied) await interaction.editReply({ embeds: [embed], components: [row] });
   else await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
@@ -39,7 +44,11 @@ export async function handleClassSelect(interaction, userId) {
   const subclasses = getSubclassesForClass(selectedClass);
   const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_subclass_${userId}`).setPlaceholder('📊 Choose your subclass').addOptions(subclasses.map(subclass => ({ label: subclass, value: subclass })));
   const row = new ActionRowBuilder().addComponents(selectMenu);
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 2').setDescription(`**Class:** ${selectedClass}\n\nSelect your subclass:`).setTimestamp();
+  
+  const isSubclass = state.type === 'subclass';
+  const stepTitle = isSubclass ? '📊 Add Subclass - Step 2' : '📝 Character Registration - Step 2';
+  
+  const embed = new EmbedBuilder().setColor('#6640D9').setTitle(stepTitle).setDescription(`**Class:** ${selectedClass}\n\nSelect your subclass:`).setTimestamp();
   await interaction.update({ embeds: [embed], components: [row] });
 }
 
@@ -49,13 +58,26 @@ export async function handleSubclassSelect(interaction, userId) {
   if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
 
   state.subclass = selectedSubclass;
-  state.step = 'ability_score';
-  stateManager.setRegistrationState(userId, state);
+  
+  const isSubclass = state.type === 'subclass';
+  
+  if (isSubclass) {
+    state.step = 'ability_score';
+    stateManager.setRegistrationState(userId, state);
 
-  const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_ability_score_${userId}`).setPlaceholder('💪 Choose your ability score range').addOptions(gameData.abilityScores.map(score => ({ label: score.label, value: score.value })));
-  const row = new ActionRowBuilder().addComponents(selectMenu);
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 3').setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`).setTimestamp();
-  await interaction.update({ embeds: [embed], components: [row] });
+    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_ability_score_${userId}`).setPlaceholder('💪 Choose your ability score range').addOptions(gameData.abilityScores.map(score => ({ label: score.label, value: score.value })));
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📊 Add Subclass - Step 3').setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`).setTimestamp();
+    await interaction.update({ embeds: [embed], components: [row] });
+  } else {
+    state.step = 'ability_score';
+    stateManager.setRegistrationState(userId, state);
+
+    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_ability_score_${userId}`).setPlaceholder('💪 Choose your ability score range').addOptions(gameData.abilityScores.map(score => ({ label: score.label, value: score.value })));
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 3').setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`).setTimestamp();
+    await interaction.update({ embeds: [embed], components: [row] });
+  }
 }
 
 export async function handleAbilityScoreSelect(interaction, userId) {
@@ -64,13 +86,73 @@ export async function handleAbilityScoreSelect(interaction, userId) {
   if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
 
   state.abilityScore = selectedScore;
-  state.step = 'guild';
-  stateManager.setRegistrationState(userId, state);
+  
+  const isSubclass = state.type === 'subclass';
+  
+  if (isSubclass) {
+    await completeSubclassRegistration(interaction, userId, state);
+  } else {
+    state.step = 'guild';
+    stateManager.setRegistrationState(userId, state);
 
-  const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_guild_${userId}`).setPlaceholder('🏰 Choose your guild').addOptions(config.guilds.map(guild => ({ label: guild.name, value: guild.name })));
-  const row = new ActionRowBuilder().addComponents(selectMenu);
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 4').setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${selectedScore}\n\nSelect your guild:`).setTimestamp();
-  await interaction.update({ embeds: [embed], components: [row] });
+    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_guild_${userId}`).setPlaceholder('🏰 Choose your guild').addOptions(config.guilds.map(guild => ({ label: guild.name, value: guild.name })));
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 4').setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${selectedScore}\n\nSelect your guild:`).setTimestamp();
+    await interaction.update({ embeds: [embed], components: [row] });
+  }
+}
+
+async function completeSubclassRegistration(interaction, userId, state) {
+  await interaction.deferUpdate();
+
+  try {
+    const parentChar = await db.getCharacterById(state.parentId);
+    
+    const characterData = {
+      userId,
+      ign: parentChar.ign,
+      class: state.class,
+      subclass: state.subclass,
+      abilityScore: state.abilityScore,
+      guild: parentChar.guild,
+      role: state.role,
+      characterType: state.characterType,
+      parentCharacterId: state.parentId
+    };
+
+    await db.createCharacter(characterData);
+    const allChars = await db.getAllCharacters();
+    await sheetsService.syncAllCharacters(allChars);
+
+    const embed = new EmbedBuilder().setColor('#00FF00').setTitle('✅ Subclass Added!').setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${state.abilityScore}\n**Parent:** ${parentChar.ign}`).setFooter({ text: 'Returning to profile...' }).setTimestamp();
+    await interaction.editReply({ embeds: [embed], components: [] });
+    stateManager.clearRegistrationState(userId);
+    logger.success(`Subclass added for user ${userId}`);
+    logger.logAction(userId, 'Added subclass', `${state.class} (${state.subclass})`);
+
+    setTimeout(async () => {
+      try {
+        const { buildCharacterProfileEmbed } = await import('../components/embeds/characterProfile.js');
+        const { buildCharacterButtons } = await import('../components/buttons/characterButtons.js');
+        
+        const characters = await db.getAllCharactersWithSubclasses(userId);
+        const mainChar = characters.find(c => c.character_type === 'main');
+        const alts = characters.filter(c => c.character_type === 'alt');
+        const subs = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+        
+        const targetUser = await interaction.client.users.fetch(userId);
+        const embed = await buildCharacterProfileEmbed(targetUser, characters);
+        const buttons = buildCharacterButtons(mainChar, alts.length, subs.length, userId);
+        
+        await interaction.followUp({ embeds: [embed], components: buttons, ephemeral: true });
+      } catch (error) {
+        logger.error(`Failed to return to profile: ${error.message}`);
+      }
+    }, 2000);
+  } catch (error) {
+    logger.error(`Subclass registration error: ${error.message}`);
+    await interaction.editReply({ content: '❌ An error occurred.', ephemeral: true });
+  }
 }
 
 export async function handleGuildSelect(interaction, userId) {
