@@ -33,6 +33,12 @@ async function loadCommands() {
 
 client.once(Events.ClientReady, async () => {
   logger.success(`Logged in as ${client.user.tag}`);
+  
+  if (config.channels.log && config.logging.toChannel) {
+    logger.setClient(client, config.channels.log);
+    logger.log('Channel logging enabled');
+  }
+  
   try {
     await db.initializeDatabase();
     logger.success('Database ready');
