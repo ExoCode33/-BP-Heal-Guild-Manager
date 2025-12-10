@@ -37,11 +37,12 @@ export async function buildCharacterProfileEmbed(user, characters) {
     subclasses.forEach((sub, i) => {
       const subRoleEmoji = sub.role === 'Tank' ? '🛡️' : sub.role === 'DPS' ? '⚔️' : '💚';
       subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      subSection += `\u001b[1;36m${i + 1}.\u001b[0m \u001b[1;34m🎭 Class:\u001b[0m ${sub.class}\n`;
-      subSection += `   \u001b[1;34m📊 Subclass:\u001b[0m ${sub.subclass}\n`;
-      subSection += `   \u001b[1;34m${subRoleEmoji} Role:\u001b[0m ${sub.role}\n`;
-      subSection += `   \u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
-      if (sub.parent_ign) subSection += `   \u001b[0;33m└─ Parent: ${sub.parent_ign}\u001b[0m\n`;
+      subSection += `\u001b[1;36m${i + 1}.\u001b[0m\n`;
+      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class}\n`;
+      subSection += `\u001b[1;34m📊 Subclass:\u001b[0m ${sub.subclass}\n`;
+      subSection += `\u001b[1;34m${subRoleEmoji} Role:\u001b[0m ${sub.role}\n`;
+      subSection += `\u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
+      if (sub.parent_ign) subSection += `\u001b[0;33m└─ Parent: ${sub.parent_ign}\u001b[0m\n`;
     });
     subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
     subSection += '```';
@@ -53,12 +54,13 @@ export async function buildCharacterProfileEmbed(user, characters) {
     alts.forEach((alt, i) => {
       const altRoleEmoji = alt.role === 'Tank' ? '🛡️' : alt.role === 'DPS' ? '⚔️' : '💚';
       altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      altSection += `\u001b[1;36m${i + 1}.\u001b[0m \u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}\n`;
-      altSection += `   \u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
-      altSection += `   \u001b[1;34m🎭 Class:\u001b[0m ${alt.class}\n`;
-      altSection += `   \u001b[1;34m📊 Subclass:\u001b[0m ${alt.subclass}\n`;
-      altSection += `   \u001b[1;34m${altRoleEmoji} Role:\u001b[0m ${alt.role}\n`;
-      altSection += `   \u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
+      altSection += `\u001b[1;36m${i + 1}.\u001b[0m\n`;
+      altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}\n`;
+      altSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
+      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class}\n`;
+      altSection += `\u001b[1;34m📊 Subclass:\u001b[0m ${alt.subclass}\n`;
+      altSection += `\u001b[1;34m${altRoleEmoji} Role:\u001b[0m ${alt.role}\n`;
+      altSection += `\u001b[1;34m💪 Ability Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
     });
     altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
     altSection += '```';
@@ -75,3 +77,17 @@ export async function buildCharacterProfileEmbed(user, characters) {
   embed.setTimestamp();
   return embed;
 }
+```
+
+**Key fixes:**
+✅ Added `\n` after the number label (line 45 and 61) to put fields on separate lines
+✅ Each label now appears on its own line with proper spacing
+✅ ANSI codes are properly closed with `\u001b[0m`
+
+Now it will display as:
+```
+1.
+🎭 Class: Verdant Oracle
+📊 Subclass: Smite
+💚 Role: Support
+💪 Ability Score: 30-32k
