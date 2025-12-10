@@ -10,7 +10,7 @@ import logger from '../utils/logger.js';
 import db from '../services/database.js';
 import { buildCharacterProfileEmbed } from '../components/embeds/characterProfile.js';
 import { buildCharacterButtons } from '../components/buttons/characterButtons.js';
-import { classes, getSubclassesByClass, getAbilityScores } from '../utils/gameData.js';
+import gameData from '../utils/gameData.js';
 import config from '../utils/config.js';
 
 const stateManager = (await import('../utils/stateManager.js')).default;
@@ -111,7 +111,7 @@ const REGIONS = {
 export async function handleRegisterMain(interaction, userId) {
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 1/6')
+    .setTitle('🎮 Register Main Character - Step 1/8')
     .setDescription('**Select your region:**\n\nThis will help us show the correct time on your profile.')
     .setTimestamp();
 
@@ -137,7 +137,7 @@ export async function handleRegionSelect(interaction, userId) {
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 2/6')
+    .setTitle('🎮 Register Main Character - Step 2/8')
     .setDescription(`**Region:** ${region}\n\n**Select your country:**`)
     .setTimestamp();
 
@@ -165,7 +165,7 @@ export async function handleCountrySelect(interaction, userId) {
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 3/6')
+    .setTitle('🎮 Register Main Character - Step 3/8')
     .setDescription(`**Region:** ${state.region}\n**Country:** ${country}\n\n**Select your timezone:**`)
     .setTimestamp();
 
@@ -206,7 +206,7 @@ export async function handleTimezoneSelect(interaction, userId) {
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 4/6')
+    .setTitle('🎮 Register Main Character - Step 4/8')
     .setDescription(`**Timezone set!** 🌍\n\nYour current time: **${timeString}**\n\n**Now select your guild:**`)
     .setTimestamp();
 
@@ -256,15 +256,15 @@ export async function handleIGNModal(interaction, userId) {
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 5/6')
+    .setTitle('🎮 Register Main Character - Step 5/8')
     .setDescription(`**IGN:** ${ign}\n**Guild:** ${state.guild}\n**Timezone:** ${state.timezone}\n\n**Select your class:**`)
     .setTimestamp();
 
-  const classOptions = classes.map(cls => ({
-    label: cls.name,
-    value: cls.name,
-    description: cls.role,
-    emoji: cls.emoji
+  const classOptions = Object.keys(gameData.classes).map(className => ({
+    label: className,
+    value: className,
+    description: gameData.classes[className].role,
+    emoji: gameData.classes[className].emoji
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
@@ -282,20 +282,24 @@ export async function handleClassSelect(interaction, userId) {
   const state = stateManager.getRegistrationState(userId);
   stateManager.setRegistrationState(userId, { ...state, class: className });
 
-  const subclasses = getSubclassesByClass(className);
+  const subclasses = gameData.classes[className].subclasses;
+  const classRole = gameData.classes[className].role;
   
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 5/6')
+    .setTitle('🎮 Register Main Character - Step 6/8')
     .setDescription(`**Class:** ${className}\n\n**Select your subclass:**`)
     .setTimestamp();
 
-  const subclassOptions = subclasses.map(sub => ({
-    label: sub.name,
-    value: sub.name,
-    description: sub.role,
-    emoji: sub.roleEmoji
-  }));
+  const subclassOptions = subclasses.map(subclassName => {
+    const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
+    return {
+      label: subclassName,
+      value: subclassName,
+      description: classRole,
+      emoji: roleEmoji
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_subclass_${userId}`)
@@ -311,16 +315,14 @@ export async function handleSubclassSelect(interaction, userId) {
   const subclassName = interaction.values[0];
   const state = stateManager.getRegistrationState(userId);
   stateManager.setRegistrationState(userId, { ...state, subclass: subclassName });
-
-  const abilityScores = getAbilityScores();
   
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 6/6')
+    .setTitle('🎮 Register Main Character - Step 7/8')
     .setDescription(`**Subclass:** ${subclassName}\n\n**Select your ability score:**`)
     .setTimestamp();
 
-  const scoreOptions = abilityScores.map(score => ({
+  const scoreOptions = gameData.abilityScores.map(score => ({
     label: score.label,
     value: score.value
   }));
