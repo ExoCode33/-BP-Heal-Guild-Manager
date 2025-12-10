@@ -99,20 +99,13 @@ export async function handleAddAlt(interaction, userId) {
     
     stateManager.setRegistrationState(userId, { 
       type: 'alt', 
-      step: 'class', 
+      step: 'region',
       characterType: 'alt' 
     });
     
     const { handleRegisterMain } = await import('./registration.js');
-    await interaction.update({ 
-      content: '🎭 Starting alt registration...', 
-      embeds: [], 
-      components: [] 
-    });
+    await handleRegisterMain(interaction, userId);
     
-    setTimeout(async () => { 
-      await handleRegisterMain(interaction, userId); 
-    }, 500);
   } catch (error) {
     logger.error(`Add alt error: ${error.message}`);
     await interaction.reply({ 
