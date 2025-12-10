@@ -5,7 +5,6 @@ import db from '../services/database.js';
 import logger from '../utils/logger.js';
 import { buildCharacterProfileEmbed } from '../components/embeds/characterProfile.js';
 import { buildCharacterButtons } from '../components/buttons/characterButtons.js';
-import sheetsService from '../services/sheets.js';
 
 function createRegEmbed(step, total, title, description) {
   return new EmbedBuilder()
@@ -20,6 +19,48 @@ export async function handleRegisterMain(interaction, userId) {
   console.log('[REGISTRATION] Starting registration for user:', userId);
   console.log('[REGISTRATION] State:', JSON.stringify(state, null, 2));
   
+  // Check if user already has timezone (for alts)
+  const existingTimezone = await db.getUserTimezone(userId);
+  const isAlt = state.characterType === 'alt';
+  
+  console.log('[REGISTRATION] Is Alt:', isAlt, '| Existing timezone:', existingTimezone);
+  
+  if (isAlt && existingTimezone) {
+    // Skip timezone for alts, go straight to class selection
+    console.log('[REGISTRATION] Skipping timezone for alt, going to class selection');
+    
+    stateManager.setRegistrationState(userId, {
+      ...state,
+      step: 'class',
+      timezone: existingTimezone,
+      characterType: 'alt'
+    });
+    
+    const embed = createRegEmbed(1, 4, '⚔️ Select Your Class', 'Choose your class:');
+
+    const classOptions = config.classes.map(cls => ({
+      label: cls.name,
+      value: cls.name,
+      description: `${cls.role} - ${cls.description}`,
+      emoji: cls.role === 'Tank' ? '🛡️' : cls.role === 'DPS' ? '⚔️' : '💚'
+    }));
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_class_${userId}`)
+      .setPlaceholder('⚔️ Choose your class')
+      .addOptions(classOptions);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({ embeds: [embed], components: [row] });
+    } else {
+      await interaction.update({ embeds: [embed], components: [row] });
+    }
+    return;
+  }
+  
+  // Main character registration - start with region
   if (!state.step) {
     stateManager.setRegistrationState(userId, { 
       step: 'region',
@@ -140,7 +181,11 @@ export async function handleClassSelect(interaction, userId) {
   state.step = 'subclass';
   stateManager.setRegistrationState(userId, state);
 
-  const embed = createRegEmbed(5, 7, '🎭 Select Your Subclass', `Choose your ${className} subclass:`);
+  const isAlt = state.characterType === 'alt';
+  const stepNum = isAlt ? 2 : 5;
+  const totalSteps = isAlt ? 4 : 7;
+
+  const embed = createRegEmbed(stepNum, totalSteps, '🎭 Select Your Subclass', `Choose your ${className} subclass:`);
 
   const selectedClass = config.classes.find(c => c.name === className);
   const subclassOptions = selectedClass.subclasses.map(sub => ({
@@ -168,7 +213,11 @@ export async function handleSubclassSelect(interaction, userId) {
   state.step = 'abilityScore';
   stateManager.setRegistrationState(userId, state);
 
-  const embed = createRegEmbed(6, 7, '💪 Select Your Ability Score', 'Choose your current ability score range:');
+  const isAlt = state.characterType === 'alt';
+  const stepNum = isAlt ? 3 : 6;
+  const totalSteps = isAlt ? 4 : 7;
+
+  const embed = createRegEmbed(stepNum, totalSteps, '💪 Select Your Ability Score', 'Choose your current ability score range:');
 
   const scoreOptions = [
     { label: '≤10k', value: '10000', description: '≤10k power level' },
@@ -210,7 +259,11 @@ export async function handleAbilityScoreSelect(interaction, userId) {
   state.step = 'guild';
   stateManager.setRegistrationState(userId, state);
 
-  const embed = createRegEmbed(7, 7, '🏰 Select Your Guild', 'Choose your guild:');
+  const isAlt = state.characterType === 'alt';
+  const stepNum = isAlt ? 4 : 7;
+  const totalSteps = isAlt ? 4 : 7;
+
+  const embed = createRegEmbed(stepNum, totalSteps, '🏰 Select Your Guild', 'Choose your guild:');
 
   const guildOptions = config.guilds.map(guild => ({
     label: guild.name,
@@ -319,36 +372,24 @@ function getCountriesByRegion(region) {
       { label: '🇫🇷 France', value: '🇫🇷 France' },
       { label: '🇩🇪 Germany', value: '🇩🇪 Germany' },
       { label: '🇪🇸 Spain', value: '🇪🇸 Spain' },
-      { label: '🇮🇹 Italy', value: '🇮🇹 Italy' },
-      { label: '🇳🇱 Netherlands', value: '🇳🇱 Netherlands' },
-      { label: '🇵🇱 Poland', value: '🇵🇱 Poland' },
-      { label: '🇸🇪 Sweden', value: '🇸🇪 Sweden' },
-      { label: '🇹🇷 Turkey', value: '🇹🇷 Turkey' },
-      { label: '🇷🇺 Russia', value: '🇷🇺 Russia' }
+      { label: '🇮🇹 Italy', value: '🇮🇹 Italy' }
     ],
     'Asia': [
       { label: '🇯🇵 Japan', value: '🇯🇵 Japan' },
       { label: '🇰🇷 South Korea', value: '🇰🇷 South Korea' },
       { label: '🇨🇳 China', value: '🇨🇳 China' },
-      { label: '🇮🇳 India', value: '🇮🇳 India' },
-      { label: '🇸🇬 Singapore', value: '🇸🇬 Singapore' },
-      { label: '🇹🇭 Thailand', value: '🇹🇭 Thailand' },
-      { label: '🇻🇳 Vietnam', value: '🇻🇳 Vietnam' },
-      { label: '🇵🇭 Philippines', value: '🇵🇭 Philippines' }
+      { label: '🇮🇳 India', value: '🇮🇳 India' }
     ],
     'Oceania': [
       { label: '🇦🇺 Australia', value: '🇦🇺 Australia' },
       { label: '🇳🇿 New Zealand', value: '🇳🇿 New Zealand' }
     ],
     'Africa': [
-      { label: '🇿🇦 South Africa', value: '🇿🇦 South Africa' },
-      { label: '🇪🇬 Egypt', value: '🇪🇬 Egypt' },
-      { label: '🇳🇬 Nigeria', value: '🇳🇬 Nigeria' }
+      { label: '🇿🇦 South Africa', value: '🇿🇦 South Africa' }
     ],
     'South America': [
       { label: '🇧🇷 Brazil', value: '🇧🇷 Brazil' },
-      { label: '🇦🇷 Argentina', value: '🇦🇷 Argentina' },
-      { label: '🇨🇱 Chile', value: '🇨🇱 Chile' }
+      { label: '🇦🇷 Argentina', value: '🇦🇷 Argentina' }
     ]
   };
   
@@ -360,106 +401,69 @@ function getTimezonesByCountry(country, region) {
     '🇺🇸 United States': [
       { label: 'EST (Eastern)', value: 'America/New_York', description: 'New York, Miami, Boston' },
       { label: 'CST (Central)', value: 'America/Chicago', description: 'Chicago, Dallas, Houston' },
-      { label: 'MST (Mountain)', value: 'America/Denver', description: 'Denver, Phoenix, Salt Lake City' },
-      { label: 'PST (Pacific)', value: 'America/Los_Angeles', description: 'LA, Seattle, San Francisco' },
-      { label: 'AKST (Alaska)', value: 'America/Anchorage', description: 'Anchorage, Juneau' },
+      { label: 'MST (Mountain)', value: 'America/Denver', description: 'Denver, Phoenix' },
+      { label: 'PST (Pacific)', value: 'America/Los_Angeles', description: 'LA, Seattle, SF' },
+      { label: 'AKST (Alaska)', value: 'America/Anchorage', description: 'Anchorage' },
       { label: 'HST (Hawaii)', value: 'Pacific/Honolulu', description: 'Honolulu' }
     ],
     '🇨🇦 Canada': [
-      { label: 'NST (Newfoundland)', value: 'America/St_Johns', description: "St. John's" },
-      { label: 'AST (Atlantic)', value: 'America/Halifax', description: 'Halifax, Moncton' },
-      { label: 'EST (Eastern)', value: 'America/Toronto', description: 'Toronto, Ottawa, Montreal' },
-      { label: 'CST (Central)', value: 'America/Winnipeg', description: 'Winnipeg, Regina' },
-      { label: 'MST (Mountain)', value: 'America/Edmonton', description: 'Edmonton, Calgary' },
-      { label: 'PST (Pacific)', value: 'America/Vancouver', description: 'Vancouver, Victoria' }
+      { label: 'NST', value: 'America/St_Johns', description: "St. John's" },
+      { label: 'AST', value: 'America/Halifax', description: 'Halifax' },
+      { label: 'EST', value: 'America/Toronto', description: 'Toronto, Ottawa, Montreal' },
+      { label: 'CST', value: 'America/Winnipeg', description: 'Winnipeg' },
+      { label: 'MST', value: 'America/Edmonton', description: 'Edmonton, Calgary' },
+      { label: 'PST', value: 'America/Vancouver', description: 'Vancouver' }
     ],
     '🇲🇽 Mexico': [
-      { label: 'CST', value: 'America/Mexico_City', description: 'Mexico City, Guadalajara' }
+      { label: 'CST', value: 'America/Mexico_City', description: 'Mexico City' }
     ],
     '🇬🇧 United Kingdom': [
-      { label: 'GMT', value: 'Europe/London', description: 'London, Edinburgh, Manchester' }
+      { label: 'GMT', value: 'Europe/London', description: 'London' }
     ],
     '🇫🇷 France': [
-      { label: 'CET', value: 'Europe/Paris', description: 'Paris, Lyon, Marseille' }
+      { label: 'CET', value: 'Europe/Paris', description: 'Paris' }
     ],
     '🇩🇪 Germany': [
-      { label: 'CET', value: 'Europe/Berlin', description: 'Berlin, Munich, Hamburg' }
+      { label: 'CET', value: 'Europe/Berlin', description: 'Berlin' }
     ],
     '🇪🇸 Spain': [
-      { label: 'CET', value: 'Europe/Madrid', description: 'Madrid, Barcelona, Valencia' }
+      { label: 'CET', value: 'Europe/Madrid', description: 'Madrid' }
     ],
     '🇮🇹 Italy': [
-      { label: 'CET', value: 'Europe/Rome', description: 'Rome, Milan, Naples' }
-    ],
-    '🇳🇱 Netherlands': [
-      { label: 'CET', value: 'Europe/Amsterdam', description: 'Amsterdam, Rotterdam' }
-    ],
-    '🇵🇱 Poland': [
-      { label: 'CET', value: 'Europe/Warsaw', description: 'Warsaw, Krakow' }
-    ],
-    '🇸🇪 Sweden': [
-      { label: 'CET', value: 'Europe/Stockholm', description: 'Stockholm, Gothenburg' }
-    ],
-    '🇹🇷 Turkey': [
-      { label: 'TRT', value: 'Europe/Istanbul', description: 'Istanbul, Ankara' }
-    ],
-    '🇷🇺 Russia': [
-      { label: 'MSK (Moscow)', value: 'Europe/Moscow', description: 'Moscow, St. Petersburg' }
+      { label: 'CET', value: 'Europe/Rome', description: 'Rome' }
     ],
     '🇯🇵 Japan': [
-      { label: 'JST', value: 'Asia/Tokyo', description: 'Tokyo, Osaka, Kyoto' }
+      { label: 'JST', value: 'Asia/Tokyo', description: 'Tokyo' }
     ],
     '🇰🇷 South Korea': [
-      { label: 'KST', value: 'Asia/Seoul', description: 'Seoul, Busan' }
+      { label: 'KST', value: 'Asia/Seoul', description: 'Seoul' }
     ],
     '🇨🇳 China': [
-      { label: 'CST', value: 'Asia/Shanghai', description: 'Beijing, Shanghai, Guangzhou' }
+      { label: 'CST', value: 'Asia/Shanghai', description: 'Beijing, Shanghai' }
     ],
     '🇮🇳 India': [
-      { label: 'IST', value: 'Asia/Kolkata', description: 'Mumbai, Delhi, Bangalore' }
-    ],
-    '🇸🇬 Singapore': [
-      { label: 'SGT', value: 'Asia/Singapore', description: 'Singapore' }
-    ],
-    '🇹🇭 Thailand': [
-      { label: 'ICT', value: 'Asia/Bangkok', description: 'Bangkok' }
-    ],
-    '🇻🇳 Vietnam': [
-      { label: 'ICT', value: 'Asia/Ho_Chi_Minh', description: 'Ho Chi Minh City, Hanoi' }
-    ],
-    '🇵🇭 Philippines': [
-      { label: 'PHT', value: 'Asia/Manila', description: 'Manila, Cebu' }
+      { label: 'IST', value: 'Asia/Kolkata', description: 'Mumbai, Delhi' }
     ],
     '🇦🇺 Australia': [
-      { label: 'AEDT (Sydney)', value: 'Australia/Sydney', description: 'Sydney, Melbourne' },
-      { label: 'AEST (Brisbane)', value: 'Australia/Brisbane', description: 'Brisbane' },
-      { label: 'ACST (Adelaide)', value: 'Australia/Adelaide', description: 'Adelaide' },
-      { label: 'AWST (Perth)', value: 'Australia/Perth', description: 'Perth' }
+      { label: 'AEDT', value: 'Australia/Sydney', description: 'Sydney' },
+      { label: 'AEST', value: 'Australia/Brisbane', description: 'Brisbane' },
+      { label: 'AWST', value: 'Australia/Perth', description: 'Perth' }
     ],
     '🇳🇿 New Zealand': [
-      { label: 'NZDT', value: 'Pacific/Auckland', description: 'Auckland, Wellington' }
+      { label: 'NZDT', value: 'Pacific/Auckland', description: 'Auckland' }
     ],
     '🇿🇦 South Africa': [
-      { label: 'SAST', value: 'Africa/Johannesburg', description: 'Johannesburg, Cape Town' }
-    ],
-    '🇪🇬 Egypt': [
-      { label: 'EET', value: 'Africa/Cairo', description: 'Cairo' }
-    ],
-    '🇳🇬 Nigeria': [
-      { label: 'WAT', value: 'Africa/Lagos', description: 'Lagos' }
+      { label: 'SAST', value: 'Africa/Johannesburg', description: 'Johannesburg' }
     ],
     '🇧🇷 Brazil': [
-      { label: 'BRT', value: 'America/Sao_Paulo', description: 'São Paulo, Rio de Janeiro' }
+      { label: 'BRT', value: 'America/Sao_Paulo', description: 'São Paulo' }
     ],
     '🇦🇷 Argentina': [
       { label: 'ART', value: 'America/Argentina/Buenos_Aires', description: 'Buenos Aires' }
-    ],
-    '🇨🇱 Chile': [
-      { label: 'CLT', value: 'America/Santiago', description: 'Santiago' }
     ]
   };
   
-  return timezones[country] || [{ label: 'UTC', value: 'UTC', description: 'Coordinated Universal Time' }];
+  return timezones[country] || [{ label: 'UTC', value: 'UTC', description: 'UTC' }];
 }
 
 export default {
