@@ -22,26 +22,23 @@ class Logger {
     }
   }
 
-  getTimestamp() {
+  getFormattedTimestamp() {
     const now = new Date();
-    const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const month = now.toLocaleString('en-US', { month: 'short' });
+    const day = now.getDate();
+    const year = now.getFullYear();
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-    return `${date} at ${time}`;
-  }
-
-  getUnixTimestamp() {
-    return Math.floor(Date.now() / 1000);
+    return `${month} ${day}, ${year} at ${time}`;
   }
 
   async logStartup(clientTag, port, commandCount) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const messages = [
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m <t:${unixTime}:F> - Bot initialized\n\`\`\``,
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m <t:${unixTime}:F> - Logged in as: \u001b[0;36m${clientTag}\u001b[0m\n\`\`\``,
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m <t:${unixTime}:F> - Server: \u001b[0;36mport ${port}\u001b[0m\n\`\`\``,
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m <t:${unixTime}:F> - Commands: \u001b[0;36m${commandCount} commands\u001b[0m\n\`\`\``,
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m <t:${unixTime}:F> - Activated Handlers: \u001b[0;36mcharacter, registration, update, subclass, remove\u001b[0m\n\`\`\``
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Bot initialized\n\`\`\``,
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Logged in as: \u001b[0;36m${clientTag}\u001b[0m\n\`\`\``,
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Server: \u001b[0;36mport ${port}\u001b[0m\n\`\`\``,
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Commands: \u001b[0;36m${commandCount} commands\u001b[0m\n\`\`\``,
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Activated Handlers: \u001b[0;36mcharacter, registration, update, subclass, remove\u001b[0m\n\`\`\``
     ];
     
     console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Bot initialized');
@@ -56,10 +53,9 @@ class Logger {
   }
 
   async logCommand(commandName, userTag, userId) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const message = `\`\`\`ansi
-\u001b[0;35m[COMMAND]\u001b[0m <t:${unixTime}:F> - /${commandName} by \u001b[0;36m${userTag}\u001b[0m
+\u001b[0;35m[COMMAND]\u001b[0m ${timestamp} - /${commandName} by \u001b[0;36m${userTag}\u001b[0m
 \`\`\``;
     
     console.log('\x1b[35m[COMMAND]\x1b[0m ' + timestamp + ' - /' + commandName + ' by \x1b[36m' + userTag + '\x1b[0m');
@@ -68,40 +64,36 @@ class Logger {
   }
 
   log(message) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const logMessage = `\`\`\`ansi
-\u001b[0;34m[LOG]\u001b[0m <t:${unixTime}:F> - ${message}
+\u001b[0;34m[LOG]\u001b[0m ${timestamp} - ${message}
 \`\`\``;
     console.log(`[LOG] ${new Date().toISOString()} - ${message}`);
     this.sendToChannel(logMessage);
   }
 
   error(message) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const errorMessage = `\`\`\`ansi
-\u001b[0;31m[ERROR]\u001b[0m <t:${unixTime}:F> - ${message}
+\u001b[0;31m[ERROR]\u001b[0m ${timestamp} - ${message}
 \`\`\``;
     console.error(`[ERROR] ${new Date().toISOString()} - ${message}`);
     this.sendToChannel(errorMessage);
   }
 
   warn(message) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const warnMessage = `\`\`\`ansi
-\u001b[0;33m[WARN]\u001b[0m <t:${unixTime}:F> - ${message}
+\u001b[0;33m[WARN]\u001b[0m ${timestamp} - ${message}
 \`\`\``;
     console.warn(`[WARN] ${new Date().toISOString()} - ${message}`);
     this.sendToChannel(warnMessage);
   }
 
   success(message) {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const successMessage = `\`\`\`ansi
-\u001b[0;32m[SUCCESS]\u001b[0m <t:${unixTime}:F> - ${message}
+\u001b[0;32m[SUCCESS]\u001b[0m ${timestamp} - ${message}
 \`\`\``;
     console.log(`[SUCCESS] ${new Date().toISOString()} - ${message}`);
     this.sendToChannel(successMessage);
@@ -112,10 +104,9 @@ class Logger {
   }
 
   async logAction(username, action, details = '') {
-    const timestamp = this.getTimestamp();
-    const unixTime = this.getUnixTimestamp();
+    const timestamp = this.getFormattedTimestamp();
     const actionMessage = `\`\`\`ansi
-\u001b[0;34m[LOG]\u001b[0m <t:${unixTime}:F> - User \u001b[0;36m${username}\u001b[0m ${action}${details ? ` - ${details}` : ''}
+\u001b[0;34m[LOG]\u001b[0m ${timestamp} - User \u001b[0;36m${username}\u001b[0m ${action}${details ? ` - ${details}` : ''}
 \`\`\``;
     console.log(`[ACTION] ${new Date().toISOString()} - ${username} - ${action}${details ? ` - ${details}` : ''}`);
     await this.sendToChannel(actionMessage);
