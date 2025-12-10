@@ -2,16 +2,28 @@ import { EmbedBuilder } from 'discord.js';
 import { formatAbilityScore } from '../../utils/gameData.js';
 import db from '../../services/database.js';
 
-export async function buildCharacterProfileEmbed(user, characters) {
+export async function buildCharacterProfileEmbed(user, characters, interaction = null) {
   const mainChar = characters.find(c => c.character_type === 'main');
   const alts = characters.filter(c => c.character_type === 'alt');
   const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
   const guildName = mainChar?.guild || 'heal';
+  
+  // Get nickname from guild member if interaction is provided, otherwise use username
+  let displayName = user.username;
+  if (interaction && interaction.guild) {
+    try {
+      const member = await interaction.guild.members.fetch(user.id);
+      displayName = member.nickname || user.username;
+    } catch (error) {
+      // If fetch fails, use username
+      displayName = user.username;
+    }
+  }
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setDescription(`# **JOIN ${guildName.toUpperCase()}**\n**${user.username}'s Profile**`);
+    .setDescription(`# **Join ${guildName} - ${displayName}'s Profile**`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -25,7 +37,8 @@ export async function buildCharacterProfileEmbed(user, characters) {
   mainSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${mainChar.ign}\n`;
   mainSection += `\n`;
   mainSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${mainChar.guild || 'None'}\n`;
-  mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${mainChar.class} - ${mainChar.subclass} ${roleEmoji}\n`;
+  mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${mainChar.class}\n`;
+  mainSection += `\u001b[1;34m📋 Subclass:\u001b[0m ${mainChar.subclass} ${roleEmoji}\n`;
   mainSection += `\n`;
   mainSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(mainChar.ability_score)}\n`;
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
@@ -40,7 +53,6 @@ export async function buildCharacterProfileEmbed(user, characters) {
       if (i > 0) subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       else subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class} - ${sub.subclass} ${subRoleEmoji}\n`;
-      subSection += `\n`;
       subSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
     });
     subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
@@ -56,7 +68,6 @@ export async function buildCharacterProfileEmbed(user, characters) {
       else altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}   \u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
       altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class} - ${alt.subclass} ${altRoleEmoji}\n`;
-      altSection += `\n`;
       altSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
     });
     altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
