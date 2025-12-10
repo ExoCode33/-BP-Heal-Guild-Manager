@@ -109,4 +109,10 @@ class Logger {
     const timestamp = this.getUTCTimestamp();
     const actionMessage = `\`\`\`ansi
 \u001b[0;34m[LOG]\u001b[0m ${timestamp} - User \u001b[0;36m${username}\u001b[0m ${action}${details ? ` - ${details}` : ''}
-\`\`\
+\`\`\``;
+    console.log(`[LOG] ${new Date().toISOString()} - User ${username} ${action}${details ? ` - ${details}` : ''}`);
+    await this.sendToChannel(actionMessage);
+  }
+}
+
+export default new Logger();
