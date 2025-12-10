@@ -39,7 +39,19 @@ export async function handleSelectMenuInteraction(interaction) {
   const userId = customId.split('_').pop();
 
   try {
-    if (customId.startsWith('select_class_')) {
+    if (customId.startsWith('select_region_')) {
+      await registration.handleRegionSelect(interaction, userId);
+    }
+    else if (customId.startsWith('select_country_')) {
+      await registration.handleCountrySelect(interaction, userId);
+    }
+    else if (customId.startsWith('select_timezone_')) {
+      await registration.handleTimezoneSelect(interaction, userId);
+    }
+    else if (customId.startsWith('select_guild_')) {
+      await registration.handleGuildSelect(interaction, userId);
+    }
+    else if (customId.startsWith('select_class_')) {
       await registration.handleClassSelect(interaction, userId);
     }
     else if (customId.startsWith('select_subclass_')) {
@@ -47,9 +59,6 @@ export async function handleSelectMenuInteraction(interaction) {
     }
     else if (customId.startsWith('select_ability_score_')) {
       await registration.handleAbilityScoreSelect(interaction, userId);
-    }
-    else if (customId.startsWith('select_guild_')) {
-      await registration.handleGuildSelect(interaction, userId);
     }
     else if (customId.startsWith('add_character_select_')) {
       await handleAddCharacterSelect(interaction, userId);
@@ -177,7 +186,6 @@ async function handleEditCharacterSelect(interaction, userId) {
   if (type === 'main') {
     await editing.handleEditMain(interaction, userId);
   } else if (type === 'alt' || type === 'subclass') {
-    // For now, redirect to edit main (you can expand this later)
     await interaction.reply({ 
       content: '✏️ Editing alts and subclasses coming soon! For now, please use the remove/add workflow.', 
       ephemeral: true 
