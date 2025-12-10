@@ -525,8 +525,8 @@ export async function handleGuildSelect(interaction, userId) {
     .setCustomId('uid')
     .setLabel('UID (User ID)')
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Your game UID')
-    .setRequired(false)
+    .setPlaceholder('Your game UID (required)')
+    .setRequired(true)
     .setMaxLength(50);
 
   const row1 = new ActionRowBuilder().addComponents(ignInput);
@@ -538,7 +538,7 @@ export async function handleGuildSelect(interaction, userId) {
 
 export async function handleIGNModal(interaction, userId) {
   const ign = interaction.fields.getTextInputValue('ign');
-  const uid = interaction.fields.getTextInputValue('uid') || null;
+  const uid = interaction.fields.getTextInputValue('uid');
   const state = stateManager.getRegistrationState(userId);
 
   console.log('[REGISTRATION] IGN entered:', ign);
