@@ -10,9 +10,8 @@ export async function buildCharacterProfileEmbed(user, characters) {
   const guildName = mainChar?.guild || 'heal';
 
   const embed = new EmbedBuilder()
-    .setColor('#6640D9')
-    .setTitle(`**__${guildName}__**`)
-    .setDescription(`**${user.username}'s Profile**`);
+    .setColor('#E91E63')
+    .setDescription(`# **Join ${guildName}**\n**${user.username}'s Profile**`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -38,13 +37,13 @@ export async function buildCharacterProfileEmbed(user, characters) {
       const subRoleEmoji = sub.role === 'Tank' ? '🛡️' : sub.role === 'DPS' ? '⚔️' : '💚';
       if (i > 0) subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       else subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      subSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${sub.ign} ${subRoleEmoji}\n`;
+      subSection += `\u001b[1;34m📊 Main Character Subclass:\u001b[0m ${subRoleEmoji}\n`;
       subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class} - ${sub.subclass}\n`;
       subSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
     });
     subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
     subSection += '```';
-    embed.addFields({ name: `📊 Subclasses (${subclasses.length}/3)`, value: subSection, inline: false });
+    embed.addFields({ name: '\u200b', value: subSection, inline: false });
   }
 
   if (alts.length > 0) {
