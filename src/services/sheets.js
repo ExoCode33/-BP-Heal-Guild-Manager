@@ -104,7 +104,7 @@ class SheetsService {
         
         rows.push([
           mainChar.ign,
-          mainChar.uid || '',
+          mainChar.uid,
           mainChar.class,
           mainChar.subclass,
           mainChar.role,
@@ -125,7 +125,7 @@ class SheetsService {
           
           rows.push([
             alt.ign,
-            alt.uid || '',
+            alt.uid,
             alt.class,
             alt.subclass,
             alt.role,
