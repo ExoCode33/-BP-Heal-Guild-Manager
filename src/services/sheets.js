@@ -104,6 +104,7 @@ class SheetsService {
         
         rows.push([
           mainChar.ign,
+          mainChar.uid || '',
           mainChar.class,
           mainChar.subclass,
           mainChar.role,
@@ -124,6 +125,7 @@ class SheetsService {
           
           rows.push([
             alt.ign,
+            alt.uid || '',
             alt.class,
             alt.subclass,
             alt.role,
@@ -142,7 +144,7 @@ class SheetsService {
       
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A2:K`
+        range: `${sheetName}!A2:L`
       });
 
       if (rows.length > 0) {
