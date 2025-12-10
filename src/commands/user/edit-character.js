@@ -28,11 +28,11 @@ export default {
       logger.error(`Edit error: ${error.message}`);
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ 
-          content: '❌ Error.', 
+          content: '❌ Error occurred.', 
           ephemeral: config.ephemeral.editChar 
         });
       } else {
-        await interaction.editReply({ content: '❌ Error.' });
+        await interaction.editReply({ content: '❌ Error occurred.' });
       }
     }
   }
