@@ -2,91 +2,11 @@ class Logger {
   constructor() {
     this.client = null;
     this.logChannelId = null;
-    this.clearOnStart = false;
   }
 
-  async setClient(client, logChannelId, clearOnStart = false) {
+  setClient(client, logChannelId) {
     this.client = client;
     this.logChannelId = logChannelId;
-    this.clearOnStart = clearOnStart;
-    
-    // Clear log channel if enabled
-    if (this.clearOnStart && this.client && this.logChannelId) {
-      await this.clearLogChannel();
-    }
-  }
-
-  async clearLogChannel() {
-    try {
-      const channel = await this.client.channels.fetch(this.logChannelId);
-      if (!channel) return;
-
-      console.log('[LOGGER] Clearing log channel...');
-      
-      let deleted = 0;
-      let fetched;
-      
-      do {
-        try {
-          fetched = await channel.messages.fetch({ limit: 100 });
-          if (fetched.size === 0) break;
-          
-          // Discord bulk delete only works for messages less than 14 days old
-          const recentMessages = fetched.filter(msg => Date.now() - msg.createdTimestamp < 14 * 24 * 60 * 60 * 1000);
-          const oldMessages = fetched.filter(msg => Date.now() - msg.createdTimestamp >= 14 * 24 * 60 * 60 * 1000);
-          
-          // Bulk delete recent messages
-          if (recentMessages.size > 1) {
-            try {
-              await channel.bulkDelete(recentMessages, true);
-              deleted += recentMessages.size;
-            } catch (bulkError) {
-              // If bulk delete fails, delete individually
-              for (const msg of recentMessages.values()) {
-                try {
-                  await msg.delete();
-                  deleted += 1;
-                  await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (deleteError) {
-                  // Skip messages that can't be deleted
-                  console.error(`[LOGGER] Could not delete message: ${deleteError.message}`);
-                }
-              }
-            }
-          } else if (recentMessages.size === 1) {
-            try {
-              await recentMessages.first().delete();
-              deleted += 1;
-            } catch (deleteError) {
-              console.error(`[LOGGER] Could not delete message: ${deleteError.message}`);
-            }
-          }
-          
-          // Delete old messages one by one
-          for (const msg of oldMessages.values()) {
-            try {
-              await msg.delete();
-              deleted += 1;
-              await new Promise(resolve => setTimeout(resolve, 100));
-            } catch (deleteError) {
-              // Skip messages that can't be deleted
-              console.error(`[LOGGER] Could not delete old message: ${deleteError.message}`);
-            }
-          }
-          
-          // If no messages were deleted, break to avoid infinite loop
-          if (recentMessages.size === 0 && oldMessages.size === 0) break;
-          
-        } catch (fetchError) {
-          console.error(`[LOGGER] Error fetching messages: ${fetchError.message}`);
-          break;
-        }
-      } while (fetched.size >= 2);
-      
-      console.log(`[LOGGER] Cleared ${deleted} messages from log channel`);
-    } catch (error) {
-      console.error(`[LOGGER] Failed to clear log channel: ${error.message}`);
-    }
   }
 
   async sendToChannel(message) {
@@ -120,14 +40,14 @@ class Logger {
       `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Logged in as: \u001b[0;36m${clientTag}\u001b[0m\n\`\`\``,
       `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Server: \u001b[0;36mport ${port}\u001b[0m\n\`\`\``,
       `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Commands: \u001b[0;36m${commandCount} commands\u001b[0m\n\`\`\``,
-      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Activated Handlers: \u001b[0;36mcharacter, registration, update, subclass, remove\u001b[0m\n\`\`\``
+      `\`\`\`ansi\n\u001b[0;32m[SYSTEM]\u001b[0m ${timestamp} - Handlers: \u001b[0;36mregistration, editing, interactions\u001b[0m\n\`\`\``
     ];
     
     console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Bot initialized');
     console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Logged in as: \x1b[36m' + clientTag + '\x1b[0m');
     console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Server: \x1b[36mport ' + port + '\x1b[0m');
     console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Commands: \x1b[36m' + commandCount + ' commands\x1b[0m');
-    console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Activated Handlers: \x1b[36mcharacter, registration, update, subclass, remove\x1b[0m');
+    console.log('\x1b[32m[SYSTEM]\x1b[0m ' + timestamp + ' - Handlers: \x1b[36mregistration, editing, interactions\x1b[0m');
     
     for (const message of messages) {
       await this.sendToChannel(message);
@@ -154,12 +74,24 @@ class Logger {
     this.sendToChannel(logMessage);
   }
 
-  error(message) {
+  error(message, error = null) {
     const timestamp = this.getUTCTimestamp();
+    
+    // Build detailed error message
+    let fullMessage = message;
+    if (error) {
+      fullMessage += `\n  Error: ${error.message}`;
+      if (error.stack) {
+        const stackLines = error.stack.split('\n').slice(0, 3);
+        fullMessage += `\n  Stack: ${stackLines.join('\n         ')}`;
+      }
+    }
+    
     const errorMessage = `\`\`\`ansi
 \u001b[0;31m[ERROR]\u001b[0m ${timestamp} - ${message}
 \`\`\``;
-    console.error(`[ERROR] ${new Date().toISOString()} - ${message}`);
+    
+    console.error(`[ERROR] ${new Date().toISOString()} - ${fullMessage}`);
     this.sendToChannel(errorMessage);
   }
 
@@ -192,6 +124,24 @@ class Logger {
 \`\`\``;
     console.log(`[LOG] ${new Date().toISOString()} - User ${username} ${action}${details ? ` - ${details}` : ''}`);
     await this.sendToChannel(actionMessage);
+  }
+
+  async logInteractionError(interactionType, userId, error) {
+    const timestamp = this.getUTCTimestamp();
+    const errorMessage = `\`\`\`ansi
+\u001b[0;31m[INTERACTION ERROR]\u001b[0m ${timestamp}
+Type: ${interactionType}
+User: ${userId}
+Error: ${error.message}
+\`\`\``;
+    
+    console.error(`[INTERACTION ERROR] ${new Date().toISOString()} - ${interactionType} by ${userId}`);
+    console.error(`  Message: ${error.message}`);
+    if (error.stack) {
+      console.error(`  Stack: ${error.stack.split('\n').slice(0, 5).join('\n         ')}`);
+    }
+    
+    await this.sendToChannel(errorMessage);
   }
 }
 
