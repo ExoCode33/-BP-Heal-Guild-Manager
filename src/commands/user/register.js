@@ -11,7 +11,7 @@ export default {
       const mainChar = await db.getMainCharacter(userId);
       if (mainChar) return await interaction.reply({ content: '⚠️ Already have main! Use `/edit-user`.', ephemeral: true });
       await startRegistrationFlow(interaction, userId);
-      logger.log(`User ${userId} started registration`);
+      logger.logAction(interaction.user.username, 'started registration');
     } catch (error) {
       logger.error(`Register error: ${error.message}`);
       if (!interaction.replied && !interaction.deferred) {
