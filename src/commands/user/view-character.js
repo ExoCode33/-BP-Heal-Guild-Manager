@@ -7,8 +7,8 @@ import config from '../../utils/config.js';
 export default {
   data: new SlashCommandBuilder()
     .setName('view-character')
-    .setDescription('View character profile')
-    .addUserOption(option => 
+    .setDescription('View a character profile')
+    .addUserOption(option =>
       option.setName('user')
         .setDescription('User to view (leave empty for yourself)')
         .setRequired(false)
@@ -18,7 +18,10 @@ export default {
       await interaction.deferReply({ ephemeral: config.ephemeral.viewChar });
       
       const targetUser = interaction.options.getUser('user') || interaction.user;
-      const characters = await db.getAllCharactersWithSubclasses(targetUser.id);
+      const userId = targetUser.id;
+      
+      const characters = await db.getAllCharactersWithSubclasses(userId);
+      
       const embed = await buildCharacterProfileEmbed(targetUser, characters, interaction);
       
       await interaction.editReply({ embeds: [embed] });
@@ -27,11 +30,11 @@ export default {
       logger.error(`View error: ${error.message}`);
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ 
-          content: '❌ Error.', 
+          content: '❌ Error occurred.', 
           ephemeral: config.ephemeral.viewChar 
         });
       } else {
-        await interaction.editReply({ content: '❌ Error.' });
+        await interaction.editReply({ content: '❌ Error occurred.' });
       }
     }
   }
