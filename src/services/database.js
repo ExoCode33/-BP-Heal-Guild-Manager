@@ -55,6 +55,12 @@ class Database {
     return result.rows[0];
   }
 
+  async getCharacterById(id) {
+    const query = `SELECT * FROM characters WHERE id = $1 LIMIT 1`;
+    const result = await this.query(query, [id]);
+    return result.rows[0];
+  }
+
   async getAllCharactersWithSubclasses(userId) {
     const query = `
       SELECT c.*, p.ign as parent_ign
