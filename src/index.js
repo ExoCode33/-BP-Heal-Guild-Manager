@@ -25,19 +25,23 @@ async function loadCommands() {
       const command = await import(`file://${filePath}`);
       if (command.default && 'data' in command.default && 'execute' in command.default) {
         client.commands.set(command.default.data.name, command.default);
-        logger.log(`Loaded: ${command.default.data.name}`);
       }
     }
   }
 }
 
 client.once(Events.ClientReady, async () => {
-  logger.success(`Logged in as ${client.user.tag}`);
-  
+  // Initialize logger with Discord client
   if (config.channels.log && config.logging.toChannel) {
     logger.setClient(client, config.channels.log);
-    logger.log('Channel logging enabled');
   }
+  
+  // Bot startup logging
+  console.log('\x1b[33m[BOT STARTED]\x1b[0m ' + new Date().toLocaleTimeString());
+  console.log('\x1b[33m[BOT STARTED]\x1b[0m Logged in as: \x1b[36m' + client.user.tag + '\x1b[0m');
+  console.log('\x1b[33m[BOT STARTED]\x1b[0m Server: \x1b[36mport ' + (process.env.PORT || 3000) + '\x1b[0m');
+  console.log('\x1b[33m[BOT STARTED]\x1b[0m Commands: \x1b[36m' + client.commands.size + ' commands\x1b[0m');
+  console.log('\x1b[33m[BOT STARTED]\x1b[0m Activated Handlers: \x1b[36mcharacter, registration, update, subclass, remove\x1b[0m');
   
   try {
     await db.initializeDatabase();
@@ -45,6 +49,7 @@ client.once(Events.ClientReady, async () => {
   } catch (error) {
     logger.error(`Database init failed: ${error.message}`);
   }
+  
   setInterval(async () => {
     try {
       const allChars = await db.getAllCharacters();
@@ -65,6 +70,10 @@ client.on(Events.InteractionCreate, async interaction => {
         logger.error(`Command not found: ${interaction.commandName}`);
         return;
       }
+      
+      // Log command usage
+      console.log('\x1b[35m[COMMAND]\x1b[0m ' + new Date().toLocaleTimeString() + ' - /' + interaction.commandName + ' by \x1b[36m' + interaction.user.tag + '\x1b[0m');
+      
       await command.execute(interaction);
     }
     else if (interaction.isButton()) await interactionHandlers.handleButtonInteraction(interaction);
