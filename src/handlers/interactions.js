@@ -23,6 +23,18 @@ export async function handleButtonInteraction(interaction) {
     else if (customId.startsWith('remove_character_')) {
       await handleRemoveCharacterButton(interaction, userId);
     }
+    else if (customId.startsWith('confirm_remove_main_')) {
+      await editing.handleConfirmRemove(interaction, userId);
+    }
+    else if (customId.startsWith('cancel_remove_main_')) {
+      await editing.handleCancelRemove(interaction, userId);
+    }
+    else if (customId.startsWith('confirm_remove_')) {
+      await editing.handleConfirmRemove(interaction, userId);
+    }
+    else if (customId.startsWith('cancel_remove_')) {
+      await editing.handleCancelRemove(interaction, userId);
+    }
     else if (customId.startsWith('back_to_profile_')) {
       await handleBackToProfile(interaction, userId);
     }
@@ -93,7 +105,7 @@ export async function handleModalSubmit(interaction) {
   }
 }
 
-// New handler functions
+// Handler functions
 
 async function handleAddCharacterButton(interaction, userId) {
   const allChars = await db.getAllCharactersWithSubclasses(userId);
@@ -107,7 +119,7 @@ async function handleAddCharacterButton(interaction, userId) {
     .setDescription('Choose what type of character to add:')
     .addFields(
       { name: '🎭 Alt Character', value: 'Add an alternate character with its own IGN and guild', inline: false },
-      { name: '📊 Subclass', value: `Add a subclass to an existing character (${subclasses.length}/3 used)`, inline: false }
+      { name: '🔄 Subclass', value: `Add a subclass to an existing character (${subclasses.length}/3 used)`, inline: false }
     )
     .setTimestamp();
 
