@@ -19,7 +19,7 @@ export default {
       
       const targetUser = interaction.options.getUser('user') || interaction.user;
       const characters = await db.getAllCharactersWithSubclasses(targetUser.id);
-      const embed = await buildCharacterProfileEmbed(targetUser, characters);
+      const embed = await buildCharacterProfileEmbed(targetUser, characters, interaction);
       
       await interaction.editReply({ embeds: [embed] });
       logger.logAction(interaction.user.username, `viewed ${targetUser.username}`);
