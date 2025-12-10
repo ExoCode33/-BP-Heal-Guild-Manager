@@ -7,9 +7,12 @@ export async function buildCharacterProfileEmbed(user, characters) {
   const alts = characters.filter(c => c.character_type === 'alt');
   const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
+  const guildName = mainChar?.guild || 'heal';
+
   const embed = new EmbedBuilder()
     .setColor('#6640D9')
-    .setTitle(`${user.username}'s Character Profile`);
+    .setTitle(`**__${guildName}__**`)
+    .setDescription(`**${user.username}'s Profile**`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -27,7 +30,7 @@ export async function buildCharacterProfileEmbed(user, characters) {
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
 
-  embed.addFields({ name: '⭐ Main Character', value: mainSection, inline: false });
+  embed.addFields({ name: '⭐ Main', value: mainSection, inline: false });
 
   if (subclasses.length > 0) {
     let subSection = '```ansi\n';
@@ -57,7 +60,7 @@ export async function buildCharacterProfileEmbed(user, characters) {
     });
     altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
     altSection += '```';
-    embed.addFields({ name: `🎭 Alt Characters (${alts.length})`, value: altSection, inline: false });
+    embed.addFields({ name: `🎭 Alts (${alts.length})`, value: altSection, inline: false });
   }
 
   const timezone = await db.getUserTimezone(user.id);
