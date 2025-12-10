@@ -8,7 +8,13 @@ import config from '../utils/config.js';
 
 export async function startRegistrationFlow(interaction, userId) {
   const state = stateManager.getRegistrationState(userId);
-  if (!state) stateManager.setRegistrationState(userId, { step: 'class', type: 'main', characterType: 'main' });
+  if (!state) {
+    stateManager.setRegistrationState(userId, { 
+      step: 'class', 
+      type: 'main', 
+      characterType: 'main' 
+    });
+  }
   await showClassSelection(interaction, userId);
 }
 
@@ -17,7 +23,12 @@ async function showClassSelection(interaction, userId) {
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
     .setPlaceholder('🎭 Choose your class')
-    .addOptions(classes.map(className => ({ label: className, value: className, emoji: getClassEmoji(className), description: `${gameData.classes[className].role}` })));
+    .addOptions(classes.map(className => ({ 
+      label: className, 
+      value: className, 
+      emoji: getClassEmoji(className), 
+      description: `${gameData.classes[className].role}` 
+    })));
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
   
@@ -25,16 +36,30 @@ async function showClassSelection(interaction, userId) {
   const isSubclass = state?.type === 'subclass';
   const stepTitle = isSubclass ? '📊 Add Subclass - Step 1' : '📝 Character Registration - Step 1';
   
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle(stepTitle).setDescription('Select your class:').setTimestamp();
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle(stepTitle)
+    .setDescription('Select your class:')
+    .setTimestamp();
 
-  if (interaction.deferred || interaction.replied) await interaction.editReply({ embeds: [embed], components: [row] });
-  else await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  const ephemeral = state?.type === 'subclass' ? config.ephemeral.editChar : config.ephemeral.registerChar;
+
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply({ embeds: [embed], components: [row] });
+  } else {
+    await interaction.reply({ embeds: [embed], components: [row], ephemeral });
+  }
 }
 
 export async function handleClassSelect(interaction, userId) {
   const selectedClass = interaction.values[0];
   const state = stateManager.getRegistrationState(userId);
-  if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
+  if (!state) {
+    return await interaction.reply({ 
+      content: '❌ Session expired.', 
+      ephemeral: true 
+    });
+  }
 
   state.class = selectedClass;
   state.role = getRoleFromClass(selectedClass);
@@ -42,20 +67,37 @@ export async function handleClassSelect(interaction, userId) {
   stateManager.setRegistrationState(userId, state);
 
   const subclasses = getSubclassesForClass(selectedClass);
-  const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_subclass_${userId}`).setPlaceholder('📊 Choose your subclass').addOptions(subclasses.map(subclass => ({ label: subclass, value: subclass })));
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`select_subclass_${userId}`)
+    .setPlaceholder('📊 Choose your subclass')
+    .addOptions(subclasses.map(subclass => ({ 
+      label: subclass, 
+      value: subclass 
+    })));
+    
   const row = new ActionRowBuilder().addComponents(selectMenu);
   
   const isSubclass = state.type === 'subclass';
   const stepTitle = isSubclass ? '📊 Add Subclass - Step 2' : '📝 Character Registration - Step 2';
   
-  const embed = new EmbedBuilder().setColor('#6640D9').setTitle(stepTitle).setDescription(`**Class:** ${selectedClass}\n\nSelect your subclass:`).setTimestamp();
+  const embed = new EmbedBuilder()
+    .setColor('#6640D9')
+    .setTitle(stepTitle)
+    .setDescription(`**Class:** ${selectedClass}\n\nSelect your subclass:`)
+    .setTimestamp();
+    
   await interaction.update({ embeds: [embed], components: [row] });
 }
 
 export async function handleSubclassSelect(interaction, userId) {
   const selectedSubclass = interaction.values[0];
   const state = stateManager.getRegistrationState(userId);
-  if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
+  if (!state) {
+    return await interaction.reply({ 
+      content: '❌ Session expired.', 
+      ephemeral: true 
+    });
+  }
 
   state.subclass = selectedSubclass;
   
@@ -65,17 +107,43 @@ export async function handleSubclassSelect(interaction, userId) {
     state.step = 'ability_score';
     stateManager.setRegistrationState(userId, state);
 
-    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_ability_score_${userId}`).setPlaceholder('💪 Choose your ability score range').addOptions(gameData.abilityScores.map(score => ({ label: score.label, value: score.value })));
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_ability_score_${userId}`)
+      .setPlaceholder('💪 Choose your ability score range')
+      .addOptions(gameData.abilityScores.map(score => ({ 
+        label: score.label, 
+        value: score.value 
+      })));
+      
     const row = new ActionRowBuilder().addComponents(selectMenu);
-    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📊 Add Subclass - Step 3').setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`).setTimestamp();
+    
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('📊 Add Subclass - Step 3')
+      .setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`)
+      .setTimestamp();
+      
     await interaction.update({ embeds: [embed], components: [row] });
   } else {
     state.step = 'ability_score';
     stateManager.setRegistrationState(userId, state);
 
-    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_ability_score_${userId}`).setPlaceholder('💪 Choose your ability score range').addOptions(gameData.abilityScores.map(score => ({ label: score.label, value: score.value })));
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_ability_score_${userId}`)
+      .setPlaceholder('💪 Choose your ability score range')
+      .addOptions(gameData.abilityScores.map(score => ({ 
+        label: score.label, 
+        value: score.value 
+      })));
+      
     const row = new ActionRowBuilder().addComponents(selectMenu);
-    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 3').setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`).setTimestamp();
+    
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('📝 Character Registration - Step 3')
+      .setDescription(`**Class:** ${state.class}\n**Subclass:** ${selectedSubclass}\n\nSelect your ability score:`)
+      .setTimestamp();
+      
     await interaction.update({ embeds: [embed], components: [row] });
   }
 }
@@ -83,7 +151,12 @@ export async function handleSubclassSelect(interaction, userId) {
 export async function handleAbilityScoreSelect(interaction, userId) {
   const selectedScore = interaction.values[0];
   const state = stateManager.getRegistrationState(userId);
-  if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
+  if (!state) {
+    return await interaction.reply({ 
+      content: '❌ Session expired.', 
+      ephemeral: true 
+    });
+  }
 
   state.abilityScore = selectedScore;
   
@@ -95,9 +168,22 @@ export async function handleAbilityScoreSelect(interaction, userId) {
     state.step = 'guild';
     stateManager.setRegistrationState(userId, state);
 
-    const selectMenu = new StringSelectMenuBuilder().setCustomId(`select_guild_${userId}`).setPlaceholder('🏰 Choose your guild').addOptions(config.guilds.map(guild => ({ label: guild.name, value: guild.name })));
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_guild_${userId}`)
+      .setPlaceholder('🏰 Choose your guild')
+      .addOptions(config.guilds.map(guild => ({ 
+        label: guild.name, 
+        value: guild.name 
+      })));
+      
     const row = new ActionRowBuilder().addComponents(selectMenu);
-    const embed = new EmbedBuilder().setColor('#6640D9').setTitle('📝 Character Registration - Step 4').setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${selectedScore}\n\nSelect your guild:`).setTimestamp();
+    
+    const embed = new EmbedBuilder()
+      .setColor('#6640D9')
+      .setTitle('📝 Character Registration - Step 4')
+      .setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${selectedScore}\n\nSelect your guild:`)
+      .setTimestamp();
+      
     await interaction.update({ embeds: [embed], components: [row] });
   }
 }
@@ -124,7 +210,13 @@ async function completeSubclassRegistration(interaction, userId, state) {
     const allChars = await db.getAllCharacters();
     await sheetsService.syncAllCharacters(allChars);
 
-    const embed = new EmbedBuilder().setColor('#00FF00').setTitle('✅ Subclass Added!').setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${state.abilityScore}\n**Parent:** ${parentChar.ign}`).setFooter({ text: 'Returning to profile...' }).setTimestamp();
+    const embed = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('✅ Subclass Added!')
+      .setDescription(`**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Ability Score:** ${state.abilityScore}\n**Parent:** ${parentChar.ign}`)
+      .setFooter({ text: 'Returning to profile...' })
+      .setTimestamp();
+      
     await interaction.editReply({ embeds: [embed], components: [] });
     stateManager.clearRegistrationState(userId);
     logger.success(`Subclass added for user ${userId}`);
@@ -144,7 +236,11 @@ async function completeSubclassRegistration(interaction, userId, state) {
         const embed = await buildCharacterProfileEmbed(targetUser, characters);
         const buttons = buildCharacterButtons(mainChar, alts.length, subs.length, userId);
         
-        await interaction.followUp({ embeds: [embed], components: buttons, ephemeral: true });
+        await interaction.followUp({ 
+          embeds: [embed], 
+          components: buttons, 
+          ephemeral: config.ephemeral.editChar 
+        });
       } catch (error) {
         logger.error(`Failed to return to profile: ${error.message}`);
       }
@@ -158,29 +254,51 @@ async function completeSubclassRegistration(interaction, userId, state) {
 export async function handleGuildSelect(interaction, userId) {
   const selectedGuild = interaction.values[0];
   const state = stateManager.getRegistrationState(userId);
-  if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
+  if (!state) {
+    return await interaction.reply({ 
+      content: '❌ Session expired.', 
+      ephemeral: true 
+    });
+  }
 
   state.guild = selectedGuild;
   state.step = 'ign';
   stateManager.setRegistrationState(userId, state);
 
-  const modal = new ModalBuilder().setCustomId(`ign_modal_${userId}`).setTitle('Enter In-Game Name');
-  const ignInput = new TextInputBuilder().setCustomId('ign_input').setLabel('In-Game Name (IGN)').setStyle(TextInputStyle.Short).setPlaceholder('Enter your IGN').setRequired(true).setMaxLength(50);
+  const modal = new ModalBuilder()
+    .setCustomId(`ign_modal_${userId}`)
+    .setTitle('Enter In-Game Name');
+    
+  const ignInput = new TextInputBuilder()
+    .setCustomId('ign_input')
+    .setLabel('In-Game Name (IGN)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Enter your IGN')
+    .setRequired(true)
+    .setMaxLength(50);
+    
   const row = new ActionRowBuilder().addComponents(ignInput);
   modal.addComponents(row);
+  
   await interaction.showModal(modal);
 }
 
 export async function handleIGNModal(interaction, userId) {
   const ign = interaction.fields.getTextInputValue('ign_input');
   const state = stateManager.getRegistrationState(userId);
-  if (!state) return await interaction.reply({ content: '❌ Session expired.', ephemeral: true });
+  if (!state) {
+    return await interaction.reply({ 
+      content: '❌ Session expired.', 
+      ephemeral: true 
+    });
+  }
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: config.ephemeral.registerChar });
 
   try {
     const characterData = {
-      userId, ign,
+      userId, 
+      ign,
       class: state.class,
       subclass: state.subclass,
       abilityScore: state.abilityScore,
@@ -194,7 +312,13 @@ export async function handleIGNModal(interaction, userId) {
     const allChars = await db.getAllCharacters();
     await sheetsService.syncAllCharacters(allChars);
 
-    const embed = new EmbedBuilder().setColor('#00FF00').setTitle('✅ Registration Complete!').setDescription(`**IGN:** ${ign}\n**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Guild:** ${state.guild}`).setFooter({ text: 'Returning to profile...' }).setTimestamp();
+    const embed = new EmbedBuilder()
+      .setColor('#00FF00')
+      .setTitle('✅ Registration Complete!')
+      .setDescription(`**IGN:** ${ign}\n**Class:** ${state.class}\n**Subclass:** ${state.subclass}\n**Guild:** ${state.guild}`)
+      .setFooter({ text: 'Returning to profile...' })
+      .setTimestamp();
+      
     await interaction.editReply({ embeds: [embed], components: [] });
     stateManager.clearRegistrationState(userId);
     logger.success(`Character registered for user ${userId}`);
@@ -214,7 +338,13 @@ export async function handleIGNModal(interaction, userId) {
         const embed = await buildCharacterProfileEmbed(targetUser, characters);
         const buttons = buildCharacterButtons(mainChar, alts.length, subs.length, userId);
         
-        await interaction.followUp({ embeds: [embed], components: buttons, ephemeral: true });
+        const ephemeral = state.characterType === 'alt' ? config.ephemeral.editChar : config.ephemeral.registerChar;
+        
+        await interaction.followUp({ 
+          embeds: [embed], 
+          components: buttons, 
+          ephemeral 
+        });
       } catch (error) {
         logger.error(`Failed to return to profile: ${error.message}`);
       }
@@ -227,7 +357,16 @@ export async function handleIGNModal(interaction, userId) {
 
 export async function handleRegisterMain(interaction, userId) {
   const mainChar = await db.getMainCharacter(userId);
-  if (mainChar) return await interaction.reply({ content: '⚠️ You already have a main character! Use `/edit-user` to manage it.', ephemeral: true });
-  stateManager.setRegistrationState(userId, { step: 'class', type: 'main', characterType: 'main' });
+  if (mainChar) {
+    return await interaction.reply({ 
+      content: '⚠️ You already have a main character! Use `/edit-character` to manage it.', 
+      ephemeral: config.ephemeral.registerChar 
+    });
+  }
+  stateManager.setRegistrationState(userId, { 
+    step: 'class', 
+    type: 'main', 
+    characterType: 'main' 
+  });
   await startRegistrationFlow(interaction, userId);
 }
