@@ -30,6 +30,74 @@ function formatAbilityScore(score) {
   return scoreRanges[num] || num.toLocaleString();
 }
 
+// STEP 1: Choose which character type to edit
+export async function handleEditCharacter(interaction, userId) {
+  try {
+    const characters = await db.getAllCharactersWithSubclasses(userId);
+    const mainChar = characters.find(c => c.character_type === 'main');
+    const alts = characters.filter(c => c.character_type === 'alt');
+    const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+    
+    if (!mainChar) {
+      const embed = createEditEmbed('⚠️ No Characters', 'You need to register a main character first!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+    
+    const embed = createEditEmbed('✏️ Edit Character', 'Which type of character do you want to edit?');
+    
+    const options = [];
+    
+    if (mainChar) {
+      options.push({
+        label: 'Main Character',
+        value: 'edit_main',
+        description: `${mainChar.ign} - ${mainChar.class}`,
+        emoji: '⭐'
+      });
+    }
+    
+    if (subclasses.length > 0) {
+      options.push({
+        label: 'Subclass',
+        value: 'edit_subclass',
+        description: `Edit one of ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''}`,
+        emoji: '📊'
+      });
+    }
+    
+    if (alts.length > 0) {
+      options.push({
+        label: 'Alt Character',
+        value: 'edit_alt',
+        description: `Edit one of ${alts.length} alt${alts.length > 1 ? 's' : ''}`,
+        emoji: '🎭'
+      });
+    }
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`edit_char_type_${userId}`)
+      .setPlaceholder('✏️ Choose character type')
+      .addOptions(options);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_profile_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+      
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+  } catch (error) {
+    logger.error(`Edit character error: ${error.message}`);
+    await interaction.reply({ 
+      content: '❌ Something went wrong!', 
+      ephemeral: config.ephemeral.editChar 
+    });
+  }
+}
+
+// STEP 2a: Show specific main character edit menu
 export async function handleEditMain(interaction, userId) {
   try {
     const mainChar = await db.getMainCharacter(userId);
@@ -71,7 +139,7 @@ export async function handleEditMain(interaction, userId) {
       ]);
       
     const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_profile_${userId}`)
+      .setCustomId(`back_to_edit_choice_${userId}`)
       .setLabel('◀️ Back')
       .setStyle(ButtonStyle.Secondary);
       
@@ -93,12 +161,199 @@ export async function handleEditMain(interaction, userId) {
   }
 }
 
-// Handle edit option selection
-export async function handleEditMainOption(interaction, userId, option) {
+// STEP 2b: Show list of alts to edit
+export async function handleEditAltChoice(interaction, userId) {
+  try {
+    const alts = await db.getAlts(userId);
+    
+    if (alts.length === 0) {
+      const embed = createEditEmbed('⚠️ No Alts', 'You don\'t have any alts to edit!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+    
+    const embed = createEditEmbed('✏️ Edit Alt', 'Which alt do you want to edit?');
+    
+    const options = alts.map((alt, index) => ({
+      label: `Alt ${index + 1}: ${alt.ign}`,
+      value: alt.id.toString(),
+      description: `${alt.class} - ${alt.subclass}`,
+      emoji: '🎭'
+    }));
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_alt_to_edit_${userId}`)
+      .setPlaceholder('✏️ Choose alt to edit')
+      .addOptions(options);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_edit_choice_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+    
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+  } catch (error) {
+    logger.error(`Edit alt choice error: ${error.message}`);
+  }
+}
+
+// STEP 2c: Show list of subclasses to edit
+export async function handleEditSubclassChoice(interaction, userId) {
+  try {
+    const allChars = await db.getAllCharactersWithSubclasses(userId);
+    const subclasses = allChars.filter(c => 
+      c.character_type === 'main_subclass' || c.character_type === 'alt_subclass'
+    );
+    
+    if (subclasses.length === 0) {
+      const embed = createEditEmbed('⚠️ No Subclasses', 'You don\'t have any subclasses to edit!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+    
+    const embed = createEditEmbed('✏️ Edit Subclass', 'Which subclass do you want to edit?');
+    
+    const options = subclasses.map((sub, index) => ({
+      label: `Subclass ${index + 1}: ${sub.class}`,
+      value: sub.id.toString(),
+      description: `${sub.subclass} - ${formatAbilityScore(sub.ability_score)}`,
+      emoji: '📊'
+    }));
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_subclass_to_edit_${userId}`)
+      .setPlaceholder('✏️ Choose subclass to edit')
+      .addOptions(options);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_edit_choice_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+    
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+  } catch (error) {
+    logger.error(`Edit subclass choice error: ${error.message}`);
+  }
+}
+
+// STEP 3: Show edit options for selected alt
+export async function handleEditAlt(interaction, userId, altId) {
+  try {
+    const alt = await db.getCharacterById(altId);
+    if (!alt) {
+      const embed = createEditEmbed('⚠️ Not Found', 'Alt character not found!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+
+    const embed = createEditEmbed('✏️ Edit Alt Character', `Editing: **${alt.ign}**\n\nChoose what you want to edit:`);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`edit_alt_option_${userId}`)
+      .setPlaceholder('✏️ Pick an option')
+      .addOptions([
+        { 
+          label: 'IGN', 
+          value: 'ign', 
+          description: `Current: ${alt.ign}`, 
+          emoji: '🎮' 
+        },
+        { 
+          label: 'Class & Subclass', 
+          value: 'class', 
+          description: `${alt.class} - ${alt.subclass}`, 
+          emoji: '🎭' 
+        },
+        { 
+          label: 'Ability Score', 
+          value: 'ability_score', 
+          description: `Current: ${formatAbilityScore(alt.ability_score)}`, 
+          emoji: '💪' 
+        },
+        { 
+          label: 'Guild', 
+          value: 'guild', 
+          description: `Current: ${alt.guild || 'None'}`, 
+          emoji: '🏰' 
+        }
+      ]);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_edit_alt_choice_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+      
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    stateManager.setUpdateState(userId, { 
+      characterId: alt.id, 
+      type: 'alt', 
+      character: alt 
+    });
+  } catch (error) {
+    logger.error(`Edit alt error: ${error.message}`);
+  }
+}
+
+// STEP 3: Show edit options for selected subclass
+export async function handleEditSubclass(interaction, userId, subclassId) {
+  try {
+    const subclass = await db.getCharacterById(subclassId);
+    if (!subclass) {
+      const embed = createEditEmbed('⚠️ Not Found', 'Subclass not found!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+
+    const embed = createEditEmbed('✏️ Edit Subclass', `Editing: **${subclass.class} - ${subclass.subclass}**\n\nChoose what you want to edit:`);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`edit_subclass_option_${userId}`)
+      .setPlaceholder('✏️ Pick an option')
+      .addOptions([
+        { 
+          label: 'Class & Subclass', 
+          value: 'class', 
+          description: `${subclass.class} - ${subclass.subclass}`, 
+          emoji: '🎭' 
+        },
+        { 
+          label: 'Ability Score', 
+          value: 'ability_score', 
+          description: `Current: ${formatAbilityScore(subclass.ability_score)}`, 
+          emoji: '💪' 
+        }
+      ]);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_edit_subclass_choice_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+      
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+    stateManager.setUpdateState(userId, { 
+      characterId: subclass.id, 
+      type: 'subclass', 
+      character: subclass 
+    });
+  } catch (error) {
+    logger.error(`Edit subclass error: ${error.message}`);
+  }
+}
+
+// Handle edit option selection (works for main, alt, and subclass)
+export async function handleEditOption(interaction, userId, option) {
   const state = stateManager.getUpdateState(userId);
   if (!state) return;
 
-  const mainChar = state.character;
+  const character = state.character;
 
   try {
     if (option === 'ign') {
@@ -111,8 +366,8 @@ export async function handleEditMainOption(interaction, userId, option) {
         .setCustomId('ign')
         .setLabel('New In-Game Name')
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder(mainChar.ign)
-        .setValue(mainChar.ign)
+        .setPlaceholder(character.ign)
+        .setValue(character.ign)
         .setRequired(true)
         .setMaxLength(50);
 
@@ -138,7 +393,7 @@ export async function handleEditMainOption(interaction, userId, option) {
         .addOptions(classOptions);
 
       const backButton = new ButtonBuilder()
-        .setCustomId(`back_to_edit_menu_${userId}`)
+        .setCustomId(`back_to_current_edit_${userId}`)
         .setLabel('◀️ Back')
         .setStyle(ButtonStyle.Secondary);
 
@@ -163,7 +418,7 @@ export async function handleEditMainOption(interaction, userId, option) {
         .addOptions(scoreOptions);
 
       const backButton = new ButtonBuilder()
-        .setCustomId(`back_to_edit_menu_${userId}`)
+        .setCustomId(`back_to_current_edit_${userId}`)
         .setLabel('◀️ Back')
         .setStyle(ButtonStyle.Secondary);
 
@@ -188,7 +443,7 @@ export async function handleEditMainOption(interaction, userId, option) {
         .addOptions(guildOptions);
 
       const backButton = new ButtonBuilder()
-        .setCustomId(`back_to_edit_menu_${userId}`)
+        .setCustomId(`back_to_current_edit_${userId}`)
         .setLabel('◀️ Back')
         .setStyle(ButtonStyle.Secondary);
 
@@ -258,7 +513,7 @@ export async function handleEditClassSelect(interaction, userId) {
     .addOptions(subclassOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(`back_to_edit_menu_${userId}`)
+    .setCustomId(`back_to_current_edit_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -360,11 +615,6 @@ export async function handleEditGuildSelect(interaction, userId) {
   }
 }
 
-// Handle back to edit menu
-export async function handleBackToEditMenu(interaction, userId) {
-  await handleEditMain(interaction, userId);
-}
-
 export async function handleAddAlt(interaction, userId) {
   try {
     const mainChar = await db.getMainCharacter(userId);
@@ -462,7 +712,7 @@ async function startSubclassRegistration(interaction, userId, parentId, parentTy
     step: 'class' 
   });
   
-  const embed = createEditEmbed('🎭 Add Subclass - Step 1/2', 'Pick your subclass class:');
+  const embed = createEditEmbed('🎭 Add Subclass - Step 1/2', 'Pick your subclass class:\n\n*Subclass will use the same IGN and guild as the parent character*');
   
   const classes = Object.keys(gameData.classes);
   const selectMenu = new StringSelectMenuBuilder()
@@ -484,6 +734,78 @@ async function startSubclassRegistration(interaction, userId, parentId, parentTy
   const row2 = new ActionRowBuilder().addComponents(backButton);
     
   await interaction.update({ embeds: [embed], components: [row1, row2] });
+}
+
+// REMOVE CHARACTER - STEP 1: Choose character type
+export async function handleRemoveCharacter(interaction, userId) {
+  try {
+    const characters = await db.getAllCharactersWithSubclasses(userId);
+    const mainChar = characters.find(c => c.character_type === 'main');
+    const alts = characters.filter(c => c.character_type === 'alt');
+    const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+    
+    if (!mainChar) {
+      const embed = createEditEmbed('⚠️ No Characters', 'You don\'t have any characters to remove!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+    
+    const embed = createEditEmbed('🗑️ Remove Character', 'Which type of character do you want to remove?');
+    
+    const options = [];
+    
+    if (subclasses.length > 0) {
+      options.push({
+        label: 'Subclass',
+        value: 'remove_subclass',
+        description: `Remove one of ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''}`,
+        emoji: '📊'
+      });
+    }
+    
+    if (alts.length > 0) {
+      options.push({
+        label: 'Alt Character',
+        value: 'remove_alt',
+        description: `Remove one of ${alts.length} alt${alts.length > 1 ? 's' : ''}`,
+        emoji: '🎭'
+      });
+    }
+    
+    if (mainChar) {
+      options.push({
+        label: '⚠️ Main Character',
+        value: 'remove_main',
+        description: '⚠️ Only removes main, alts stay',
+        emoji: '⭐'
+      });
+    }
+    
+    if (options.length === 0) {
+      const embed = createEditEmbed('⚠️ No Characters', 'You don\'t have any characters to remove!');
+      return await interaction.update({ embeds: [embed], components: [] });
+    }
+    
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`remove_char_type_${userId}`)
+      .setPlaceholder('🗑️ Choose character type')
+      .addOptions(options);
+      
+    const backButton = new ButtonBuilder()
+      .setCustomId(`back_to_profile_${userId}`)
+      .setLabel('◀️ Back')
+      .setStyle(ButtonStyle.Secondary);
+      
+    const row1 = new ActionRowBuilder().addComponents(selectMenu);
+    const row2 = new ActionRowBuilder().addComponents(backButton);
+      
+    await interaction.update({ embeds: [embed], components: [row1, row2] });
+  } catch (error) {
+    logger.error(`Remove character error: ${error.message}`);
+    await interaction.reply({ 
+      content: '❌ Something went wrong!', 
+      ephemeral: config.ephemeral.editChar 
+    });
+  }
 }
 
 export async function handleRemoveMain(interaction, userId) {
@@ -522,7 +844,7 @@ export async function handleRemoveMain(interaction, userId) {
   }
 }
 
-export async function handleRemoveAlt(interaction, userId) {
+export async function handleRemoveAltChoice(interaction, userId) {
   try {
     const alts = await db.getAlts(userId);
     if (alts.length === 0) {
@@ -532,8 +854,8 @@ export async function handleRemoveAlt(interaction, userId) {
     
     const embed = createEditEmbed('🗑️ Remove Alt', 'Which alt do you want to remove?');
     
-    const options = alts.map(alt => ({
-      label: alt.ign,
+    const options = alts.map((alt, index) => ({
+      label: `Alt ${index + 1}: ${alt.ign}`,
       value: alt.id.toString(),
       description: `${alt.class} - ${alt.subclass}`,
       emoji: '🎭'
@@ -545,17 +867,16 @@ export async function handleRemoveAlt(interaction, userId) {
       .addOptions(options);
       
     const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_profile_${userId}`)
-      .setLabel('◀️ Cancel')
+      .setCustomId(`back_to_remove_choice_${userId}`)
+      .setLabel('◀️ Back')
       .setStyle(ButtonStyle.Secondary);
       
     const row1 = new ActionRowBuilder().addComponents(selectMenu);
     const row2 = new ActionRowBuilder().addComponents(backButton);
     
     await interaction.update({ embeds: [embed], components: [row1, row2] });
-    stateManager.setRemovalState(userId, { type: 'alt' });
   } catch (error) {
-    logger.error(`Remove alt error: ${error.message}`);
+    logger.error(`Remove alt choice error: ${error.message}`);
     await interaction.reply({ 
       content: '❌ Something went wrong!', 
       ephemeral: config.ephemeral.editChar 
@@ -563,7 +884,7 @@ export async function handleRemoveAlt(interaction, userId) {
   }
 }
 
-export async function handleRemoveSubclass(interaction, userId) {
+export async function handleRemoveSubclassChoice(interaction, userId) {
   try {
     const allChars = await db.getAllCharactersWithSubclasses(userId);
     const subclasses = allChars.filter(c => 
@@ -577,8 +898,8 @@ export async function handleRemoveSubclass(interaction, userId) {
     
     const embed = createEditEmbed('🗑️ Remove Subclass', 'Which subclass do you want to remove?');
     
-    const options = subclasses.map(sub => ({
-      label: sub.class,
+    const options = subclasses.map((sub, index) => ({
+      label: `Subclass ${index + 1}: ${sub.class}`,
       value: sub.id.toString(),
       description: `${sub.subclass} - ${formatAbilityScore(sub.ability_score)}`,
       emoji: '📊'
@@ -590,17 +911,16 @@ export async function handleRemoveSubclass(interaction, userId) {
       .addOptions(options);
       
     const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_profile_${userId}`)
-      .setLabel('◀️ Cancel')
+      .setCustomId(`back_to_remove_choice_${userId}`)
+      .setLabel('◀️ Back')
       .setStyle(ButtonStyle.Secondary);
       
     const row1 = new ActionRowBuilder().addComponents(selectMenu);
     const row2 = new ActionRowBuilder().addComponents(backButton);
     
     await interaction.update({ embeds: [embed], components: [row1, row2] });
-    stateManager.setRemovalState(userId, { type: 'subclass' });
   } catch (error) {
-    logger.error(`Remove subclass error: ${error.message}`);
+    logger.error(`Remove subclass choice error: ${error.message}`);
     await interaction.reply({ 
       content: '❌ Something went wrong!', 
       ephemeral: config.ephemeral.editChar 
@@ -648,71 +968,6 @@ export async function handleCancelRemove(interaction, userId) {
   await interaction.update({ embeds: [embed], components: buttons });
 }
 
-export async function handleSwapMainWithAlt(interaction, userId) {
-  try {
-    const alts = await db.getAlts(userId);
-    if (alts.length === 0) {
-      const embed = createEditEmbed('⚠️ No Alts', 'You need at least one alt to swap with!');
-      return await interaction.update({ embeds: [embed], components: [] });
-    }
-
-    const embed = createEditEmbed('🔄 Swap Main with Alt', 'Which alt should become your main?');
-
-    const options = alts.map(alt => ({
-      label: alt.ign,
-      value: alt.id.toString(),
-      description: `${alt.guild} - ${alt.class} (${alt.subclass})`,
-      emoji: '🎭'
-    }));
-
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`select_alt_to_swap_${userId}`)
-      .setPlaceholder('🔄 Choose alt')
-      .addOptions(options);
-
-    const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_edit_menu_${userId}`)
-      .setLabel('◀️ Back')
-      .setStyle(ButtonStyle.Secondary);
-
-    const row1 = new ActionRowBuilder().addComponents(selectMenu);
-    const row2 = new ActionRowBuilder().addComponents(backButton);
-
-    await interaction.update({ embeds: [embed], components: [row1, row2] });
-  } catch (error) {
-    logger.error(`Swap main error: ${error.message}`);
-  }
-}
-
-export async function handleAltSwapSelect(interaction, userId) {
-  const altId = parseInt(interaction.values[0]);
-
-  try {
-    const mainChar = await db.getMainCharacter(userId);
-    
-    // Swap character types
-    await db.query('UPDATE characters SET character_type = ? WHERE id = ?', ['alt', mainChar.id]);
-    await db.query('UPDATE characters SET character_type = ? WHERE id = ?', ['main', altId]);
-    
-    await sheetsService.syncCharacters();
-
-    const characters = await db.getAllCharactersWithSubclasses(userId);
-    const newMain = characters.find(c => c.character_type === 'main');
-    const alts = characters.filter(c => c.character_type === 'alt');
-    const subs = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
-
-    const embed = await buildCharacterProfileEmbed(interaction.user, characters, interaction);
-    const buttons = buildCharacterButtons(newMain, alts.length, subs.length, userId);
-
-    await interaction.update({ embeds: [embed], components: buttons });
-
-    logger.logAction(interaction.user.tag, 'swapped main with alt', `${newMain.ign}`);
-  } catch (error) {
-    logger.error(`Alt swap error: ${error.message}`);
-    await interaction.reply({ content: '❌ Failed to swap!', ephemeral: true });
-  }
-}
-
 export async function handleSelectParentForSubclass(interaction, userId) {
   const selected = interaction.values[0];
   const [type, id] = selected.split('_');
@@ -720,22 +975,25 @@ export async function handleSelectParentForSubclass(interaction, userId) {
 }
 
 export default {
+  handleEditCharacter,
   handleEditMain,
-  handleEditMainOption,
+  handleEditAltChoice,
+  handleEditSubclassChoice,
+  handleEditAlt,
+  handleEditSubclass,
+  handleEditOption,
   handleEditIGNModal,
   handleEditClassSelect,
   handleEditSubclassSelect,
   handleEditScoreSelect,
   handleEditGuildSelect,
-  handleBackToEditMenu,
   handleAddAlt,
   handleAddSubclass,
+  handleRemoveCharacter,
   handleRemoveMain,
-  handleRemoveAlt,
-  handleRemoveSubclass,
+  handleRemoveAltChoice,
+  handleRemoveSubclassChoice,
   handleConfirmRemove,
   handleCancelRemove,
-  handleSwapMainWithAlt,
-  handleAltSwapSelect,
   handleSelectParentForSubclass
 };
