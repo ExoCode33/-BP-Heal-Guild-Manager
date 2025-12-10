@@ -15,6 +15,14 @@ import config from '../utils/config.js';
 
 const stateManager = (await import('../utils/stateManager.js')).default;
 
+// Helper to create consistent embeds
+function createRegEmbed(step, total, title, description) {
+  return new EmbedBuilder()
+    .setColor('#EC4899')
+    .setDescription(`# **${title}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${description}\n\n*Step ${step} of ${total}*`)
+    .setTimestamp();
+}
+
 // Region → Countries → Timezones mapping
 const REGIONS = {
   'North America': {
@@ -107,18 +115,13 @@ const REGIONS = {
   }
 };
 
-// Helper to extract timezone abbreviation
 function getTimezoneAbbr(timezoneLabel) {
   const match = timezoneLabel.match(/^([A-Z]+)/);
   return match ? match[1] : timezoneLabel;
 }
 
 export async function handleRegisterMain(interaction, userId) {
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 1/7')
-    .setDescription('**Select your region:**\n\nThis helps us show your local time on your profile.')
-    .setTimestamp();
+  const embed = createRegEmbed(1, 7, '🌍 Choose Your Region', 'Where are you playing from?');
 
   const regionOptions = Object.keys(REGIONS).map(region => ({
     label: region,
@@ -128,7 +131,7 @@ export async function handleRegisterMain(interaction, userId) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_region_${userId}`)
-    .setPlaceholder('🌍 Choose your region')
+    .setPlaceholder('🌍 Pick your region')
     .addOptions(regionOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -140,11 +143,7 @@ export async function handleRegionSelect(interaction, userId) {
   const region = interaction.values[0];
   stateManager.setRegistrationState(userId, { region });
 
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 2/7')
-    .setDescription(`**Region:** ${region}\n\n**Select your country:**`)
-    .setTimestamp();
+  const embed = createRegEmbed(2, 7, '🏳️ Choose Your Country', `**Region:** ${region}`);
 
   const countries = Object.keys(REGIONS[region]);
   const countryOptions = countries.map(country => ({
@@ -154,7 +153,7 @@ export async function handleRegionSelect(interaction, userId) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_country_${userId}`)
-    .setPlaceholder('🏳️ Choose your country')
+    .setPlaceholder('🏳️ Pick your country')
     .addOptions(countryOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -167,22 +166,17 @@ export async function handleCountrySelect(interaction, userId) {
   const country = interaction.values[0];
   stateManager.setRegistrationState(userId, { ...state, country });
 
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 3/7')
-    .setDescription(`**Country:** ${country}\n\n**Select your timezone:**`)
-    .setTimestamp();
+  const embed = createRegEmbed(3, 7, '🕐 Choose Your Timezone', `**Country:** ${country}`);
 
   const timezones = REGIONS[state.region][country];
   const timezoneOptions = Object.keys(timezones).map(tzLabel => ({
     label: tzLabel,
-    value: timezones[tzLabel],
-    description: timezones[tzLabel]
+    value: timezones[tzLabel]
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_timezone_${userId}`)
-    .setPlaceholder('🕐 Choose your timezone')
+    .setPlaceholder('🕐 Pick your timezone')
     .addOptions(timezoneOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -194,7 +188,6 @@ export async function handleTimezoneSelect(interaction, userId) {
   const state = stateManager.getRegistrationState(userId);
   const timezone = interaction.values[0];
   
-  // Find the timezone label to extract abbreviation
   let timezoneAbbr = '';
   const timezones = REGIONS[state.region][state.country];
   for (const [label, tz] of Object.entries(timezones)) {
@@ -204,12 +197,9 @@ export async function handleTimezoneSelect(interaction, userId) {
     }
   }
   
-  // Save timezone to database immediately
   await db.setUserTimezone(userId, timezone);
-  
   stateManager.setRegistrationState(userId, { ...state, timezone, timezoneAbbr });
 
-  // Show current time
   const now = new Date();
   const timeString = now.toLocaleTimeString('en-US', { 
     timeZone: timezone, 
@@ -218,22 +208,17 @@ export async function handleTimezoneSelect(interaction, userId) {
     hour12: true 
   });
 
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 4/7')
-    .setDescription(`**Timezone set!** 🌍 ${timezoneAbbr}\n\nYour current time: **${timeString}**\n\n**Now select your class:**`)
-    .setTimestamp();
+  const embed = createRegEmbed(4, 7, '🎭 Choose Your Class', `**Timezone:** ${timezoneAbbr} • ${timeString}`);
 
   const classOptions = Object.keys(gameData.classes).map(className => ({
     label: className,
     value: className,
-    description: gameData.classes[className].role,
     emoji: gameData.classes[className].emoji
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
-    .setPlaceholder('🎭 Choose your class')
+    .setPlaceholder('🎭 Pick your class')
     .addOptions(classOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -249,25 +234,20 @@ export async function handleClassSelect(interaction, userId) {
   const subclasses = gameData.classes[className].subclasses;
   const classRole = gameData.classes[className].role;
   
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 5/7')
-    .setDescription(`**Class:** ${className}\n\n**Select your subclass:**`)
-    .setTimestamp();
+  const embed = createRegEmbed(5, 7, '📋 Choose Your Subclass', `**Class:** ${className}`);
 
   const subclassOptions = subclasses.map(subclassName => {
     const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
     return {
       label: subclassName,
       value: subclassName,
-      description: classRole,
       emoji: roleEmoji
     };
   });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_subclass_${userId}`)
-    .setPlaceholder('📋 Choose your subclass')
+    .setPlaceholder('📋 Pick your subclass')
     .addOptions(subclassOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -280,11 +260,7 @@ export async function handleSubclassSelect(interaction, userId) {
   const state = stateManager.getRegistrationState(userId);
   stateManager.setRegistrationState(userId, { ...state, subclass: subclassName });
   
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 6/7')
-    .setDescription(`**Subclass:** ${subclassName}\n\n**Select your ability score:**`)
-    .setTimestamp();
+  const embed = createRegEmbed(6, 7, '💪 Choose Your Score', `**Subclass:** ${subclassName}`);
 
   const scoreOptions = gameData.abilityScores.map(score => ({
     label: score.label,
@@ -293,7 +269,7 @@ export async function handleSubclassSelect(interaction, userId) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_ability_score_${userId}`)
-    .setPlaceholder('💪 Choose your score')
+    .setPlaceholder('💪 Pick your score')
     .addOptions(scoreOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -306,21 +282,17 @@ export async function handleAbilityScoreSelect(interaction, userId) {
   const state = stateManager.getRegistrationState(userId);
   stateManager.setRegistrationState(userId, { ...state, abilityScore });
 
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setTitle('🎮 Register Main Character - Step 7/7')
-    .setDescription(`**Ability Score:** ${formatAbilityScore(abilityScore)}\n\n**Select your guild:**`)
-    .setTimestamp();
+  const scoreLabel = gameData.abilityScores.find(s => s.value === abilityScore)?.label || abilityScore;
+  const embed = createRegEmbed(7, 7, '🏰 Choose Your Guild', `**Score:** ${scoreLabel}`);
 
   const guildOptions = config.guilds.map(guild => ({
     label: guild.name,
-    value: guild.name,
-    description: `Join ${guild.name}`
+    value: guild.name
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_guild_${userId}`)
-    .setPlaceholder('🏰 Choose your guild')
+    .setPlaceholder('🏰 Pick your guild')
     .addOptions(guildOptions);
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -355,7 +327,7 @@ export async function handleGuildSelect(interaction, userId) {
     .setCustomId('ign')
     .setLabel('In-Game Name (IGN)')
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Enter your in-game name')
+    .setPlaceholder('Your character name')
     .setRequired(true)
     .setMaxLength(50);
 
@@ -401,7 +373,7 @@ export async function handleIGNModal(interaction, userId) {
   } catch (error) {
     logger.error(`Registration error: ${error.message}`);
     await interaction.reply({
-      content: '❌ Error during registration. Please try again.',
+      content: '❌ Something went wrong. Please try again!',
       ephemeral: true
     });
   }
