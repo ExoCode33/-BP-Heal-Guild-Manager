@@ -89,6 +89,19 @@ class Database {
     }
   }
 
+  async getAlts(userId) {
+    try {
+      const result = await this.query(
+        `SELECT * FROM characters WHERE user_id = $1 AND character_type = 'alt' ORDER BY created_at ASC`,
+        [userId]
+      );
+      return result.rows;
+    } catch (error) {
+      logger.error(`Error fetching alts: ${error.message}`);
+      throw error;
+    }
+  }
+
   async getAllCharactersWithSubclasses(userId) {
     try {
       const result = await this.query(
@@ -153,9 +166,26 @@ class Database {
   }
 
   async updateCharacter(characterId, data) {
-    const { ign, guild, class: className, subclass, abilityScore } = data;
-    
     try {
+      // Get current character data
+      const currentResult = await this.query(
+        'SELECT * FROM characters WHERE id = $1',
+        [characterId]
+      );
+      
+      if (currentResult.rows.length === 0) {
+        throw new Error('Character not found');
+      }
+      
+      const current = currentResult.rows[0];
+      
+      // Merge with new data, keeping existing values if not provided
+      const ign = data.ign !== undefined ? data.ign : current.ign;
+      const guild = data.guild !== undefined ? data.guild : current.guild;
+      const className = data.class !== undefined ? data.class : current.class;
+      const subclass = data.subclass !== undefined ? data.subclass : current.subclass;
+      const abilityScore = data.abilityScore !== undefined ? data.abilityScore : current.ability_score;
+      
       const result = await this.query(
         `UPDATE characters 
          SET ign = $1, guild = $2, class = $3, subclass = $4, ability_score = $5, updated_at = NOW()
@@ -195,13 +225,39 @@ class Database {
   async getCharacterById(characterId) {
     try {
       const result = await this.query(
-        `SELECT * FROM characters WHERE id = $1`,
+        `SELECT c.*,
+                CASE
+                  WHEN c.class = 'Beat Performer' THEN 'Support'
+                  WHEN c.class = 'Frost Mage' THEN 'DPS'
+                  WHEN c.class = 'Heavy Guardian' THEN 'Tank'
+                  WHEN c.class = 'Marksman' THEN 'DPS'
+                  WHEN c.class = 'Shield Knight' THEN 'Tank'
+                  WHEN c.class = 'Stormblade' THEN 'DPS'
+                  WHEN c.class = 'Verdant Oracle' THEN 'Support'
+                  WHEN c.class = 'Wind Knight' THEN 'DPS'
+                END as role
+         FROM characters c
+         WHERE c.id = $1`,
         [characterId]
       );
       return result.rows[0] || null;
     } catch (error) {
       logger.error(`Error fetching character by ID: ${error.message}`);
       throw error;
+    }
+  }
+
+  async getStats() {
+    try {
+      const result = await this.query(
+        'SELECT COUNT(DISTINCT user_id) as total_users FROM characters'
+      );
+      return {
+        totalUsers: parseInt(result.rows[0].total_users) || 0
+      };
+    } catch (error) {
+      logger.error(`Error getting stats: ${error.message}`);
+      return { totalUsers: 0 };
     }
   }
 
