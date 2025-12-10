@@ -2,17 +2,23 @@ import { EmbedBuilder } from 'discord.js';
 import { formatAbilityScore } from '../../utils/gameData.js';
 import db from '../../services/database.js';
 
-// Custom class emojis
-const CLASS_EMOJIS = {
-  'Beat Performer': '<:BeatPerformer:1448443528463253524>',
-  'Frost Mage': '<:FrostMage:1448443527401832579>',
-  'Heavy Guardian': '<:HeavyGuardian:1448443526055592018>',
-  'Marksman': '<:Marksman:1448443525103358205>',
-  'Shield Knight': '<:ShieldKnight:1448443524038131863>',
-  'Stormblade': '<:StormBlade:1448443523161653410>',
-  'Verdant Oracle': '<:VerdantOracle:1448443522196701234>',
-  'Wind Knight': '<:WindKnight:1448443521118900234>'
-};
+// Helper function to convert class name to emoji name (removes spaces)
+function getClassEmoji(className) {
+  const emojiName = className.replace(/\s+/g, ''); // Remove all spaces
+  const emojiIds = {
+    'BeatPerformer': '1448443528463253524',
+    'FrostMage': '1448443527401832579',
+    'HeavyGuardian': '1448443526055592018',
+    'Marksman': '1448443525103358205',
+    'ShieldKnight': '1448443524038131863',
+    'StormBlade': '1448443523161653410',
+    'VerdantOracle': '1448443522196701234',
+    'WindKnight': '1448443521118900234'
+  };
+  
+  const emojiId = emojiIds[emojiName];
+  return emojiId ? `<:${emojiName}:${emojiId}>` : '';
+}
 
 const TZ_ABBR = {
   'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Denver': 'MST',
@@ -70,7 +76,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setDescription(`# __**Join ${guildName} - ${displayName}'s Profile**__ ${CLASS_EMOJIS[mainChar.class] || ''}${timezoneText}`);
+    .setDescription(`# __**Join ${guildName} - ${displayName}'s Profile**__ ${getClassEmoji(mainChar.class)}${timezoneText}`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -94,7 +100,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
 
-  const mainFieldName = `${CLASS_EMOJIS[mainChar.class] || '⭐'} Main`;
+  const mainFieldName = `${getClassEmoji(mainChar.class) || '⭐'} Main`;
   embed.addFields({ name: mainFieldName, value: mainSection, inline: false });
 
   if (subclasses.length > 0) {
@@ -110,7 +116,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
     subSection += '```';
     
     // Use first subclass's class emoji for the field name
-    const subFieldEmoji = CLASS_EMOJIS[subclasses[0].class] || '📊';
+    const subFieldEmoji = getClassEmoji(subclasses[0].class) || '📊';
     embed.addFields({ name: `${subFieldEmoji} Subclass${subclasses.length > 1 ? 'es' : ''}`, value: subSection, inline: false });
   }
 
@@ -129,7 +135,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
     altSection += '```';
     
     // Use first alt's class emoji for the field name
-    const altFieldEmoji = CLASS_EMOJIS[alts[0].class] || '🎭';
+    const altFieldEmoji = getClassEmoji(alts[0].class) || '🎭';
     embed.addFields({ name: `${altFieldEmoji} Alts (${alts.length})`, value: altSection, inline: false });
   }
 
