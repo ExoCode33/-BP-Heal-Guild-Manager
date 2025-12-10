@@ -119,6 +119,12 @@ export async function handleEditMain(interaction, userId) {
           emoji: '🎮' 
         },
         { 
+          label: 'UID', 
+          value: 'uid', 
+          description: `Current: ${mainChar.uid || 'Not set'}`, 
+          emoji: '🆔' 
+        },
+        { 
           label: 'Class & Subclass', 
           value: 'class', 
           description: `${mainChar.class} - ${mainChar.subclass}`, 
@@ -262,6 +268,12 @@ export async function handleEditAlt(interaction, userId, altId) {
           emoji: '🎮' 
         },
         { 
+          label: 'UID', 
+          value: 'uid', 
+          description: `Current: ${alt.uid || 'Not set'}`, 
+          emoji: '🆔' 
+        },
+        { 
           label: 'Class & Subclass', 
           value: 'class', 
           description: `${alt.class} - ${alt.subclass}`, 
@@ -376,6 +388,26 @@ export async function handleEditOption(interaction, userId, option) {
 
       await interaction.showModal(modal);
       
+    } else if (option === 'uid') {
+      // Show UID modal
+      const modal = new ModalBuilder()
+        .setCustomId(`edit_uid_modal_${userId}`)
+        .setTitle('Edit UID');
+
+      const uidInput = new TextInputBuilder()
+        .setCustomId('uid')
+        .setLabel('New UID (User ID)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder(character.uid || 'Enter UID')
+        .setValue(character.uid || '')
+        .setRequired(false)
+        .setMaxLength(50);
+
+      const row = new ActionRowBuilder().addComponents(uidInput);
+      modal.addComponents(row);
+
+      await interaction.showModal(modal);
+      
     } else if (option === 'class') {
       // Show class selection
       const embed = createEditEmbed('🎭 Edit Class', 'Pick your new class:');
@@ -483,6 +515,35 @@ export async function handleEditIGNModal(interaction, userId) {
   } catch (error) {
     logger.error(`Edit IGN error: ${error.message}`);
     await interaction.reply({ content: '❌ Failed to update IGN!', ephemeral: true });
+  }
+}
+
+// Handle UID modal submit
+export async function handleEditUIDModal(interaction, userId) {
+  const state = stateManager.getUpdateState(userId);
+  if (!state) return;
+
+  const newUID = interaction.fields.getTextInputValue('uid') || null;
+
+  try {
+    await db.updateCharacter(state.characterId, { uid: newUID });
+    await sheetsService.syncCharacters();
+
+    const characters = await db.getAllCharactersWithSubclasses(userId);
+    const mainChar = characters.find(c => c.character_type === 'main');
+    const alts = characters.filter(c => c.character_type === 'alt');
+    const subs = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+
+    const embed = await buildCharacterProfileEmbed(interaction.user, characters, interaction);
+    const buttons = buildCharacterButtons(mainChar, alts.length, subs.length, userId);
+
+    await interaction.update({ embeds: [embed], components: buttons });
+    stateManager.clearUpdateState(userId);
+
+    logger.logAction(interaction.user.tag, 'updated UID', `${newUID || 'removed'}`);
+  } catch (error) {
+    logger.error(`Edit UID error: ${error.message}`);
+    await interaction.reply({ content: '❌ Failed to update UID!', ephemeral: true });
   }
 }
 
@@ -983,6 +1044,7 @@ export default {
   handleEditSubclass,
   handleEditOption,
   handleEditIGNModal,
+  handleEditUIDModal,
   handleEditClassSelect,
   handleEditSubclassSelect,
   handleEditScoreSelect,
