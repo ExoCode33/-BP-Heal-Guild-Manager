@@ -14,7 +14,7 @@ export default {
       const embed = await buildCharacterProfileEmbed(targetUser, characters);
       
       await interaction.editReply({ embeds: [embed] });
-      logger.log(`User ${interaction.user.id} viewed ${targetUser.id}`);
+      logger.logAction(interaction.user.username, `viewed ${targetUser.username}`);
     } catch (error) {
       logger.error(`View error: ${error.message}`);
       if (!interaction.replied && !interaction.deferred) {
