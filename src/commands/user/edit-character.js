@@ -3,18 +3,22 @@ import { buildCharacterProfileEmbed } from '../../components/embeds/characterPro
 import { buildCharacterButtons } from '../../components/buttons/characterButtons.js';
 import db from '../../services/database.js';
 import logger from '../../utils/logger.js';
+import config from '../../utils/config.js';
 
 export default {
-  data: new SlashCommandBuilder().setName('edit-user').setDescription('Manage your characters'),
+  data: new SlashCommandBuilder()
+    .setName('edit-character')
+    .setDescription('Manage your characters'),
   async execute(interaction) {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: config.ephemeral.editChar });
       
       const userId = interaction.user.id;
       const characters = await db.getAllCharactersWithSubclasses(userId);
       const mainChar = characters.find(c => c.character_type === 'main');
       const alts = characters.filter(c => c.character_type === 'alt');
       const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+      
       const embed = await buildCharacterProfileEmbed(interaction.user, characters);
       const buttons = buildCharacterButtons(mainChar, alts.length, subclasses.length, userId);
       
@@ -23,7 +27,10 @@ export default {
     } catch (error) {
       logger.error(`Edit error: ${error.message}`);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '❌ Error.', ephemeral: true });
+        await interaction.reply({ 
+          content: '❌ Error.', 
+          ephemeral: config.ephemeral.editChar 
+        });
       } else {
         await interaction.editReply({ content: '❌ Error.' });
       }
