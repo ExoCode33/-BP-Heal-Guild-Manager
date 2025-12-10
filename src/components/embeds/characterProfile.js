@@ -2,7 +2,6 @@ import { EmbedBuilder } from 'discord.js';
 import { formatAbilityScore } from '../../utils/gameData.js';
 import db from '../../services/database.js';
 
-// Timezone abbreviation mapping
 const TZ_ABBR = {
   'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Denver': 'MST',
   'America/Los_Angeles': 'PST', 'America/Anchorage': 'AKST', 'Pacific/Honolulu': 'HST',
@@ -32,22 +31,19 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
   const alts = characters.filter(c => c.character_type === 'alt');
   const subclasses = characters.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
-  // Get nickname if available
   let displayName = user.username;
   if (interaction && interaction.guild) {
     try {
       const member = await interaction.guild.members.fetch(user.id);
       if (member.nickname) displayName = member.nickname;
-    } catch (error) {
-      // Fallback to username
-    }
+    } catch (error) {}
   }
 
   const guildName = mainChar?.guild || 'heal';
 
   const embed = new EmbedBuilder()
     .setColor('#EC4899')
-    .setDescription(`# **JOIN ${guildName.toUpperCase()}**\n**${displayName}'s Profile**`);
+    .setDescription(`**JOIN ${guildName.toUpperCase()}**\n\n**${displayName}'s Profile**`);
 
   if (!mainChar) {
     embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
@@ -102,7 +98,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
 
   const timezone = await db.getUserTimezone(user.id);
   if (timezone) {
-    const abbr = TZ_ABBR[timezone] || timezone; // Use abbreviation
+    const abbr = TZ_ABBR[timezone] || timezone;
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
     embed.setFooter({ text: `🌍 ${abbr} • ${timeString}` });
