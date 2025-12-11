@@ -13,7 +13,8 @@ const config = {
   sheets: {
     id: process.env.GOOGLE_SHEETS_ID,
     serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    debugMode: process.env.SHEETS_DEBUG_MODE === 'true' // Verbose logging for sheets
   },
   guilds: [
     { name: process.env.GUILD_1_NAME, roleId: process.env.GUILD_1_ROLE_ID },
