@@ -1,5 +1,5 @@
 import discord from 'discord.js';
-const { SlashCommandBuilder, PermissionFlagBits } = discord;
+const { SlashCommandBuilder } = discord;
 import { buildCharacterProfileEmbed } from '../../components/embeds/characterProfile.js';
 import { buildCharacterButtons } from '../../components/buttons/characterButtons.js';
 import db from '../../services/database.js';
@@ -10,7 +10,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName('admin-edit-character')
     .setDescription('Edit a user\'s character')
-    .setDefaultMemberPermissions(PermissionFlagBits.Administrator)
+    .setDefaultMemberPermissions('8') // '8' is Administrator permission
     .addUserOption(opt => 
       opt.setName('user')
         .setDescription('User whose character to edit')
