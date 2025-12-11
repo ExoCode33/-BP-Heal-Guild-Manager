@@ -90,7 +90,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
 
-  embed.addFields({ name: '⭐ Main', value: mainSection, inline: false });
+  embed.addFields({ name: '\u200b', value: mainSection, inline: false });
 
   if (subclasses.length > 0) {
     let subSection = '```ansi\n';
