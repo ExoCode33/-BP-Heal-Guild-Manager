@@ -1,7 +1,6 @@
 import discord from 'discord.js';
 const { 
-  SlashCommandBuilder, 
-  PermissionFlagBits, 
+  SlashCommandBuilder,
   EmbedBuilder, 
   ActionRowBuilder,
   StringSelectMenuBuilder,
@@ -20,7 +19,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName('admin-tools')
     .setDescription('Admin tools and bot configuration')
-    .setDefaultMemberPermissions(PermissionFlagBits.Administrator)
+    .setDefaultMemberPermissions('8') // '8' is Administrator permission
     .addSubcommand(sub => 
       sub.setName('sync')
         .setDescription('Force sync to Google Sheets')
