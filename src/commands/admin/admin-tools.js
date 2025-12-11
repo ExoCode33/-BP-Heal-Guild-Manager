@@ -21,7 +21,7 @@ export default {
     .setDescription('Admin tools and bot configuration')
     .setDefaultMemberPermissions('8') // '8' is Administrator permission
     .addSubcommand(sub => 
-      sub.setName('sync')
+      sub.setName('spreadsheet-sync')
         .setDescription('Force sync to Google Sheets')
     )
     .addSubcommand(sub => 
@@ -36,7 +36,7 @@ export default {
     try {
       const subcommand = interaction.options.getSubcommand();
       
-      if (subcommand === 'sync') {
+      if (subcommand === 'spreadsheet-sync' || subcommand === 'sync') {
         await handleSync(interaction);
       } else if (subcommand === 'logger-config') {
         await handleLoggerConfig(interaction);
