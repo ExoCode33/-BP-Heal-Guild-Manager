@@ -1,5 +1,5 @@
-import pkg from 'discord.js';
-const { Client, GatewayIntentBits, Collection, Events } = pkg;
+import discord from 'discord.js';
+const { Client, GatewayIntentBits, Collection, Events } = discord;
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
