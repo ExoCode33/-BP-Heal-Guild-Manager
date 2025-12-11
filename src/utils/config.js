@@ -43,6 +43,7 @@ const config = {
   },
   sync: {
     autoSyncInterval: parseInt(process.env.AUTO_SYNC_INTERVAL) || 3600000, // 1 hour default
+    nicknameSyncEnabled: process.env.NICKNAME_SYNC_ENABLED === 'true', // Enable/disable nickname sync
     nicknameSyncInterval: parseInt(process.env.NICKNAME_SYNC_INTERVAL) || 300000 // 5 minutes default
   },
   ephemeral: {
