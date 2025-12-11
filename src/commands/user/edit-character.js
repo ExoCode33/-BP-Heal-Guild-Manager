@@ -1,5 +1,5 @@
-import pkg from 'discord.js';
-const { SlashCommandBuilder } = pkg;
+import discord from 'discord.js';
+const { SlashCommandBuilder } = discord;
 import { buildCharacterProfileEmbed } from '../../components/embeds/characterProfile.js';
 import { buildCharacterButtons } from '../../components/buttons/characterButtons.js';
 import db from '../../services/database.js';
