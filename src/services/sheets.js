@@ -1268,6 +1268,11 @@ class GoogleSheetsService {
       }
     }
   }
+
+  // Alias method for compatibility
+  async syncAllCharacters(allCharactersWithSubclasses) {
+    return await this.fullSync(allCharactersWithSubclasses);
+  }
 }
 
 export default new GoogleSheetsService();
