@@ -39,6 +39,7 @@ client.once(Events.ClientReady, async () => {
   // Log startup to console and Discord
   await logger.logStartup(client.user.tag, process.env.PORT || 3000, client.commands.size);
   
+  // ✅ Initialize database
   try {
     await db.initializeDatabase();
     logger.success('Database ready');
@@ -46,6 +47,19 @@ client.once(Events.ClientReady, async () => {
     logger.error(`Database init failed: ${error.message}`);
   }
   
+  // ✅ NEW: Initialize Google Sheets service
+  try {
+    const sheetsInitialized = await sheetsService.initialize();
+    if (sheetsInitialized) {
+      logger.success('Google Sheets service ready');
+    } else {
+      logger.warn('Google Sheets service disabled (credentials not configured)');
+    }
+  } catch (error) {
+    logger.error(`Google Sheets init failed: ${error.message}`);
+  }
+  
+  // ✅ Setup auto-sync interval
   setInterval(async () => {
     try {
       const allChars = await db.getAllCharacters();
