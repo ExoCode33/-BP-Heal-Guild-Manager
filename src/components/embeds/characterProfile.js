@@ -80,13 +80,13 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
 
   let mainSection = '```ansi\n';
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-  mainSection += `\u001b[1;34m🎮 IGN:     \u001b[0m ${mainChar.ign}\n`;
-  mainSection += `\u001b[1;34m🆔 UID:     \u001b[0m ${mainChar.uid}\n`;
+  mainSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${mainChar.ign}\n`;
+  mainSection += `\u001b[1;34m🆔 UID:\u001b[0m ${mainChar.uid}\n`;
   mainSection += `\n`;
-  mainSection += `\u001b[1;34m🎭 Class:   \u001b[0m ${mainChar.class}•${mainChar.subclass} ${roleEmoji}\n`;
-  mainSection += `\u001b[1;34m💪 Score:   \u001b[0m ${formatAbilityScore(mainChar.ability_score)}\n`;
+  mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${mainChar.class} • ${mainChar.subclass} ${roleEmoji}\n`;
+  mainSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(mainChar.ability_score)}\n`;
   mainSection += `\n`;
-  mainSection += `\u001b[1;34m🏰 Guild:   \u001b[0m ${mainChar.guild || 'None'}\n`;
+  mainSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${mainChar.guild || 'None'}\n`;
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
 
@@ -98,7 +98,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
       const subRoleEmoji = sub.role === 'Tank' ? '🛡️' : sub.role === 'DPS' ? '⚔️' : '💚';
       if (i > 0) subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       else subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class}•${sub.subclass} ${subRoleEmoji}\n`;
+      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class} • ${sub.subclass} ${subRoleEmoji}\n`;
       subSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(sub.ability_score)}\n`;
     });
     subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
@@ -114,7 +114,7 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
       if (i > 0) altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       else altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       altSection += `\u001b[1;34m🎮 IGN:  \u001b[0m ${alt.ign}  \u001b[1;34m🆔 UID:\u001b[0m ${alt.uid}\n`;
-      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class}•${alt.subclass} ${altRoleEmoji}\n`;
+      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class} • ${alt.subclass} ${altRoleEmoji}\n`;
       altSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
       altSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
     });
