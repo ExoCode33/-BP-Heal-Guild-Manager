@@ -91,6 +91,20 @@ class Database {
         )
       `);
 
+      // Create bot_settings table
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS bot_settings (
+          id SERIAL PRIMARY KEY,
+          setting_key VARCHAR(100) UNIQUE NOT NULL,
+          setting_value TEXT NOT NULL,
+          setting_type VARCHAR(50) NOT NULL,
+          description TEXT,
+          updated_by VARCHAR(255),
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
       // Create indexes
       await this.query(`
         CREATE INDEX IF NOT EXISTS idx_user_id ON characters(user_id)
@@ -103,6 +117,30 @@ class Database {
       await this.query(`
         CREATE INDEX IF NOT EXISTS idx_parent_character_id ON characters(parent_character_id)
       `);
+
+      await this.query(`
+        CREATE INDEX IF NOT EXISTS idx_bot_settings_key ON bot_settings(setting_key)
+      `);
+
+      // Insert default bot settings if they don't exist
+      const defaultSettings = [
+        ['log_channel_id', '', 'string', 'Discord channel ID for logging'],
+        ['log_level', 'INFO', 'string', 'Log level: ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL'],
+        ['error_ping_enabled', 'false', 'boolean', 'Enable role ping on errors'],
+        ['error_ping_role_id', '', 'string', 'Role ID to ping on errors'],
+        ['warn_ping_enabled', 'false', 'boolean', 'Enable role ping on warnings'],
+        ['warn_ping_role_id', '', 'string', 'Role ID to ping on warnings'],
+        ['debug_mode', 'false', 'boolean', 'Enable debug logging to console']
+      ];
+
+      for (const [key, value, type, desc] of defaultSettings) {
+        await this.query(
+          `INSERT INTO bot_settings (setting_key, setting_value, setting_type, description)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (setting_key) DO NOTHING`,
+          [key, value, type, desc]
+        );
+      }
 
       logger.success('Database tables initialized successfully');
     } catch (error) {
@@ -394,6 +432,89 @@ class Database {
     } catch (error) {
       logger.error(`Error removing user timezone: ${error.message}`);
       return false;
+    }
+  }
+
+  // Bot Settings Operations
+  async getBotSetting(key) {
+    try {
+      const result = await this.query(
+        'SELECT setting_value, setting_type FROM bot_settings WHERE setting_key = $1',
+        [key]
+      );
+      
+      if (result.rows.length === 0) return null;
+      
+      const { setting_value, setting_type } = result.rows[0];
+      
+      // Parse based on type
+      switch (setting_type) {
+        case 'boolean':
+          return setting_value.toLowerCase() === 'true';
+        case 'integer':
+          return parseInt(setting_value);
+        case 'json':
+          return JSON.parse(setting_value);
+        default:
+          return setting_value;
+      }
+    } catch (error) {
+      logger.error(`Error getting bot setting ${key}: ${error.message}`);
+      return null;
+    }
+  }
+
+  async setBotSetting(key, value, type, description = '', updatedBy = 'system') {
+    try {
+      // Convert value to string for storage
+      const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      
+      await this.query(
+        `INSERT INTO bot_settings (setting_key, setting_value, setting_type, description, updated_by)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (setting_key)
+         DO UPDATE SET setting_value = $2, setting_type = $3, updated_by = $5, updated_at = NOW()`,
+        [key, stringValue, type, description, updatedBy]
+      );
+      
+      logger.success(`Bot setting updated: ${key} = ${value}`);
+      return true;
+    } catch (error) {
+      logger.error(`Error setting bot setting ${key}: ${error.message}`);
+      return false;
+    }
+  }
+
+  async getAllBotSettings() {
+    try {
+      const result = await this.query(
+        'SELECT setting_key, setting_value, setting_type, description, updated_by, updated_at FROM bot_settings ORDER BY setting_key'
+      );
+      
+      const settings = {};
+      for (const row of result.rows) {
+        const { setting_key, setting_value, setting_type } = row;
+        
+        // Parse based on type
+        switch (setting_type) {
+          case 'boolean':
+            settings[setting_key] = setting_value.toLowerCase() === 'true';
+            break;
+          case 'integer':
+            settings[setting_key] = parseInt(setting_value);
+            break;
+          case 'json':
+            settings[setting_key] = JSON.parse(setting_value);
+            break;
+          default:
+            settings[setting_key] = setting_value;
+        }
+      }
+      
+      return settings;
+    } catch (error) {
+      logger.error(`Error getting all bot settings: ${error.message}`);
+      return {};
     }
   }
 }
