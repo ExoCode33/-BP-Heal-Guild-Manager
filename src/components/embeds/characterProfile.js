@@ -65,16 +65,12 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
     timezoneText = `\n🌍 ${abbr} • ${timeString}`;
   }
 
-  const embed = new EmbedBuilder()
-    .setColor('#EC4899')
-    .setDescription(`# __**Join ${guildName} • ${displayName}'s Profile**__ ${getClassEmoji(mainChar.class, interaction?.guild)}${timezoneText}`);
-
   if (!mainChar) {
-    embed.setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
+    const embed = new EmbedBuilder()
+      .setColor('#EC4899')
+      .setDescription('```ansi\n\u001b[0;31mNo main character registered\u001b[0m\n```');
     return embed;
   }
-
-  // No thumbnail - removed per user request
 
   const roleEmoji = mainChar.role === 'Tank' ? '🛡️' : mainChar.role === 'DPS' ? '⚔️' : '💚';
 
@@ -88,7 +84,9 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
 
-  embed.addFields({ name: '\u200b', value: mainSection, inline: false });
+  const embed = new EmbedBuilder()
+    .setColor('#EC4899')
+    .setDescription(`# __**Join ${guildName} • ${displayName}'s Profile**__ ${getClassEmoji(mainChar.class, interaction?.guild)}${timezoneText}\n${mainSection}`);
 
   if (subclasses.length > 0) {
     let subSection = '```ansi\n';
