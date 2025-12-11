@@ -1,6 +1,28 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+/**
+ * Robust boolean parser that handles Railway's quoted values
+ * Railway adds quotes: CLEAR_LOG_ON_START="true" 
+ * This becomes string "true" which fails === 'true' check
+ */
+function parseBool(value, defaultValue = false) {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  
+  const str = String(value).trim().toLowerCase();
+  return str === 'true' || str === '1' || str === 'yes';
+}
+
+/**
+ * Parse integer with default fallback
+ */
+function parseIntValue(value, defaultValue = 0) {
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
 const config = {
   discord: {
     clientId: process.env.CLIENT_ID,
@@ -14,7 +36,7 @@ const config = {
     id: process.env.GOOGLE_SHEETS_ID,
     serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    debugMode: process.env.SHEETS_DEBUG_MODE === 'true' // Verbose logging for sheets
+    debugMode: parseBool(process.env.SHEETS_DEBUG_MODE, false)
   },
   guilds: [
     { name: process.env.GUILD_1_NAME, roleId: process.env.GUILD_1_ROLE_ID },
@@ -43,19 +65,19 @@ const config = {
     windKnight: process.env.ICON_WIND_KNIGHT
   },
   sync: {
-    autoSyncInterval: parseInt(process.env.AUTO_SYNC_INTERVAL) || 3600000, // 1 hour default
-    nicknameSyncEnabled: process.env.NICKNAME_SYNC_ENABLED === 'true', // Enable/disable nickname sync
-    nicknameSyncInterval: parseInt(process.env.NICKNAME_SYNC_INTERVAL) || 300000 // 5 minutes default
+    autoSyncInterval: parseIntValue(process.env.AUTO_SYNC_INTERVAL, 3600000), // 1 hour default
+    nicknameSyncEnabled: parseBool(process.env.NICKNAME_SYNC_ENABLED, false),
+    nicknameSyncInterval: parseIntValue(process.env.NICKNAME_SYNC_INTERVAL, 300000) // 5 minutes default
   },
   ephemeral: {
-    registerChar: process.env.REGISTER_CHAR_EPHEMERAL !== 'false',
-    editChar: process.env.EDIT_CHAR_EPHEMERAL !== 'false',
-    viewChar: process.env.VIEW_CHAR_EPHEMERAL === 'true',
-    admin: process.env.ADMIN_EPHEMERAL !== 'false'
+    registerChar: parseBool(process.env.REGISTER_CHAR_EPHEMERAL, true), // Default true
+    editChar: parseBool(process.env.EDIT_CHAR_EPHEMERAL, true), // Default true
+    viewChar: parseBool(process.env.VIEW_CHAR_EPHEMERAL, false), // Default false
+    admin: parseBool(process.env.ADMIN_EPHEMERAL, true) // Default true
   },
   logging: {
-    toChannel: process.env.LOG_TO_CHANNEL === 'true',
-    clearOnStart: process.env.CLEAR_LOG_ON_START === 'true'
+    toChannel: parseBool(process.env.LOG_TO_CHANNEL, true),
+    clearOnStart: parseBool(process.env.CLEAR_LOG_ON_START, false) // ✅ Fixed with parseBool
   }
 };
 
