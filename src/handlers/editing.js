@@ -7,6 +7,7 @@ import logger from '../utils/logger.js';
 import config from '../utils/config.js';
 import { buildCharacterProfileEmbed } from '../components/embeds/characterProfile.js';
 import { buildCharacterButtons } from '../components/buttons/characterButtons.js';
+import { updateDiscordNickname } from '../utils/nicknameSync.js';
 
 // Helper to create consistent embeds
 function createEditEmbed(title, description) {
@@ -499,6 +500,11 @@ export async function handleEditIGNModal(interaction, userId) {
   try {
     await db.updateCharacter(state.characterId, { ign: newIGN });
     await sheetsService.syncCharacters();
+
+    // ✅ NEW: Update Discord nickname if this is a main character
+    if (state.type === 'main') {
+      await updateDiscordNickname(interaction.client, config.discord.guildId, userId, newIGN);
+    }
 
     const characters = await db.getAllCharactersWithSubclasses(userId);
     const mainChar = characters.find(c => c.character_type === 'main');
