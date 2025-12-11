@@ -1,4 +1,5 @@
-import { 
+import pkg from 'discord.js';
+const { 
   SlashCommandBuilder, 
   PermissionFlagBits, 
   EmbedBuilder, 
@@ -9,7 +10,7 @@ import {
   TextInputStyle,
   ButtonBuilder,
   ButtonStyle
-} from 'discord.js';
+} = pkg;
 import db from '../../services/database.js';
 import sheetsService from '../../services/sheets.js';
 import logger from '../../utils/logger.js';
