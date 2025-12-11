@@ -10,14 +10,53 @@ class Database {
     });
   }
 
+  /**
+   * Extract operation and table from SQL query for better logging
+   */
+  parseQuery(text) {
+    const upperText = text.trim().toUpperCase();
+    let operation = 'QUERY';
+    let table = 'unknown';
+    
+    // Detect operation
+    if (upperText.startsWith('SELECT')) operation = 'SELECT';
+    else if (upperText.startsWith('INSERT')) operation = 'INSERT';
+    else if (upperText.startsWith('UPDATE')) operation = 'UPDATE';
+    else if (upperText.startsWith('DELETE')) operation = 'DELETE';
+    else if (upperText.startsWith('CREATE')) operation = 'CREATE';
+    else if (upperText.startsWith('DROP')) operation = 'DROP';
+    else if (upperText.startsWith('ALTER')) operation = 'ALTER';
+    
+    // Extract table name (basic extraction)
+    const fromMatch = text.match(/FROM\s+(\w+)/i);
+    const intoMatch = text.match(/INTO\s+(\w+)/i);
+    const updateMatch = text.match(/UPDATE\s+(\w+)/i);
+    const tableMatch = text.match(/TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(\w+)/i);
+    
+    if (fromMatch) table = fromMatch[1];
+    else if (intoMatch) table = intoMatch[1];
+    else if (updateMatch) table = updateMatch[1];
+    else if (tableMatch) table = tableMatch[1];
+    
+    return { operation, table };
+  }
+
   async query(text, params) {
     const start = Date.now();
+    const { operation, table } = this.parseQuery(text);
+    
     try {
       const res = await this.pool.query(text, params);
       const duration = Date.now() - start;
-      logger.debug(`Query executed in ${duration}ms`);
+      
+      // Log with context
+      const rowInfo = res.rowCount !== undefined ? `${res.rowCount} rows` : 'No data';
+      await logger.logDatabaseQuery(operation, table, duration, true, rowInfo);
+      
       return res;
     } catch (error) {
+      const duration = Date.now() - start;
+      await logger.logDatabaseQuery(operation, table, duration, false, error.message);
       logger.error(`Database query error: ${error.message}`);
       throw error;
     }
