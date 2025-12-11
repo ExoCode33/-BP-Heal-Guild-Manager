@@ -6,47 +6,51 @@ import logger from '../utils/logger.js';
  * @param {string} guildId - Guild ID where to update nickname
  * @param {string} userId - User ID to update
  * @param {string} ign - In-game name to set as nickname
- * @returns {Promise<boolean>} - Success status
+ * @returns {Promise<{success: boolean, reason?: string}>} - Success status and optional reason
  */
 export async function updateDiscordNickname(client, guildId, userId, ign) {
   try {
     const guild = await client.guilds.fetch(guildId);
     if (!guild) {
-      logger.debug(`Guild ${guildId} not found for nickname sync`);
-      return false;
+      return { success: false, reason: 'Guild not found' };
     }
 
     const member = await guild.members.fetch(userId);
     if (!member) {
-      logger.debug(`Member ${userId} not found in guild for nickname sync`);
-      return false;
+      return { success: false, reason: 'Member not found in guild' };
     }
 
     // Check if nickname is already correct
     if (member.nickname === ign) {
-      return true; // Already correct, no need to update
+      return { success: true }; // Already correct, no need to update
     }
 
     // Check if IGN is valid (not too long)
     if (ign.length > 32) {
       logger.warn(`IGN too long for Discord nickname: ${ign.substring(0, 32)}...`);
-      return false;
+      return { success: false, reason: 'IGN too long (max 32 chars)' };
     }
 
-    // Update nickname
+    // Check if user is server owner (Discord limitation)
+    if (member.id === guild.ownerId) {
+      return { success: false, reason: 'Server owner (Discord limitation)' };
+    }
+
+    // Try to update nickname - attempt even for admins
     await member.setNickname(ign, 'Main character IGN sync');
-    logger.success(`Updated nickname for ${userId}: ${ign}`);
-    return true;
+    logger.success(`Updated nickname: ${ign} (${userId})`);
+    return { success: true };
   } catch (error) {
-    // Permission errors are common - log at debug level
+    // Handle specific error codes
     if (error.code === 50013) { // Missing Permissions
-      logger.debug(`Cannot update nickname for ${userId}: Missing permissions (user may have higher role)`);
+      return { success: false, reason: 'Bot lacks permissions (user has higher role)' };
     } else if (error.code === 50035) { // Invalid form body
-      logger.warn(`Cannot update nickname for ${userId}: Invalid IGN format`);
+      logger.warn(`Invalid IGN format for ${userId}: ${ign}`);
+      return { success: false, reason: 'Invalid IGN format' };
     } else {
       logger.error(`Error updating nickname for ${userId}: ${error.message}`);
+      return { success: false, reason: error.message };
     }
-    return false;
   }
 }
 
@@ -67,17 +71,38 @@ export async function syncAllNicknames(client, guildId, db) {
     
     let success = 0;
     let failed = 0;
+    const successList = [];
+    const failedList = [];
     
     for (const char of mainChars) {
       const result = await updateDiscordNickname(client, guildId, char.user_id, char.ign);
-      if (result) {
+      if (result.success) {
         success++;
+        successList.push({ ign: char.ign, userId: char.user_id });
       } else {
         failed++;
+        failedList.push({ 
+          ign: char.ign, 
+          userId: char.user_id, 
+          reason: result.reason || 'Unknown error' 
+        });
       }
       
       // Small delay to avoid rate limits
       await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Log results with details
+    if (success > 0) {
+      logger.log(`✅ Nickname sync successful for ${success} user${success > 1 ? 's' : ''}:`);
+      successList.forEach(user => logger.log(`   ✓ ${user.ign} (${user.userId})`));
+    }
+    
+    if (failed > 0) {
+      logger.warn(`⚠️ Nickname sync failed for ${failed} user${failed > 1 ? 's' : ''}:`);
+      failedList.forEach(user => {
+        logger.warn(`   ✗ ${user.ign} (${user.userId}) - ${user.reason}`);
+      });
     }
     
     logger.log(`Nickname sync complete: ${success} updated, ${failed} failed`);
