@@ -501,8 +501,8 @@ export async function handleEditIGNModal(interaction, userId) {
     await db.updateCharacter(state.characterId, { ign: newIGN });
     await sheetsService.syncCharacters();
 
-    // ✅ NEW: Update Discord nickname if this is a main character
-    if (state.type === 'main') {
+    // ✅ NEW: Update Discord nickname if this is a main character (and sync is enabled)
+    if (state.type === 'main' && config.sync.nicknameSyncEnabled) {
       await updateDiscordNickname(interaction.client, config.discord.guildId, userId, newIGN);
     }
 
