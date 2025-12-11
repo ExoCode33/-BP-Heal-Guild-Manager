@@ -529,7 +529,19 @@ export async function handleEditUIDModal(interaction, userId) {
   const state = stateManager.getUpdateState(userId);
   if (!state) return;
 
-  const newUID = interaction.fields.getTextInputValue('uid');
+  const newUID = interaction.fields.getTextInputValue('uid').trim();
+
+  // ✅ Validate UID is numbers only
+  if (!/^\d+$/.test(newUID)) {
+    const errorEmbed = new EmbedBuilder()
+      .setColor('#FF0000')
+      .setDescription('# ❌ **Invalid UID**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n**UID must contain only numbers.**\n\nYou entered: `' + newUID + '`\n\nPlease try again with a valid numeric UID.')
+      .setTimestamp();
+    
+    await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+    stateManager.clearUpdateState(userId);
+    return;
+  }
 
   try {
     await db.updateCharacter(state.characterId, { uid: newUID });
