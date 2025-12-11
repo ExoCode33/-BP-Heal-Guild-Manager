@@ -19,12 +19,12 @@ class Logger {
     
     // Configuration from environment variables
     this.discordLogLevel = process.env.DISCORD_LOG_LEVEL || 'INFO';
-    this.errorPingEnabled = process.env.ERROR_PING_ENABLED === 'true';
+    this.errorPingEnabled = process.env.ERROR_PING_ENABLED?.toLowerCase() === 'true';
     this.errorPingRoleId = process.env.ERROR_PING_ROLE_ID || null;
-    this.warnPingEnabled = process.env.WARN_PING_ENABLED === 'true';
+    this.warnPingEnabled = process.env.WARN_PING_ENABLED?.toLowerCase() === 'true';
     this.warnPingRoleId = process.env.WARN_PING_ROLE_ID || null;
-    this.debugMode = process.env.DEBUG_MODE === 'true';
-    this.clearOnStart = process.env.CLEAR_LOG_ON_START === 'true';
+    this.debugMode = process.env.DEBUG_MODE?.toLowerCase() === 'true';
+    this.clearOnStart = process.env.CLEAR_LOG_ON_START?.toLowerCase() === 'true';
     
     // Log level hierarchy
     this.LOG_LEVELS = {
@@ -83,6 +83,18 @@ class Logger {
     this.client = client;
     this.logChannelId = logChannelId;
     
+    console.log(this.COLORS.CYAN + '[LOGGER INIT] Setting up Discord logging...' + this.COLORS.RESET);
+    console.log(this.COLORS.CYAN + '├─ Channel ID: ' + this.COLORS.YELLOW + (logChannelId || 'NOT SET') + this.COLORS.RESET);
+    console.log(this.COLORS.CYAN + '├─ Log Level: ' + this.COLORS.YELLOW + this.discordLogLevel + this.COLORS.RESET);
+    console.log(this.COLORS.CYAN + '├─ Error Ping: ' + (this.errorPingEnabled ? this.COLORS.GREEN + 'ENABLED' : this.COLORS.GRAY + 'DISABLED') + this.COLORS.RESET);
+    console.log(this.COLORS.CYAN + '├─ Warn Ping: ' + (this.warnPingEnabled ? this.COLORS.GREEN + 'ENABLED' : this.COLORS.GRAY + 'DISABLED') + this.COLORS.RESET);
+    console.log(this.COLORS.CYAN + '└─ Debug Mode: ' + (this.debugMode ? this.COLORS.GREEN + 'ENABLED' : this.COLORS.GRAY + 'DISABLED') + this.COLORS.RESET);
+    
+    if (!logChannelId) {
+      console.error(this.COLORS.RED + '[LOGGER ERROR] No log channel ID provided! Discord logging will not work.' + this.COLORS.RESET);
+      return;
+    }
+    
     if (clearOnStart && this.logChannelId) {
       try {
         const channel = await this.client.channels.fetch(this.logChannelId);
@@ -96,6 +108,8 @@ class Logger {
         console.error(this.COLORS.RED + '[LOG ERROR] Failed to clear log channel: ' + error.message + this.COLORS.RESET);
       }
     }
+    
+    console.log(this.COLORS.GREEN + '[LOGGER INIT] Discord logging initialized successfully!' + this.COLORS.RESET);
   }
 
   /**
@@ -149,11 +163,17 @@ class Logger {
    * Send ANSI colored message to Discord (in code block)
    */
   async sendToDiscord(ansiMessage, pingRole = null) {
-    if (!this.client || !this.logChannelId) return;
+    if (!this.client || !this.logChannelId) {
+      console.error(this.COLORS.RED + '[LOG ERROR] Cannot send to Discord: client or channel ID not set' + this.COLORS.RESET);
+      return;
+    }
     
     try {
       const channel = await this.client.channels.fetch(this.logChannelId);
-      if (!channel) return;
+      if (!channel) {
+        console.error(this.COLORS.RED + `[LOG ERROR] Could not fetch channel with ID: ${this.logChannelId}` + this.COLORS.RESET);
+        return;
+      }
 
       const content = pingRole ? `<@&${pingRole}>` : '';
       const message = `${content}\n\`\`\`ansi\n${ansiMessage}\n\`\`\``;
@@ -161,6 +181,8 @@ class Logger {
       await channel.send(message);
     } catch (error) {
       console.error(this.COLORS.RED + `[LOG ERROR] Failed to send to Discord: ${error.message}` + this.COLORS.RESET);
+      console.error(this.COLORS.RED + `[LOG ERROR] Channel ID: ${this.logChannelId}` + this.COLORS.RESET);
+      console.error(this.COLORS.RED + `[LOG ERROR] Error details: ${error.stack}` + this.COLORS.RESET);
     }
   }
 
