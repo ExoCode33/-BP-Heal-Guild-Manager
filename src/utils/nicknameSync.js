@@ -93,15 +93,10 @@ export async function syncAllNicknames(client, guildId, db) {
     }
     
     // Log results with details
-    if (success > 0) {
-      logger.log(`✅ Nickname sync successful for ${success} user${success > 1 ? 's' : ''}:`);
-      successList.forEach(user => logger.log(`   ✓ ${user.ign} (${user.userId})`));
-    }
-    
     if (failed > 0) {
       logger.warn(`⚠️ Nickname sync failed for ${failed} user${failed > 1 ? 's' : ''}:`);
       failedList.forEach(user => {
-        logger.warn(`   ✗ ${user.ign} (${user.userId}) - ${user.reason}`);
+        logger.warn(`   ${user.userId} - ${user.reason}`);
       });
     }
     
