@@ -563,8 +563,8 @@ export async function handleIGNModal(interaction, userId) {
 
     await db.createCharacter(characterData);
     
-    // ✅ NEW: Update Discord nickname if this is a main character
-    if (characterData.characterType === 'main') {
+    // ✅ NEW: Update Discord nickname if this is a main character (and sync is enabled)
+    if (characterData.characterType === 'main' && config.sync.nicknameSyncEnabled) {
       await updateDiscordNickname(interaction.client, config.discord.guildId, userId, ign);
     }
     
