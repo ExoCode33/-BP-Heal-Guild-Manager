@@ -37,6 +37,65 @@ export async function handleLoggerConfigSelect(interaction, userId) {
 }
 
 // ============================================================================
+// HELPER FUNCTION - RETURN TO MAIN CONFIG MENU
+// ============================================================================
+
+async function returnToMainConfigMenu(interaction, userId, successMessage = '') {
+  const embed = new EmbedBuilder()
+    .setColor('#EC4899')
+    .setTitle('⚙️ Logger Configuration')
+    .setDescription((successMessage ? `${successMessage}\n\n` : '') + 'Choose another setting to configure:')
+    .addFields(
+      { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
+      { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
+      { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
+      { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
+      { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
+    )
+    .setTimestamp();
+  
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`admin_logger_config_${userId}`)
+    .setPlaceholder('⚙️ Choose a setting')
+    .addOptions([
+      {
+        label: 'Log Level',
+        value: 'log_level',
+        description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
+        emoji: '📊'
+      },
+      {
+        label: 'Log Channel',
+        value: 'log_channel',
+        description: 'Set the Discord channel for logs',
+        emoji: '📺'
+      },
+      {
+        label: 'Error Ping Settings',
+        value: 'error_ping',
+        description: 'Configure error role ping',
+        emoji: '🔔'
+      },
+      {
+        label: 'Warning Ping Settings',
+        value: 'warn_ping',
+        description: 'Configure warning role ping',
+        emoji: '⚠️'
+      },
+      {
+        label: 'Debug Mode',
+        value: 'debug_mode',
+        description: 'Toggle debug console logging',
+        emoji: '🐛'
+      }
+    ]);
+  
+  const row = new ActionRowBuilder().addComponents(selectMenu);
+  
+  return { embeds: [embed], components: [row] };
+}
+
+// ============================================================================
 // LOG LEVEL CONFIGURATION
 // ============================================================================
 
@@ -70,9 +129,15 @@ async function showLogLevelSelect(interaction, userId) {
       { label: 'ALL', value: 'ALL', description: 'Everything including views' }
     ]);
   
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`admin_logger_back_${userId}`)
+    .setLabel('◀️ Back to Logger Settings')
+    .setStyle(ButtonStyle.Secondary);
   
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(selectMenu);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+  
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleSetLogLevel(interaction, userId) {
@@ -85,58 +150,13 @@ export async function handleSetLogLevel(interaction, userId) {
     await logger.loadSettingsFromDatabase(db);
     
     // Return to main config menu
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`✅ **Log level updated to: ${newLevel}**\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
+    const menuData = await returnToMainConfigMenu(
+      interaction, 
+      userId, 
+      `✅ **Log level updated to: ${newLevel}**`
+    );
     
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update(menuData);
     
     await logger.logInfo(
       `Admin ${interaction.user.username} changed log level to ${newLevel}`,
@@ -204,58 +224,13 @@ export async function handleSetLogChannelModal(interaction, userId) {
     await logger.setClient(interaction.client, channelId, false);
     
     // Return to main config menu
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`✅ **Log channel updated to: <#${channelId}>**\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
+    const menuData = await returnToMainConfigMenu(
+      interaction,
+      userId,
+      `✅ **Log channel updated to: <#${channelId}>**`
+    );
     
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.reply({ ...menuData, ephemeral: true });
     
     await logger.logInfo(
       `Admin ${interaction.user.username} changed log channel`,
@@ -311,9 +286,15 @@ async function showErrorPingConfig(interaction, userId) {
     .setStyle(ButtonStyle.Primary)
     .setEmoji('🔔');
   
-  const row = new ActionRowBuilder().addComponents(toggleButton, setRoleButton);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`admin_logger_back_${userId}`)
+    .setLabel('◀️ Back to Logger Settings')
+    .setStyle(ButtonStyle.Secondary);
   
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(toggleButton, setRoleButton);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+  
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleToggleErrorPing(interaction, userId) {
@@ -328,59 +309,9 @@ export async function handleToggleErrorPing(interaction, userId) {
     
     // Return to main config menu
     const statusText = newEnabled ? '✅ **Error ping enabled**' : '❌ **Error ping disabled**';
+    const menuData = await returnToMainConfigMenu(interaction, userId, statusText);
     
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`${statusText}\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
-    
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update(menuData);
     
     await logger.logInfo(
       `Admin ${interaction.user.username} ${newEnabled ? 'enabled' : 'disabled'} error ping`,
@@ -437,58 +368,13 @@ export async function handleSetErrorRoleSubmit(interaction, userId) {
     await logger.loadSettingsFromDatabase(db);
     
     // Return to main config menu
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`✅ **Error ping role updated to: <@&${roleId}>**\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
+    const menuData = await returnToMainConfigMenu(
+      interaction,
+      userId,
+      `✅ **Error ping role updated to: <@&${roleId}>**`
+    );
     
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.reply({ ...menuData, ephemeral: true });
     
     await logger.logInfo(
       `Admin ${interaction.user.username} set error ping role`,
@@ -544,9 +430,15 @@ async function showWarnPingConfig(interaction, userId) {
     .setStyle(ButtonStyle.Primary)
     .setEmoji('⚠️');
   
-  const row = new ActionRowBuilder().addComponents(toggleButton, setRoleButton);
+  const backButton = new ButtonBuilder()
+    .setCustomId(`admin_logger_back_${userId}`)
+    .setLabel('◀️ Back to Logger Settings')
+    .setStyle(ButtonStyle.Secondary);
   
-  await interaction.update({ embeds: [embed], components: [row] });
+  const row1 = new ActionRowBuilder().addComponents(toggleButton, setRoleButton);
+  const row2 = new ActionRowBuilder().addComponents(backButton);
+  
+  await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
 
 export async function handleToggleWarnPing(interaction, userId) {
@@ -561,59 +453,9 @@ export async function handleToggleWarnPing(interaction, userId) {
     
     // Return to main config menu
     const statusText = newEnabled ? '✅ **Warning ping enabled**' : '❌ **Warning ping disabled**';
+    const menuData = await returnToMainConfigMenu(interaction, userId, statusText);
     
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`${statusText}\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
-    
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update(menuData);
     
     await logger.logInfo(
       `Admin ${interaction.user.username} ${newEnabled ? 'enabled' : 'disabled'} warning ping`,
@@ -670,58 +512,13 @@ export async function handleSetWarnRoleSubmit(interaction, userId) {
     await logger.loadSettingsFromDatabase(db);
     
     // Return to main config menu
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`✅ **Warning ping role updated to: <@&${roleId}>**\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
+    const menuData = await returnToMainConfigMenu(
+      interaction,
+      userId,
+      `✅ **Warning ping role updated to: <@&${roleId}>**`
+    );
     
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.reply({ ...menuData, ephemeral: true });
     
     await logger.logInfo(
       `Admin ${interaction.user.username} set warning ping role`,
@@ -753,59 +550,9 @@ async function toggleDebugMode(interaction, userId) {
     
     // Return to main config menu
     const statusText = newDebug ? '✅ **Debug mode enabled**' : '❌ **Debug mode disabled**';
+    const menuData = await returnToMainConfigMenu(interaction, userId, statusText);
     
-    const embed = new EmbedBuilder()
-      .setColor('#EC4899')
-      .setTitle('⚙️ Logger Configuration')
-      .setDescription(`${statusText}\n\nChoose another setting to configure:`)
-      .addFields(
-        { name: '📊 Log Level', value: 'Set the verbosity of Discord logging', inline: false },
-        { name: '📺 Log Channel', value: 'Set the Discord channel for logs', inline: false },
-        { name: '🔔 Error Ping', value: 'Configure error role ping', inline: false },
-        { name: '⚠️ Warning Ping', value: 'Configure warning role ping', inline: false },
-        { name: '🐛 Debug Mode', value: 'Toggle debug console logging', inline: false }
-      )
-      .setTimestamp();
-    
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`admin_logger_config_${userId}`)
-      .setPlaceholder('⚙️ Choose a setting')
-      .addOptions([
-        {
-          label: 'Log Level',
-          value: 'log_level',
-          description: 'ERROR_ONLY, WARN_ERROR, INFO, VERBOSE, DEBUG, ALL',
-          emoji: '📊'
-        },
-        {
-          label: 'Log Channel',
-          value: 'log_channel',
-          description: 'Set the Discord channel for logs',
-          emoji: '📺'
-        },
-        {
-          label: 'Error Ping Settings',
-          value: 'error_ping',
-          description: 'Configure error role ping',
-          emoji: '🔔'
-        },
-        {
-          label: 'Warning Ping Settings',
-          value: 'warn_ping',
-          description: 'Configure warning role ping',
-          emoji: '⚠️'
-        },
-        {
-          label: 'Debug Mode',
-          value: 'debug_mode',
-          description: 'Toggle debug console logging',
-          emoji: '🐛'
-        }
-      ]);
-    
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-    
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.update(menuData);
     
     await logger.logInfo(
       `Admin ${interaction.user.username} ${newDebug ? 'enabled' : 'disabled'} debug mode`,
@@ -818,6 +565,20 @@ async function toggleDebugMode(interaction, userId) {
   }
 }
 
+// ============================================================================
+// BACK BUTTON HANDLER
+// ============================================================================
+
+export async function handleLoggerBackButton(interaction, userId) {
+  try {
+    const menuData = await returnToMainConfigMenu(interaction, userId);
+    await interaction.update(menuData);
+  } catch (error) {
+    logger.error(`Logger back button error: ${error.message}`);
+    await interaction.update({ content: '❌ Error occurred.', embeds: [], components: [] });
+  }
+}
+
 export default {
   handleLoggerConfigSelect,
   handleSetLogLevel,
@@ -827,5 +588,6 @@ export default {
   handleSetErrorRoleSubmit,
   handleToggleWarnPing,
   handleSetWarnRoleModal,
-  handleSetWarnRoleSubmit
+  handleSetWarnRoleSubmit,
+  handleLoggerBackButton
 };
