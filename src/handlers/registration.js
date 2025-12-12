@@ -746,6 +746,8 @@ export async function handleBackToCountry(interaction, userId) {
     return;
   }
   
+  // Simulate region selection
+  interaction.values = [state.region];
   await handleRegionSelect(interaction, userId);
 }
 
