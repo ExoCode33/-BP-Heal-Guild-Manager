@@ -20,6 +20,15 @@ export async function handleButtonInteraction(interaction) {
     // Extract user ID from customId
     const extractUserId = (id) => {
       const parts = id.split('_');
+      
+      // For confirm_remove_alt buttons which have format: confirm_remove_alt_{userId}_{altId}
+      // For confirm_remove_subclass buttons which have format: confirm_remove_subclass_{userId}_{subclassId}
+      if (id.startsWith('confirm_remove_alt_') || id.startsWith('confirm_remove_subclass_')) {
+        // Return the second-to-last part (userId), not the last part (altId/subclassId)
+        return parts[parts.length - 2];
+      }
+      
+      // For all other buttons, userId is the last part
       return parts[parts.length - 1];
     };
     
