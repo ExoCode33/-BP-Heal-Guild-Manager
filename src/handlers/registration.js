@@ -22,7 +22,7 @@ const stateManager = (await import('../utils/stateManager.js')).default;
 function createRegEmbed(step, total, title, description) {
   return new EmbedBuilder()
     .setColor('#EC4899')
-    .setDescription(\`# **\${title}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\${description}\n\n*Step \${step} of \${total}*\`)
+    .setDescription(`# **${title}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${description}\n\n*Step ${step} of ${total}*`)
     .setTimestamp();
 }
 
@@ -203,7 +203,7 @@ export async function handleRegisterMain(interaction, userId) {
     });
     
     const totalSteps = getTotalSteps('alt');
-    const embed = createRegEmbed(1, totalSteps, '🎭 Choose Your Class', \`**Timezone:** \${timezoneAbbr} • \${timeString}\`);
+    const embed = createRegEmbed(1, totalSteps, '🎭 Choose Your Class', `**Timezone:** ${timezoneAbbr} • ${timeString}`);
     
     const classOptions = Object.keys(gameData.classes).map(className => {
       const iconId = getClassIconId(className);
@@ -223,12 +223,12 @@ export async function handleRegisterMain(interaction, userId) {
     });
     
     const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(\`select_class_\${userId}\`)
+      .setCustomId(`select_class_${userId}`)
       .setPlaceholder('🎭 Pick your class')
       .addOptions(classOptions);
     
     const backButton = new ButtonBuilder()
-      .setCustomId(\`back_to_profile_\${userId}\`)
+      .setCustomId(`back_to_profile_${userId}`)
       .setLabel('❌ Cancel')
       .setStyle(ButtonStyle.Secondary);
     
@@ -254,12 +254,12 @@ export async function handleRegisterMain(interaction, userId) {
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_region_\${userId}\`)
+    .setCustomId(`select_region_${userId}`)
     .setPlaceholder('🌍 Pick your region')
     .addOptions(regionOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_profile_\${userId}\`)
+    .setCustomId(`back_to_profile_${userId}`)
     .setLabel('❌ Cancel')
     .setStyle(ButtonStyle.Secondary);
 
@@ -275,7 +275,7 @@ export async function handleRegionSelect(interaction, userId) {
   stateManager.setRegistrationState(userId, { ...state, region });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(2, totalSteps, '🏳️ Choose Your Country', \`**Region:** \${region}\`);
+  const embed = createRegEmbed(2, totalSteps, '🏳️ Choose Your Country', `**Region:** ${region}`);
 
   const countries = Object.keys(REGIONS[region]);
   const countryOptions = countries.map(country => ({
@@ -284,12 +284,12 @@ export async function handleRegionSelect(interaction, userId) {
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_country_\${userId}\`)
+    .setCustomId(`select_country_${userId}`)
     .setPlaceholder('🏳️ Pick your country')
     .addOptions(countryOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_region_\${userId}\`)
+    .setCustomId(`back_to_region_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -305,7 +305,7 @@ export async function handleCountrySelect(interaction, userId) {
   stateManager.setRegistrationState(userId, { ...state, country });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(3, totalSteps, '🕐 Choose Your Timezone', \`**Country:** \${country}\`);
+  const embed = createRegEmbed(3, totalSteps, '🕐 Choose Your Timezone', `**Country:** ${country}`);
 
   const timezones = REGIONS[state.region][country];
   
@@ -387,12 +387,12 @@ export async function handleCountrySelect(interaction, userId) {
   });
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_timezone_\${userId}\`)
+    .setCustomId(`select_timezone_${userId}`)
     .setPlaceholder('🕐 Pick your timezone')
     .addOptions(timezoneOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_country_\${userId}\`)
+    .setCustomId(`back_to_country_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -427,7 +427,7 @@ export async function handleTimezoneSelect(interaction, userId) {
   });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(4, totalSteps, '🎭 Choose Your Class', \`**Timezone:** \${timezoneAbbr} • \${timeString}\`);
+  const embed = createRegEmbed(4, totalSteps, '🎭 Choose Your Class', `**Timezone:** ${timezoneAbbr} • ${timeString}`);
 
   const classOptions = Object.keys(gameData.classes).map(className => {
     const iconId = getClassIconId(className);
@@ -447,12 +447,12 @@ export async function handleTimezoneSelect(interaction, userId) {
   });
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_class_\${userId}\`)
+    .setCustomId(`select_class_${userId}`)
     .setPlaceholder('🎭 Pick your class')
     .addOptions(classOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_timezone_\${userId}\`)
+    .setCustomId(`back_to_timezone_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -484,7 +484,7 @@ export async function handleClassSelect(interaction, userId) {
     stepNum = 5;
   }
   
-  const embed = createRegEmbed(stepNum, totalSteps, '📋 Choose Your Subclass', \`**Class:** \${className}\`);
+  const embed = createRegEmbed(stepNum, totalSteps, '📋 Choose Your Subclass', `**Class:** ${className}`);
 
   const subclassOptions = subclasses.map(subclassName => {
     const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
@@ -506,12 +506,12 @@ export async function handleClassSelect(interaction, userId) {
   });
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_subclass_\${userId}\`)
+    .setCustomId(`select_subclass_${userId}`)
     .setPlaceholder('📋 Pick your subclass')
     .addOptions(subclassOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(isSubclass ? \`back_to_profile_\${userId}\` : (isAlt ? \`back_to_profile_\${userId}\` : \`back_to_class_\${userId}\`))
+    .setCustomId(isSubclass ? `back_to_profile_${userId}` : (isAlt ? `back_to_profile_${userId}` : `back_to_class_${userId}`))
     .setLabel(isSubclass || isAlt ? '❌ Cancel' : '◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -540,7 +540,7 @@ export async function handleSubclassSelect(interaction, userId) {
     stepNum = 6;
   }
   
-  const embed = createRegEmbed(stepNum, totalSteps, '💪 Choose Your Score', \`**Subclass:** \${subclassName}\`);
+  const embed = createRegEmbed(stepNum, totalSteps, '💪 Choose Your Score', `**Subclass:** ${subclassName}`);
 
   const scoreOptions = gameData.abilityScores.map(score => ({
     label: score.label,
@@ -548,12 +548,12 @@ export async function handleSubclassSelect(interaction, userId) {
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_ability_score_\${userId}\`)
+    .setCustomId(`select_ability_score_${userId}`)
     .setPlaceholder('💪 Pick your score')
     .addOptions(scoreOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_subclass_\${userId}\`)
+    .setCustomId(`back_to_subclass_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -610,10 +610,10 @@ export async function handleAbilityScoreSelect(interaction, userId) {
         components: buttons
       });
 
-      logger.logAction(interaction.user.tag, \`registered \${state.characterType} subclass\`, \`\${state.class} - \${state.subclass}\`);
+      logger.logAction(interaction.user.tag, `registered ${state.characterType} subclass`, `${state.class} - ${state.subclass}`);
     } catch (error) {
       console.error('[REGISTRATION ERROR]', error);
-      logger.error(\`Subclass registration error: \${error.message}\`, error);
+      logger.error(`Subclass registration error: ${error.message}`, error);
       await interaction.update({
         content: '❌ Something went wrong. Please try again!',
         components: []
@@ -663,8 +663,8 @@ async function showBattleImagineSelection(interaction, userId) {
   const embed = createRegEmbed(
     stepNum, 
     totalSteps, 
-    \`🎭 Battle Imagine - \${currentImagine.name}\`, 
-    \`Do you own **\${currentImagine.name}**?\n\nSelect the highest tier you own:\`
+    `🎭 Battle Imagine - ${currentImagine.name}`, 
+    `Do you own **${currentImagine.name}**?\n\nSelect the highest tier you own:`
   );
   
   // Build tier options with custom emoji
@@ -706,12 +706,12 @@ async function showBattleImagineSelection(interaction, userId) {
   }
   
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_battle_imagine_\${userId}\`)
-    .setPlaceholder(\`Choose tier for \${currentImagine.name}\`)
+    .setCustomId(`select_battle_imagine_${userId}`)
+    .setPlaceholder(`Choose tier for ${currentImagine.name}`)
     .addOptions(tierOptions);
   
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_battle_imagine_\${userId}\`)
+    .setCustomId(`back_to_battle_imagine_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
   
@@ -753,7 +753,7 @@ async function proceedToGuildSelection(interaction, userId) {
   // Calculate step number (after all battle imagines)
   const stepNum = totalSteps - 1; // Guild is second-to-last step
   
-  const embed = createRegEmbed(stepNum, totalSteps, '🏰 Choose Your Guild', \`**Score:** \${scoreLabel}\`);
+  const embed = createRegEmbed(stepNum, totalSteps, '🏰 Choose Your Guild', `**Score:** ${scoreLabel}`);
 
   const guildOptions = config.guilds.map(guild => ({
     label: guild.name,
@@ -761,12 +761,12 @@ async function proceedToGuildSelection(interaction, userId) {
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(\`select_guild_\${userId}\`)
+    .setCustomId(`select_guild_${userId}`)
     .setPlaceholder('🏰 Pick your guild')
     .addOptions(guildOptions);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(\`back_to_battle_imagine_\${userId}\`)
+    .setCustomId(`back_to_battle_imagine_${userId}`)
     .setLabel('◀️ Back')
     .setStyle(ButtonStyle.Secondary);
 
@@ -796,7 +796,7 @@ export async function handleGuildSelect(interaction, userId) {
   stateManager.setRegistrationState(userId, { ...state, guild });
 
   const modal = new ModalBuilder()
-    .setCustomId(\`ign_modal_\${userId}\`)
+    .setCustomId(`ign_modal_${userId}`)
     .setTitle('Enter Character Details');
 
   const ignInput = new TextInputBuilder()
