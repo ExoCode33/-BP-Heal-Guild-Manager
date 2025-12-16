@@ -132,34 +132,50 @@ class Logger {
       
       console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Starting cleanup...` + this.COLORS.RESET);
       
+      // ✅ CRITICAL FIX: Clear cache to force fresh fetch from Discord
+      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Clearing message cache...` + this.COLORS.RESET);
+      channel.messages.cache.clear();
+      
       // Fetch ALL messages in batches
       let allMessages = [];
       let lastMessageId = null;
       let fetchCount = 0;
       
-      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetching all messages...` + this.COLORS.RESET);
+      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetching all messages from Discord API...` + this.COLORS.RESET);
       
       while (true) {
-        const options = { limit: 100 };
+        const options = { 
+          limit: 100,
+          cache: false // Don't cache results
+        };
         if (lastMessageId) {
           options.before = lastMessageId;
         }
         
-        const messages = await channel.messages.fetch(options);
-        if (messages.size === 0) break;
-        
-        fetchCount++;
-        allMessages.push(...messages.values());
-        lastMessageId = messages.last().id;
-        
-        console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetch ${fetchCount}: Got ${messages.size} messages (total: ${allMessages.length})` + this.COLORS.RESET);
-        
-        // If we got less than 100, we're done
-        if (messages.size < 100) break;
-        
-        // Safety: Stop after 10 fetches (1000 messages max)
-        if (fetchCount >= 10) {
-          console.log(this.COLORS.YELLOW + `[LOGGER CLEANUP] Reached max fetch limit (${allMessages.length} messages)` + this.COLORS.RESET);
+        try {
+          const messages = await channel.messages.fetch(options);
+          if (messages.size === 0) break;
+          
+          fetchCount++;
+          allMessages.push(...messages.values());
+          lastMessageId = messages.last().id;
+          
+          console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetch ${fetchCount}: Got ${messages.size} messages (total: ${allMessages.length})` + this.COLORS.RESET);
+          
+          // If we got less than 100, we're done
+          if (messages.size < 100) break;
+          
+          // Safety: Stop after 10 fetches (1000 messages max)
+          if (fetchCount >= 10) {
+            console.log(this.COLORS.YELLOW + `[LOGGER CLEANUP] Reached max fetch limit (${allMessages.length} messages)` + this.COLORS.RESET);
+            break;
+          }
+          
+          // Small delay between fetches to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+        } catch (error) {
+          console.error(this.COLORS.RED + `[LOGGER CLEANUP] Fetch error: ${error.message}` + this.COLORS.RESET);
           break;
         }
       }
@@ -405,12 +421,18 @@ class Logger {
       
       console.log(this.COLORS.CYAN + '[LOGGER] Counting existing log messages...' + this.COLORS.RESET);
       
+      // ✅ Clear cache to force fresh fetch
+      channel.messages.cache.clear();
+      
       let totalMessages = 0;
       let lastMessageId = null;
       
       // Fetch messages in batches of 100 until we get them all
       while (true) {
-        const options = { limit: 100 };
+        const options = { 
+          limit: 100,
+          cache: false
+        };
         if (lastMessageId) {
           options.before = lastMessageId;
         }
@@ -424,6 +446,9 @@ class Logger {
         
         // If we got less than 100, we're done
         if (messages.size < 100) break;
+        
+        // Small delay between fetches
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
       console.log(this.COLORS.CYAN + `[LOGGER] Found ${totalMessages} existing messages` + this.COLORS.RESET);
