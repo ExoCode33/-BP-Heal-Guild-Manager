@@ -35,6 +35,28 @@ const TZ_ABBR = {
   'Africa/Nairobi': 'EAT', 'Africa/Casablanca': 'WET'
 };
 
+/**
+ * ✅ NEW: Format Battle Imagines for display
+ */
+async function formatBattleImagines(characterId, db) {
+  try {
+    const imagines = await db.getBattleImagines(characterId);
+    
+    if (!imagines || imagines.length === 0) {
+      return '';
+    }
+    
+    const formatted = imagines
+      .map(img => `${img.imagine_name} ${img.tier}`)
+      .join(', ');
+    
+    return formatted;
+  } catch (error) {
+    console.error('Error formatting battle imagines:', error);
+    return '';
+  }
+}
+
 export async function buildCharacterProfileEmbed(user, characters, interaction = null) {
   const mainChar = characters.find(c => c.character_type === 'main');
   const alts = characters.filter(c => c.character_type === 'alt');
@@ -80,6 +102,13 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
   mainSection += `\u001b[1;34m🆔 UID:\u001b[0m ${mainChar.uid}\n`;
   mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${mainChar.class} • ${mainChar.subclass} ${roleEmoji}\n`;
   mainSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(mainChar.ability_score)}\n`;
+  
+  // ✅ NEW: Add Battle Imagines for main character
+  const mainBattleImagines = await formatBattleImagines(mainChar.id, db);
+  if (mainBattleImagines) {
+    mainSection += `\u001b[1;34m🎭 Battle Imagines:\u001b[0m ${mainBattleImagines}\n`;
+  }
+  
   mainSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${mainChar.guild || 'None'}\n`;
   mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
   mainSection += '```';
@@ -105,15 +134,25 @@ export async function buildCharacterProfileEmbed(user, characters, interaction =
 
   if (alts.length > 0) {
     let altSection = '```ansi\n';
-    alts.forEach((alt, i) => {
+    for (let i = 0; i < alts.length; i++) {
+      const alt = alts[i];
       const altRoleEmoji = alt.role === 'Tank' ? '🛡️' : alt.role === 'DPS' ? '⚔️' : '💚';
+      
       if (i > 0) altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
       else altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+      
       altSection += `\u001b[1;34m🎮 IGN:  \u001b[0m ${alt.ign}  \u001b[1;34m🆔 UID:\u001b[0m ${alt.uid}\n`;
       altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class} • ${alt.subclass} ${altRoleEmoji}\n`;
       altSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatAbilityScore(alt.ability_score)}\n`;
+      
+      // ✅ NEW: Add Battle Imagines for alt
+      const altBattleImagines = await formatBattleImagines(alt.id, db);
+      if (altBattleImagines) {
+        altSection += `\u001b[1;34m🎭 Battle Imagines:\u001b[0m ${altBattleImagines}\n`;
+      }
+      
       altSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
-    });
+    }
     altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
     altSection += '```';
     
