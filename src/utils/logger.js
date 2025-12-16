@@ -323,6 +323,9 @@ class Logger {
     
     this.isReady = true;
     
+    // ✅ NEW: Count existing messages on startup
+    await this.countExistingMessages();
+    
     // ✅ NEW: Start automatic cleanup
     this.startPeriodicCleanup();
     
@@ -337,6 +340,57 @@ class Logger {
     }
     
     console.log(this.COLORS.GREEN + '[LOGGER INIT] Discord logging initialized successfully!' + this.COLORS.RESET);
+  }
+
+  /**
+   * Count existing messages in log channel on startup
+   */
+  async countExistingMessages() {
+    if (!this.client || !this.logChannelId) return;
+    
+    try {
+      const channel = await this.client.channels.fetch(this.logChannelId);
+      if (!channel || !channel.isTextBased()) return;
+      
+      console.log(this.COLORS.CYAN + '[LOGGER] Counting existing log messages...' + this.COLORS.RESET);
+      
+      let totalMessages = 0;
+      let lastMessageId = null;
+      
+      // Fetch messages in batches of 100 until we get them all
+      while (true) {
+        const options = { limit: 100 };
+        if (lastMessageId) {
+          options.before = lastMessageId;
+        }
+        
+        const messages = await channel.messages.fetch(options);
+        
+        if (messages.size === 0) break;
+        
+        totalMessages += messages.size;
+        lastMessageId = messages.last().id;
+        
+        // If we got less than 100, we're done
+        if (messages.size < 100) break;
+      }
+      
+      console.log(this.COLORS.CYAN + `[LOGGER] Found ${totalMessages} existing messages` + this.COLORS.RESET);
+      
+      // If over limit, trigger cleanup immediately
+      if (totalMessages > this.maxLogMessages) {
+        const excess = totalMessages - this.maxLogMessages;
+        console.log(this.COLORS.YELLOW + `[LOGGER] Excess messages detected: ${excess}. Triggering cleanup...` + this.COLORS.RESET);
+        
+        // Trigger cleanup after 10 seconds
+        setTimeout(() => {
+          this.cleanupOldLogs();
+        }, 10000);
+      }
+      
+    } catch (error) {
+      console.error(this.COLORS.RED + `[LOGGER] Failed to count existing messages: ${error.message}` + this.COLORS.RESET);
+    }
   }
 
   /**
