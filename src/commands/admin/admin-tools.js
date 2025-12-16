@@ -9,7 +9,7 @@ import db from '../../services/database.js';
 import sheetsService from '../../services/sheets.js';
 import logger from '../../utils/logger.js';
 import config from '../../utils/config.js';
-import memoryMonitor from '../../utils/memoryMonitor.js';
+import performanceMonitor from '../../utils/performanceMonitor.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -34,11 +34,7 @@ export default {
     )
     .addSubcommand(sub =>
       sub.setName('memory-status')
-        .setDescription('View memory and CPU usage')
-    )
-    .addSubcommand(sub =>
-      sub.setName('system-stats')
-        .setDescription('View comprehensive system statistics')
+        .setDescription('View memory and performance status')
     )
     .addSubcommand(sub =>
       sub.setName('force-gc')
@@ -58,8 +54,6 @@ export default {
         await handleLogCleanup(interaction);
       } else if (subcommand === 'memory-status') {
         await handleMemoryStatus(interaction);
-      } else if (subcommand === 'system-stats') {
-        await handleSystemStats(interaction);
       } else if (subcommand === 'force-gc') {
         await handleForceGC(interaction);
       }
@@ -160,155 +154,182 @@ async function handleLogCleanup(interaction) {
 }
 
 // ============================================================================
-// MEMORY STATUS HANDLER
+// PERFORMANCE HANDLERS
 // ============================================================================
+
+async function handlePerformance(interaction) {
+  await interaction.deferReply({ ephemeral: config.ephemeral.admin });
+  
+  try {
+    const report = performanceMonitor.generateReport();
+    const memStats = report.memory;
+    const leak = report.leak;
+    
+    const embed = new EmbedBuilder()
+      .setColor('#3B82F6')
+      .setTitle('📊 Performance Report')
+      .setDescription('Comprehensive system performance metrics')
+      .addFields(
+        { 
+          name: '💾 Memory Usage', 
+          value: `${memStats.current.heapUsed}MB / ${memStats.current.heapTotal}MB (${memStats.current.heapPercent}%)\nRSS: ${memStats.current.rss}MB`,
+          inline: false 
+        },
+        { 
+          name: '📈 Memory Stats', 
+          value: `Peak: ${memStats.stats.peak}MB\nLowest: ${memStats.stats.lowest}MB\nAverage: ${memStats.stats.average}MB`,
+          inline: true 
+        },
+        { 
+          name: '🔧 System', 
+          value: `GC Triggers: ${memStats.stats.gcTriggers}\nWarnings: ${memStats.stats.warnings}\nCriticals: ${memStats.stats.criticals}`,
+          inline: true 
+        },
+        {
+          name: '🔍 Memory Leak Detection',
+          value: leak.detected ? `⚠️ ${leak.message}` : `✅ ${leak.message}`,
+          inline: false
+        }
+      );
+    
+    // Add top commands if any
+    if (report.commands.length > 0) {
+      const commandsText = report.commands.map(cmd => 
+        `**/${cmd.command}**: ${cmd.count} uses, avg ${cmd.avgDuration}ms`
+      ).join('\n');
+      embed.addFields({ name: '⚡ Top Commands', value: commandsText, inline: false });
+    }
+    
+    // Add slowest queries if any
+    if (report.queries.length > 0) {
+      const queriesText = report.queries.slice(0, 3).map(q => 
+        `**${q.operation}**: avg ${q.avgDuration}ms`
+      ).join('\n');
+      embed.addFields({ name: '🐌 Slowest Queries', value: queriesText, inline: false });
+    }
+    
+    embed.setFooter({ text: `Uptime: ${memStats.stats.uptime}` });
+    embed.setTimestamp();
+    
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    logger.error(`Performance report error: ${error.message}`);
+    await interaction.editReply({ content: '❌ Failed to generate performance report.' });
+  }
+}
 
 async function handleMemoryStatus(interaction) {
   await interaction.deferReply({ ephemeral: config.ephemeral.admin });
   
   try {
-    const stats = memoryMonitor.getStats();
-    const leak = memoryMonitor.detectMemoryLeak();
+    const stats = performanceMonitor.getStats();
+    
+    if (stats.error) {
+      return await interaction.editReply({ 
+        content: '❌ Performance monitor not ready yet. Please wait a moment.' 
+      });
+    }
+    
+    const healthColor = stats.health.score >= 70 ? '#10B981' : 
+                        stats.health.score >= 50 ? '#F59E0B' : '#EF4444';
     
     const embed = new EmbedBuilder()
-      .setColor('#3B82F6')
-      .setTitle('💾 Memory Status')
-      .setDescription('Current memory and CPU usage')
+      .setColor(healthColor)
+      .setTitle(`${getHealthIcon(stats.health.score)} Performance Status`)
+      .setDescription(`**Health:** ${stats.health.status} (${stats.health.score}/100)`)
       .addFields(
         { 
-          name: '🔸 Heap Memory', 
-          value: `${stats.current.heapUsed}MB / ${stats.current.heapTotal}MB (${stats.current.heapPercent}%)`, 
-          inline: false 
-        },
-        { 
-          name: '🔸 RSS Memory', 
-          value: `${stats.current.rss}MB`, 
+          name: '💾 Current Memory', 
+          value: `**Heap:** ${stats.current.heapUsed}MB / ${stats.current.heapTotal}MB (${stats.current.heapPercent}%)\n**RSS:** ${stats.current.rss}MB\n**External:** ${stats.current.external}MB`, 
           inline: true 
         },
         { 
-          name: '🔸 Peak Memory', 
-          value: `${stats.stats.peakMemory}MB`, 
+          name: '📊 Statistics', 
+          value: `**Peak:** ${stats.peaks.memory}MB\n**Average:** ${stats.averages.memory}MB\n**Trend:** ${getTrendIcon(stats.trends.memory)} ${stats.trends.memory}`, 
           inline: true 
         },
         { 
-          name: '🔸 Average Memory', 
-          value: `${stats.stats.avgMemory}MB`, 
+          name: '⚡ CPU', 
+          value: `**Current:** ${stats.currentCPU.percent}%\n**Peak:** ${stats.peaks.cpu}%\n**Average:** ${stats.averages.cpu}%`, 
           inline: true 
         },
         { 
-          name: '⚙️ GC Triggers', 
-          value: stats.stats.gcTriggers.toString(), 
+          name: '⚙️ Garbage Collection', 
+          value: `**Triggers:** ${stats.stats.gcTriggers}\n**Available:** ${global.gc ? '✅ Yes' : '❌ No'}`, 
           inline: true 
         },
         { 
-          name: '⚠️ Warnings', 
-          value: stats.stats.warnings.toString(), 
+          name: '⚠️ Alerts', 
+          value: `**Warnings:** ${stats.stats.warnings}\n**Criticals:** ${stats.stats.criticals}`, 
           inline: true 
         },
         { 
-          name: '🚨 Criticals', 
-          value: stats.stats.criticals.toString(), 
+          name: '📈 Thresholds', 
+          value: `**Warning:** ${stats.thresholds.memory.warning}MB\n**Critical:** ${stats.thresholds.memory.critical}MB\n**GC:** ${stats.thresholds.memory.gc}MB`, 
           inline: true 
-        },
-        {
-          name: '🔍 Leak Detection',
-          value: leak.detected ? `⚠️ ${leak.message}` : `✅ ${leak.message}`,
-          inline: false
-        },
-        {
-          name: '📊 Thresholds',
-          value: `Warning: ${stats.thresholds.warning}MB | Critical: ${stats.thresholds.critical}MB | GC: ${stats.thresholds.gc}MB`,
-          inline: false
         }
-      )
-      .setFooter({ text: `Uptime: ${stats.stats.uptime}` })
-      .setTimestamp();
+      );
+    
+    // Add issues
+    if (stats.health.issues.length > 0) {
+      embed.addFields({
+        name: '🚨 Active Issues',
+        value: stats.health.issues.map(issue => `• ${issue}`).join('\n'),
+        inline: false
+      });
+    }
+    
+    // Add alerts
+    if (stats.alerts.length > 0) {
+      const alertsText = stats.alerts.slice(0, 3).map(alert => {
+        const icon = alert.severity === 'critical' ? '🔴' : '🟡';
+        return `${icon} ${alert.message}`;
+      }).join('\n');
+      
+      embed.addFields({
+        name: '📢 Recent Alerts',
+        value: alertsText,
+        inline: false
+      });
+    }
+    
+    // Add recommendations
+    if (stats.recommendations.length > 0) {
+      const recsText = stats.recommendations.slice(0, 2).map(rec => {
+        return `• **${rec.title}:** ${rec.description}`;
+      }).join('\n');
+      
+      embed.addFields({
+        name: '💡 Recommendations',
+        value: recsText,
+        inline: false
+      });
+    }
+    
+    embed.setFooter({ 
+      text: `Uptime: ${stats.stats.uptime} | Data Points: ${stats.stats.metricsCollected}` 
+    }).setTimestamp();
     
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error(`Memory status error: ${error.message}`);
+    logger.logError('Admin', 'Memory status error', error);
     await interaction.editReply({ content: '❌ Failed to get memory status.' });
   }
 }
 
-// ============================================================================
-// SYSTEM STATS HANDLER
-// ============================================================================
-
-async function handleSystemStats(interaction) {
-  await interaction.deferReply({ ephemeral: config.ephemeral.admin });
-  
-  try {
-    const memStats = memoryMonitor.getStats();
-    const dbStats = await db.getStats();
-    const uptime = process.uptime();
-    const uptimeStr = formatUptime(uptime * 1000);
-    
-    const embed = new EmbedBuilder()
-      .setColor('#10B981')
-      .setTitle('📊 System Statistics')
-      .setDescription('Comprehensive bot statistics')
-      .addFields(
-        { 
-          name: '🤖 Bot Info', 
-          value: [
-            `Uptime: ${uptimeStr}`,
-            `Node: ${process.version}`,
-            `Platform: ${process.platform}`
-          ].join('\n'),
-          inline: false 
-        },
-        { 
-          name: '💾 Memory', 
-          value: [
-            `Current: ${memStats.current.heapUsed}MB / ${memStats.current.heapTotal}MB`,
-            `Peak: ${memStats.stats.peakMemory}MB`,
-            `Average: ${memStats.stats.avgMemory}MB`
-          ].join('\n'),
-          inline: true 
-        },
-        { 
-          name: '📝 Logger', 
-          value: [
-            `Sent: ${logger.stats.messagesSent}`,
-            `Deleted: ${logger.stats.messagesDeleted}`,
-            `Errors: ${logger.stats.errors}`
-          ].join('\n'),
-          inline: true 
-        },
-        { 
-          name: '👥 Users', 
-          value: [
-            `Total: ${dbStats.totalUsers}`,
-            `Commands: ${logger.stats.commands}`,
-            `Interactions: ${logger.stats.interactions}`
-          ].join('\n'),
-          inline: true 
-        },
-        { 
-          name: '🎮 Characters', 
-          value: [
-            `Registrations: ${logger.stats.registrations}`,
-            `Edits: ${logger.stats.edits}`,
-            `Deletes: ${logger.stats.deletes}`
-          ].join('\n'),
-          inline: true 
-        }
-      )
-      .setFooter({ text: `Requested by ${interaction.user.username}` })
-      .setTimestamp();
-    
-    await interaction.editReply({ embeds: [embed] });
-  } catch (error) {
-    logger.error(`System stats error: ${error.message}`);
-    await interaction.editReply({ content: '❌ Failed to get system stats.' });
-  }
+function getHealthIcon(score) {
+  if (score >= 90) return '🟢';
+  if (score >= 70) return '🟡';
+  if (score >= 50) return '🟠';
+  return '🔴';
 }
 
-// ============================================================================
-// FORCE GC HANDLER
-// ============================================================================
-
+function getTrendIcon(trend) {
+  if (trend === 'increasing') return '📈';
+  if (trend === 'decreasing') return '📉';
+  return '➡️';
+}
+    
 async function handleForceGC(interaction) {
   await interaction.deferReply({ ephemeral: config.ephemeral.admin });
   
@@ -327,29 +348,26 @@ async function handleForceGC(interaction) {
       return await interaction.editReply({ embeds: [embed] });
     }
     
-    const before = process.memoryUsage();
-    const beforeMB = Math.round(before.heapUsed / 1024 / 1024);
+    const result = performanceMonitor.triggerGarbageCollection('admin-manual');
     
-    memoryMonitor.triggerGarbageCollection('admin-manual');
-    
-    const after = process.memoryUsage();
-    const afterMB = Math.round(after.heapUsed / 1024 / 1024);
-    const freed = beforeMB - afterMB;
+    if (!result) {
+      return await interaction.editReply({ content: '❌ GC failed.' });
+    }
     
     const embed = new EmbedBuilder()
       .setColor('#10B981')
       .setTitle('♻️ Garbage Collection Complete')
       .setDescription('Manual garbage collection has been executed.')
       .addFields(
-        { name: 'Before', value: `${beforeMB}MB`, inline: true },
-        { name: 'After', value: `${afterMB}MB`, inline: true },
-        { name: 'Freed', value: `${freed}MB`, inline: true }
+        { name: 'Before', value: `${result.before}MB`, inline: true },
+        { name: 'After', value: `${result.after}MB`, inline: true },
+        { name: 'Freed', value: `${result.freed}MB`, inline: true }
       )
       .setFooter({ text: `Executed by ${interaction.user.username}` })
       .setTimestamp();
     
     await interaction.editReply({ embeds: [embed] });
-    await logger.logInfo(`Admin ${interaction.user.username} forced garbage collection`, `Freed ${freed}MB`);
+    await logger.logInfo(`Admin ${interaction.user.username} forced garbage collection`, `Freed ${result.freed}MB`);
   } catch (error) {
     logger.error(`Force GC error: ${error.message}`);
     await interaction.editReply({ content: '❌ Failed to force GC.' });
