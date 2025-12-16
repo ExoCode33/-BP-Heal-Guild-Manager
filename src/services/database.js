@@ -11,6 +11,13 @@ class Database {
   }
 
   /**
+   * Initialize database (public method called by index.js)
+   */
+  async initialize() {
+    await this.initializeDatabase();
+  }
+
+  /**
    * Extract operation and table from SQL query for better logging
    */
   parseQuery(text) {
@@ -606,6 +613,18 @@ class Database {
     } catch (error) {
       logger.error(`Error getting all bot settings: ${error.message}`);
       return {};
+    }
+  }
+
+  /**
+   * Close database connection (for graceful shutdown)
+   */
+  async close() {
+    try {
+      await this.pool.end();
+      console.log('[DATABASE] Connection pool closed');
+    } catch (error) {
+      console.error('[DATABASE] Error closing pool:', error);
     }
   }
 }
