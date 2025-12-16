@@ -670,9 +670,9 @@ async function showBattleImagineSelection(interaction, userId) {
   // Build tier options with custom emoji
   const tierOptions = [
     {
-      label: 'Skip / I don\\'t own this',
+      label: 'Skip / I don\'t own this',
       value: 'skip',
-      description: 'I don\\'t have this Battle Imagine',
+      description: 'I don\'t have this Battle Imagine',
       emoji: '⏭️'
     }
   ];
