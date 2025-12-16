@@ -64,6 +64,11 @@ export async function handleButtonInteraction(interaction) {
       return await registrationHandler.handleRegisterMain(interaction, targetUserId);
     }
     
+    // ✅ NEW: UID Retry button
+    if (customId.startsWith('retry_ign_uid_')) {
+      return await registrationHandler.handleRetryIGNUID(interaction, targetUserId);
+    }
+    
     // ======== BACK NAVIGATION ========
     if (customId.startsWith('back_to_profile_')) {
       const characters = await db.getAllCharactersWithSubclasses(targetUserId);
@@ -99,6 +104,11 @@ export async function handleButtonInteraction(interaction) {
     
     if (customId.startsWith('back_to_ability_score_')) {
       return await registrationHandler.handleBackToAbilityScore(interaction, targetUserId);
+    }
+    
+    // ✅ NEW: Back to Battle Imagine button
+    if (customId.startsWith('back_to_battle_imagine_')) {
+      return await registrationHandler.handleBackToBattleImagine(interaction, targetUserId);
     }
     
     if (customId.startsWith('back_to_edit_choice_')) {
@@ -238,6 +248,11 @@ export async function handleSelectMenuInteraction(interaction) {
       return await registrationHandler.handleAbilityScoreSelect(interaction, targetUserId);
     }
     
+    // ✅ NEW: Battle Imagine selection
+    if (customId.startsWith('select_battle_imagine_')) {
+      return await registrationHandler.handleBattleImagineSelect(interaction, targetUserId);
+    }
+    
     if (customId.startsWith('select_guild_')) {
       return await registrationHandler.handleGuildSelect(interaction, targetUserId);
     }
@@ -333,7 +348,6 @@ export async function handleSelectMenuInteraction(interaction) {
     }
     
     // ======== LEGACY SELECT HANDLERS (integrated inline) ========
-    // These handle any remaining select_ prefixed interactions
     if (customId.startsWith('select_main_') || customId.startsWith('select_alt_')) {
       const selectedValue = interaction.values[0];
       const characters = await db.getAllCharactersWithSubclasses(userId);
@@ -419,7 +433,6 @@ export async function handleModalSubmit(interaction) {
     }
     
     // ======== LEGACY MODAL HANDLERS (integrated inline) ========
-    // These handle any remaining edit_ or delete_ prefixed modals
     if (customId.startsWith('edit_main_') || 
         customId.startsWith('edit_alt_') || 
         customId.startsWith('edit_subclass_') ||
