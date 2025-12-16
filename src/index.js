@@ -56,7 +56,7 @@ client.once(Events.ClientReady, async () => {
     console.log('[DATABASE] ✅ Initialized successfully');
   } catch (error) {
     console.error('[DATABASE] ❌ Initialization failed:', error);
-    await logger.logError('Database', 'Database initialization failed', error);
+    logger.error('Database initialization failed', error);
   }
   
   // Initialize logger with Discord client
@@ -98,7 +98,13 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction);
       } catch (error) {
         console.error(`[COMMAND ERROR] ${interaction.commandName}:`, error);
-        await logger.logError('Command', `Command error: ${interaction.commandName}`, error);
+        
+        // Try to log to Discord if logger is ready
+        try {
+          await logger.logError('Command', `Command error: ${interaction.commandName}`, error);
+        } catch (logError) {
+          // Ignore logger errors
+        }
         
         const errorMessage = '❌ Error occurred.';
         if (interaction.replied || interaction.deferred) {
@@ -126,7 +132,13 @@ client.on(Events.InteractionCreate, async interaction => {
     
   } catch (error) {
     console.error('[INTERACTION ERROR]:', error);
-    await logger.logError('Interaction', 'Interaction error', error);
+    
+    // Try to log to Discord if logger is ready
+    try {
+      await logger.logError('Interaction', 'Interaction error', error);
+    } catch (logError) {
+      // Ignore logger errors
+    }
     
     try {
       if (!interaction.replied && !interaction.deferred) {
@@ -138,25 +150,34 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-// Error handling
-client.on(Events.Error, async error => {
+// Discord client error handling
+client.on(Events.Error, error => {
   console.error('[CLIENT ERROR]:', error);
-  await logger.logError('Discord Client', 'Discord client error', error);
+  
+  // Try to log to Discord if logger is ready (async, don't await)
+  if (logger.isReady) {
+    logger.logError('Discord Client', 'Discord client error', error).catch(() => {});
+  }
 });
 
-client.on(Events.Warn, async warning => {
+client.on(Events.Warn, warning => {
   console.warn('[CLIENT WARNING]:', warning);
-  await logger.logWarning('Discord Client', warning);
+  
+  // Try to log to Discord if logger is ready (async, don't await)
+  if (logger.isReady) {
+    logger.logWarning('Discord Client', warning).catch(() => {});
+  }
 });
 
-process.on('unhandledRejection', async error => {
+// EARLY ERROR HANDLERS (before bot is ready) - Use console only
+process.on('unhandledRejection', error => {
   console.error('[UNHANDLED REJECTION]:', error);
-  await logger.logError('Unhandled Rejection', 'Unhandled promise rejection', error);
+  // Don't try to log to Discord - it might cause cascading errors
 });
 
-process.on('uncaughtException', async error => {
+process.on('uncaughtException', error => {
   console.error('[UNCAUGHT EXCEPTION]:', error);
-  await logger.logError('Uncaught Exception', 'Uncaught exception', error);
+  // Don't try to log to Discord - it might cause cascading errors
   process.exit(1);
 });
 
@@ -169,7 +190,14 @@ process.on('SIGINT', async () => {
     clearInterval(maintenanceInterval);
   }
   
-  await logger.logShutdown('SIGINT received');
+  try {
+    if (logger.isReady) {
+      await logger.logShutdown('SIGINT received');
+    }
+  } catch (error) {
+    console.error('[SHUTDOWN] Failed to log shutdown:', error);
+  }
+  
   client.destroy();
   process.exit(0);
 });
@@ -182,7 +210,14 @@ process.on('SIGTERM', async () => {
     clearInterval(maintenanceInterval);
   }
   
-  await logger.logShutdown('SIGTERM received');
+  try {
+    if (logger.isReady) {
+      await logger.logShutdown('SIGTERM received');
+    }
+  } catch (error) {
+    console.error('[SHUTDOWN] Failed to log shutdown:', error);
+  }
+  
   client.destroy();
   process.exit(0);
 });
@@ -200,9 +235,8 @@ const healthServer = http.createServer((req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-healthServer.listen(PORT, async () => {
+healthServer.listen(PORT, () => {
   console.log(`[HEALTH] Server listening on port ${PORT}`);
-  // Don't log to Discord here as logger isn't ready yet
 });
 
 // Login
