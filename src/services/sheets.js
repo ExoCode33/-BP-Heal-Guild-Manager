@@ -356,6 +356,7 @@ class GoogleSheetsService {
       }
       console.log('✅ [SHEETS] "Member List" tab found');
       
+      // ✅ UPDATED: Add Battle Imagines column header
       const headers = [
         'Discord Name',
         'IGN',
@@ -366,6 +367,7 @@ class GoogleSheetsService {
         'Subclass',
         'Role',
         'Ability Score',
+        'Battle Imagines', // ✅ NEW COLUMN
         'Guild',
         'Timezone',
         'Registered'
@@ -404,6 +406,12 @@ class GoogleSheetsService {
           // ✅ UPDATED: Format timezone - we'll add the time via formula later
           const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
           
+          // ✅ NEW: Get Battle Imagines for main character
+          const mainBattleImagines = await db.getBattleImagines(mainChar.id);
+          const mainBattleImaginesText = mainBattleImagines
+            .map(img => `${img.imagine_name} ${img.tier}`)
+            .join(', ');
+          
           rows.push([
             discordName,
             mainChar.ign,
@@ -413,7 +421,8 @@ class GoogleSheetsService {
             mainChar.class,
             mainChar.subclass,
             mainChar.role,
-            this.formatAbilityScore(mainChar.ability_score), // ✅ Format as range
+            this.formatAbilityScore(mainChar.ability_score),
+            mainBattleImaginesText, // ✅ NEW
             mainChar.guild || '',
             '', // Empty - will be filled by formula
             `'${this.formatDate(mainChar.created_at)}`
@@ -422,7 +431,7 @@ class GoogleSheetsService {
           rowMetadata.push({
             character: mainChar,
             discordName: discordName,
-            timezone: userTimezone, // Keep full timezone for formula
+            timezone: userTimezone,
             registeredDate: this.formatDate(mainChar.created_at),
             isSubclass: false,
             isMain: true,
@@ -440,7 +449,8 @@ class GoogleSheetsService {
               subclass.class,
               subclass.subclass,
               subclass.role,
-              this.formatAbilityScore(subclass.ability_score), // ✅ Format as range
+              this.formatAbilityScore(subclass.ability_score),
+              '', // ✅ Subclasses don't have Battle Imagines
               mainChar.guild || '',
               '', // Empty - will be filled by formula
               `'${this.formatDate(mainChar.created_at)}`
@@ -461,9 +471,15 @@ class GoogleSheetsService {
           });
         }
 
-        alts.forEach(alt => {
+        for (const alt of alts) {
           // Use alt's discord_name if available (fallback to already-set discordName from main)
           const altDiscordName = alt.discord_name || discordName;
+          
+          // ✅ NEW: Get Battle Imagines for alt
+          const altBattleImagines = await db.getBattleImagines(alt.id);
+          const altBattleImaginesText = altBattleImagines
+            .map(img => `${img.imagine_name} ${img.tier}`)
+            .join(', ');
           
           rows.push([
             altDiscordName,
@@ -474,7 +490,8 @@ class GoogleSheetsService {
             alt.class,
             alt.subclass,
             alt.role,
-            this.formatAbilityScore(alt.ability_score), // ✅ Format as range
+            this.formatAbilityScore(alt.ability_score),
+            altBattleImaginesText, // ✅ NEW
             alt.guild || '',
             '', // Empty - will be filled by formula
             `'${this.formatDate(alt.created_at)}`
@@ -506,7 +523,8 @@ class GoogleSheetsService {
               subclass.class,
               subclass.subclass,
               subclass.role,
-              this.formatAbilityScore(subclass.ability_score), // ✅ Format as range
+              this.formatAbilityScore(subclass.ability_score),
+              '', // ✅ Subclasses don't have Battle Imagines
               alt.guild || '',
               '', // Empty - will be filled by formula
               `'${this.formatDate(alt.created_at)}`
@@ -525,7 +543,7 @@ class GoogleSheetsService {
               isFirstOfUser: false
             });
           });
-        });
+        }
       }
 
       // ✅ UPDATED: Clear ALL data AND formatting before writing
@@ -593,7 +611,7 @@ class GoogleSheetsService {
                   maxIterations: 50,
                   convergenceThreshold: 0.05
                 },
-                autoRecalc: 'ON_CHANGE' // ✅ Changed from MINUTE to ON_CHANGE for immediate recalc
+                autoRecalc: 'ON_CHANGE'
               },
               fields: 'iterativeCalculationSettings,autoRecalc'
             }
@@ -619,7 +637,6 @@ class GoogleSheetsService {
 
       const sheetId = sheet.properties.sheetId;
 
-      // Clear all formatting from the entire sheet (except headers which we'll reformat)
       await this.sheets.spreadsheets.batchUpdate({
         spreadsheetId: this.spreadsheetId,
         requestBody: {
@@ -697,20 +714,17 @@ class GoogleSheetsService {
           });
         }
 
-        // ✅ FIXED: Calculate correctly - spreadsheet is in MST timezone
         if (meta.timezone && meta.timezone !== '') {
           const offset = this.getTimezoneOffset(meta.timezone);
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
           
-          // Spreadsheet is in MST (UTC-7), so we calculate the difference
-          // between user's timezone and MST
-          const spreadsheetOffset = -7; // Spreadsheet is in MST (Mountain Time)
+          const spreadsheetOffset = -7;
           const adjustedOffset = offset - spreadsheetOffset;
           
           const formula = `=CONCATENATE("${abbrev} ", TEXT(NOW() + (${adjustedOffset}/24), "h:mm AM/PM"))`;
           
           valueUpdates.push({
-            range: `K${rowIndex}`,
+            range: `L${rowIndex}`,
             values: [[formula]]
           });
         }
@@ -829,7 +843,9 @@ class GoogleSheetsService {
         }
       });
       
-      const columnWidths = [160, 150, 100, 95, 50, 180, 145, 85, 125, 105, 170, 105];
+      // ✅ UPDATED: Add Battle Imagines column width
+      const columnWidths = [160, 150, 100, 95, 50, 180, 145, 85, 125, 200, 105, 170, 105];
+      //                                                                  ^^^ NEW: 200px for Battle Imagines
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -954,7 +970,6 @@ class GoogleSheetsService {
           }
         });
 
-        // ✅ NEW: UID column formatting (column 2)
         const uidColor = meta.isSubclass 
           ? { red: 0.50, green: 0.52, blue: 0.55 }
           : { red: 0.10, green: 0.11, blue: 0.13 };
@@ -990,7 +1005,6 @@ class GoogleSheetsService {
           }
         });
 
-        // Type badges (Main/Alt/Subclass) - now column 3
         if (meta.isMain) {
           this.addPillBadge(requests, sheetId, rowIndex, 3, { red: 0.26, green: 0.59, blue: 0.98 });
         } else if (meta.isAlt) {
@@ -999,20 +1013,15 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 3, 'Subclass', rowBg);
         }
         
-        // Icon column (empty) - now column 4
         this.addCleanTextCell(requests, sheetId, rowIndex, 4, '', rowBg);
         
-        // Class - now column 5
         const classColor = this.getClassColor(member.class);
         this.addColoredTextCell(requests, sheetId, rowIndex, 5, classColor, rowBg);
-        // Subclass - now column 6
         this.addColoredTextCell(requests, sheetId, rowIndex, 6, classColor, rowBg);
         
-        // Role - now column 7
         const roleColor = this.getRoleColor(member.role);
         this.addPillBadge(requests, sheetId, rowIndex, 7, roleColor);
         
-        // Ability Score - now column 8
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
           this.addColoredTextCell(requests, sheetId, rowIndex, 8, abilityColor, rowBg, true);
@@ -1020,12 +1029,12 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 8, '', rowBg);
         }
         
-        // Guild - now column 9
+        // ✅ NEW: Battle Imagines column (index 9)
         this.addBoldTextCell(requests, sheetId, rowIndex, 9, rowBg);
-        // Timezone - now column 10
-        this.addTimezoneCell(requests, sheetId, rowIndex, 10, meta.timezone, rowBg);
-        // Registered - now column 11
-        this.addBoldTextCell(requests, sheetId, rowIndex, 11, rowBg);
+        
+        this.addBoldTextCell(requests, sheetId, rowIndex, 10, rowBg);
+        this.addTimezoneCell(requests, sheetId, rowIndex, 11, meta.timezone, rowBg);
+        this.addBoldTextCell(requests, sheetId, rowIndex, 12, rowBg);
 
         const isLastOfGroup = (i === rowMetadata.length - 1) || 
                               (i + 1 < rowMetadata.length && rowMetadata[i + 1].isFirstOfUser);
@@ -1037,7 +1046,7 @@ class GoogleSheetsService {
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: 0,
-              endColumnIndex: 12
+              endColumnIndex: 13 // ✅ UPDATED from 12 to 13
             },
             top: {
               style: 'SOLID',
@@ -1080,7 +1089,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 12
+                endColumnIndex: 13 // ✅ UPDATED from 12 to 13
               },
               bottom: {
                 style: 'SOLID_THICK',
@@ -1267,11 +1276,11 @@ class GoogleSheetsService {
               fontFamily: 'Google Sans',
               foregroundColor: { red: 0.38, green: 0.42, blue: 0.45 }
             },
-            horizontalAlignment: 'CENTER', // ✅ Changed from LEFT to CENTER
+            horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE',
             padding: {
               left: 12,
-              right: 12 // ✅ Added right padding for balance
+              right: 12
             }
           }
         },
@@ -1329,7 +1338,6 @@ class GoogleSheetsService {
     }
   }
 
-  // Alias method for compatibility
   async syncAllCharacters(allCharactersWithSubclasses) {
     return await this.fullSync(allCharactersWithSubclasses);
   }
