@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readdirSync } from 'fs';
 import config from './utils/config.js';
+import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,7 +20,7 @@ async function loadCommands() {
       const command = await import(`file://${filePath}`);
       if (command.default && 'data' in command.default) {
         commands.push(command.default.data.toJSON());
-        console.log(`Loaded: ${command.default.data.name}`);
+        logger.log(`Loaded: ${command.default.data.name}`); // ✅ Fixed: use parentheses
       }
     }
   }
@@ -28,16 +29,12 @@ async function loadCommands() {
 async function deploy() {
   try {
     await loadCommands();
-    console.log(`Deploying ${commands.length} commands...`);
+    logger.log(`Deploying ${commands.length} commands...`); // ✅ Fixed: use parentheses
     const rest = new REST().setToken(config.discord.token);
-    const data = await rest.put(
-      Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId), 
-      { body: commands }
-    );
-    console.log(`✅ Deployed ${data.length} commands!`);
+    const data = await rest.put(Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId), { body: commands });
+    logger.success(`Deployed ${data.length} commands!`); // ✅ Fixed: use parentheses
   } catch (error) {
-    console.error('❌ Deployment failed:', error.message);
-    console.error(error);
+    logger.error('Deployment failed', error); // ✅ Fixed: use parentheses and proper arguments
     process.exit(1);
   }
 }
