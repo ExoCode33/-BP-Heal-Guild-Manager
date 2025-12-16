@@ -121,7 +121,7 @@ class Logger {
   /**
    * Clean up old Discord log messages (keep last N messages)
    */
-  async cleanupOldLogs() {
+  async cleanupOldLogs(forcedCleanup = false) {
     if (!this.client || !this.logChannelId) return;
     
     try {
@@ -130,14 +130,15 @@ class Logger {
       
       const now = Date.now();
       
-      // Don't clean if we cleaned recently (within last 10 minutes)
-      if (now - this.lastCleanupTime < 600000) {
+      // Don't clean if we cleaned recently (within last 10 minutes) - UNLESS forced
+      if (!forcedCleanup && now - this.lastCleanupTime < 600000) {
+        console.log(this.COLORS.YELLOW + `[LOGGER CLEANUP] Skipped - cooldown active (${Math.round((600000 - (now - this.lastCleanupTime)) / 1000)}s remaining)` + this.COLORS.RESET);
         return;
       }
       
       this.lastCleanupTime = now;
       
-      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Starting cleanup...` + this.COLORS.RESET);
+      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Starting cleanup${forcedCleanup ? ' (FORCED)' : ''}...` + this.COLORS.RESET);
       
       // ✅ FIX: Fetch ALL messages, not just 100
       let allMessages = [];
@@ -236,18 +237,8 @@ class Logger {
    * Manual cleanup trigger (for admin command)
    */
   async manualCleanup() {
-    console.log(this.COLORS.CYAN + '[LOGGER] Manual cleanup triggered' + this.COLORS.RESET);
-    
-    // ✅ FIX: Force bypass cooldown for manual cleanup
-    const previousCleanupTime = this.lastCleanupTime;
-    this.lastCleanupTime = 0; // Reset to force cleanup
-    
-    await this.cleanupOldLogs();
-    
-    // If no cleanup happened, restore the previous time
-    if (this.lastCleanupTime === 0) {
-      this.lastCleanupTime = previousCleanupTime;
-    }
+    console.log(this.COLORS.CYAN + '[LOGGER] Manual cleanup triggered (bypassing cooldown)' + this.COLORS.RESET);
+    await this.cleanupOldLogs(true); // Force cleanup, bypass cooldown
   }
 
   // ============================================================================
