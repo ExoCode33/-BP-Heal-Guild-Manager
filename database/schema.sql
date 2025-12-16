@@ -22,6 +22,17 @@ CREATE TABLE IF NOT EXISTS user_timezones (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS battle_imagines (
+  id SERIAL PRIMARY KEY,
+  character_id INTEGER NOT NULL,
+  imagine_name VARCHAR(100) NOT NULL,
+  tier VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+  UNIQUE(character_id, imagine_name)
+);
+
 CREATE INDEX IF NOT EXISTS idx_user_id ON characters(user_id);
 CREATE INDEX IF NOT EXISTS idx_character_type ON characters(character_type);
 CREATE INDEX IF NOT EXISTS idx_parent_character_id ON characters(parent_character_id);
+CREATE INDEX IF NOT EXISTS idx_battle_imagines_character ON battle_imagines(character_id);
