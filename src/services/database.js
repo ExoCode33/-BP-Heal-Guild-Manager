@@ -91,6 +91,19 @@ class Database {
         )
       `);
 
+      // ✅ NEW: Create battle_imagines table
+      await this.query(`
+        CREATE TABLE IF NOT EXISTS battle_imagines (
+          id SERIAL PRIMARY KEY,
+          character_id INTEGER NOT NULL,
+          imagine_name VARCHAR(100) NOT NULL,
+          tier VARCHAR(10) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+          UNIQUE(character_id, imagine_name)
+        )
+      `);
+
       // Create bot_settings table
       await this.query(`
         CREATE TABLE IF NOT EXISTS bot_settings (
@@ -122,6 +135,11 @@ class Database {
         CREATE INDEX IF NOT EXISTS idx_bot_settings_key ON bot_settings(setting_key)
       `);
 
+      // ✅ NEW: Create battle_imagines indexes
+      await this.query(`
+        CREATE INDEX IF NOT EXISTS idx_battle_imagines_character ON battle_imagines(character_id)
+      `);
+
       // Insert default bot settings if they don't exist
       const defaultSettings = [
         ['log_channel_id', '', 'string', 'Discord channel ID for logging'],
@@ -145,6 +163,80 @@ class Database {
       logger.success('Database tables initialized successfully');
     } catch (error) {
       logger.error(`Database initialization error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // BATTLE IMAGINE OPERATIONS
+  // ============================================================================
+
+  /**
+   * Add a battle imagine to a character
+   */
+  async addBattleImagine(characterId, imagineName, tier) {
+    try {
+      const result = await this.query(
+        `INSERT INTO battle_imagines (character_id, imagine_name, tier)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (character_id, imagine_name)
+         DO UPDATE SET tier = $3
+         RETURNING *`,
+        [characterId, imagineName, tier]
+      );
+      
+      logger.success(`Battle Imagine added: ${imagineName} ${tier} to character ${characterId}`);
+      return result.rows[0];
+    } catch (error) {
+      logger.error(`Error adding battle imagine: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all battle imagines for a character
+   */
+  async getBattleImagines(characterId) {
+    try {
+      const result = await this.query(
+        `SELECT * FROM battle_imagines WHERE character_id = $1 ORDER BY created_at ASC`,
+        [characterId]
+      );
+      return result.rows;
+    } catch (error) {
+      logger.error(`Error fetching battle imagines: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a specific battle imagine
+   */
+  async deleteBattleImagine(characterId, imagineName) {
+    try {
+      await this.query(
+        `DELETE FROM battle_imagines WHERE character_id = $1 AND imagine_name = $2`,
+        [characterId, imagineName]
+      );
+      logger.success(`Battle Imagine deleted: ${imagineName} from character ${characterId}`);
+    } catch (error) {
+      logger.error(`Error deleting battle imagine: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete all battle imagines for a character
+   */
+  async deleteAllBattleImagines(characterId) {
+    try {
+      await this.query(
+        `DELETE FROM battle_imagines WHERE character_id = $1`,
+        [characterId]
+      );
+      logger.success(`All Battle Imagines deleted for character ${characterId}`);
+    } catch (error) {
+      logger.error(`Error deleting all battle imagines: ${error.message}`);
       throw error;
     }
   }
@@ -258,7 +350,6 @@ class Database {
     }
   }
 
-  // ✅ NEW: Get all users with all their characters (including subclasses)
   async getAllUsersWithCharacters() {
     try {
       const result = await this.query(
