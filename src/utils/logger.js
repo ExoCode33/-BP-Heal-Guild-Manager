@@ -142,6 +142,9 @@ class Logger {
       // ✅ FIX: Fetch ALL messages, not just 100
       let allMessages = [];
       let lastMessageId = null;
+      let fetchCount = 0;
+      
+      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetching all messages...` + this.COLORS.RESET);
       
       while (true) {
         const options = { limit: 100 };
@@ -152,14 +155,24 @@ class Logger {
         const messages = await channel.messages.fetch(options);
         if (messages.size === 0) break;
         
+        fetchCount++;
         allMessages.push(...messages.values());
         lastMessageId = messages.last().id;
         
+        console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Fetch ${fetchCount}: Got ${messages.size} messages (total: ${allMessages.length})` + this.COLORS.RESET);
+        
         // If we got less than 100, we're done
         if (messages.size < 100) break;
+        
+        // Safety: Stop after 10 fetches (1000 messages max)
+        if (fetchCount >= 10) {
+          console.log(this.COLORS.YELLOW + `[LOGGER CLEANUP] Reached max fetch limit (${allMessages.length} messages)` + this.COLORS.RESET);
+          break;
+        }
       }
       
       const messageCount = allMessages.length;
+      console.log(this.COLORS.CYAN + `[LOGGER CLEANUP] Total messages found: ${messageCount}` + this.COLORS.RESET);
       
       // If under limit, no cleanup needed
       if (messageCount <= this.maxLogMessages) {
@@ -224,8 +237,17 @@ class Logger {
    */
   async manualCleanup() {
     console.log(this.COLORS.CYAN + '[LOGGER] Manual cleanup triggered' + this.COLORS.RESET);
+    
+    // ✅ FIX: Force bypass cooldown for manual cleanup
+    const previousCleanupTime = this.lastCleanupTime;
     this.lastCleanupTime = 0; // Reset to force cleanup
+    
     await this.cleanupOldLogs();
+    
+    // If no cleanup happened, restore the previous time
+    if (this.lastCleanupTime === 0) {
+      this.lastCleanupTime = previousCleanupTime;
+    }
   }
 
   // ============================================================================
