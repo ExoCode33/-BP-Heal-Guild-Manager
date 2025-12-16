@@ -136,12 +136,8 @@ async function handleLogCleanup(interaction) {
   await interaction.deferReply({ ephemeral: config.ephemeral.admin });
   
   try {
-    const beforeStats = logger.stats;
-    
-    await logger.manualCleanup();
-    
-    const afterStats = logger.stats;
-    const deleted = afterStats.messagesDeleted - beforeStats.messagesDeleted;
+    // Run cleanup and get count
+    const deleted = await logger.manualCleanup();
     
     const embed = new EmbedBuilder()
       .setColor('#EC4899')
@@ -149,8 +145,8 @@ async function handleLogCleanup(interaction) {
       .setDescription(`Discord log cleanup has been executed.`)
       .addFields(
         { name: 'Messages Deleted', value: deleted.toString(), inline: true },
-        { name: 'Total Sent', value: afterStats.messagesSent.toString(), inline: true },
-        { name: 'Total Deleted', value: afterStats.messagesDeleted.toString(), inline: true }
+        { name: 'Total Sent', value: logger.stats.messagesSent.toString(), inline: true },
+        { name: 'Total Deleted (All Time)', value: logger.stats.messagesDeleted.toString(), inline: true }
       )
       .setFooter({ text: `Executed by ${interaction.user.username}` })
       .setTimestamp();
