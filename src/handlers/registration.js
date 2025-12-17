@@ -1038,13 +1038,33 @@ export async function handleIGNModal(interaction, userId) {
           console.log(`[REGISTRATION] ✅ Nickname synced successfully: ${ign}`);
         } else {
           console.log(`[REGISTRATION] ⚠️ Nickname sync failed: ${result.reason}`);
-          // ✅ FIXED: Don't fail registration if nickname sync fails - just log it
-          logger.logWarning('Nickname Sync', `Failed to sync nickname for ${userId}: ${result.reason}`);
+          // ✅ FIXED: Properly ping admin role when nickname sync fails
+          if (config.logging?.adminRoleId) {
+            await logger.logWithRolePing(
+              'WARNING', 
+              'Nickname Sync', 
+              `Failed to sync nickname for <@${userId}>: ${result.reason}`,
+              config.logging.adminRoleId,
+              `IGN: ${ign}\nUser ID: ${userId}`
+            );
+          } else {
+            logger.logWarning('Nickname Sync', `Failed to sync nickname for ${userId}: ${result.reason}`);
+          }
         }
       } catch (error) {
         console.error(`[REGISTRATION] ❌ Nickname sync error:`, error);
-        // ✅ FIXED: Don't fail registration if nickname sync throws error
-        logger.logError('Nickname Sync', `Nickname sync threw error for ${userId}`, error);
+        // ✅ FIXED: Properly ping admin role when nickname sync throws error
+        if (config.logging?.adminRoleId) {
+          await logger.logWithRolePing(
+            'ERROR',
+            'Nickname Sync',
+            `Nickname sync threw error for <@${userId}>: ${error.message}`,
+            config.logging.adminRoleId,
+            `IGN: ${ign}\nUser ID: ${userId}\nError: ${error.stack}`
+          );
+        } else {
+          logger.logError('Nickname Sync', `Nickname sync threw error for ${userId}`, error);
+        }
       }
     } else if (characterData.characterType === 'main') {
       console.log(`[REGISTRATION] Nickname sync is disabled in config`);
