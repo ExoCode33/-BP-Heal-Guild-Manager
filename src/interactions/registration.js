@@ -1,9 +1,12 @@
+import { MessageFlags } from 'discord.js';
 import state from '../services/state.js';
 import logger from '../services/logger.js';
 import config from '../config/index.js';
 import { isEphemeral } from '../services/ephemeral.js';
 import { REGIONS, TIMEZONE_ABBR } from '../config/game.js';
 import { CharacterRepo, TimezoneRepo, BattleImagineRepo } from '../database/repositories.js';
+
+const ephemeralFlag = { flags: MessageFlags.Ephemeral };
 import { stepEmbed, errorEmbed, profileEmbed } from '../ui/embeds.js';
 import { updateNickname } from '../services/nickname.js';
 import sheets from '../services/sheets.js';
@@ -210,7 +213,7 @@ export async function handleIGN(interaction, userId) {
   if (!validateUID(uid)) {
     const embed = errorEmbed(`**UID must contain only numbers.**\n\nYou entered: \`${uid}\``);
     const retry = ui.backButton(`retry_ign_${userId}`, '✏️ Retry');
-    return interaction.reply({ embeds: [embed], components: [retry], ephemeral: true });
+    return interaction.reply({ embeds: [embed], components: [retry], ...ephemeralFlag });
   }
 
   try {
@@ -241,13 +244,13 @@ export async function handleIGN(interaction, userId) {
     const embed = await profileEmbed(interaction.user, chars, interaction);
     const buttons = ui.profileButtons(userId, true);
 
-    const ephemeral = await isEphemeral(interaction.guildId, 'register');
-    await interaction.reply({ embeds: [embed], components: buttons, ephemeral });
+    const isEph = await isEphemeral(interaction.guildId, 'register');
+    await interaction.reply({ embeds: [embed], components: buttons, ...(isEph ? ephemeralFlag : {}) });
 
     sheets.sync(await CharacterRepo.findAll(), interaction.client);
   } catch (e) {
     logger.error('Registration', 'Failed to create character', e);
-    await interaction.reply({ embeds: [errorEmbed('Failed to save character. Please try again.')], ephemeral: true });
+    await interaction.reply({ embeds: [errorEmbed('Failed to save character. Please try again.')], ...ephemeralFlag });
   }
 }
 
@@ -281,7 +284,7 @@ async function completeSubclass(interaction, userId) {
     sheets.sync(await CharacterRepo.findAll(), interaction.client);
   } catch (e) {
     logger.error('Registration', 'Failed to create subclass', e);
-    await interaction.reply({ embeds: [errorEmbed('Failed to save subclass.')], ephemeral: true });
+    await interaction.reply({ embeds: [errorEmbed('Failed to save subclass.')], ...ephemeralFlag });
   }
 }
 
