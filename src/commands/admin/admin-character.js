@@ -8,12 +8,12 @@ import config from '../../utils/config.js';
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('admin-edit-character')
-    .setDescription('Edit a user\'s character')
-    .setDefaultMemberPermissions('8') // '8' is Administrator permission
+    .setName('admin-character')
+    .setDescription('Admin character management')
+    .setDefaultMemberPermissions('8') // Administrator permission
     .addUserOption(opt => 
       opt.setName('user')
-        .setDescription('User whose character to edit')
+        .setDescription('User whose character to manage')
         .setRequired(true)
     ),
   async execute(interaction) {
@@ -40,12 +40,12 @@ export default {
       
       // Log admin action
       await logger.logInfo(
-        `Admin ${interaction.user.username} editing ${targetUser.username}'s character`,
+        `Admin ${interaction.user.username} managing ${targetUser.username}'s character`,
         `Admin ID: ${interaction.user.id} | Target ID: ${targetUser.id}`
       );
       
     } catch (error) {
-      logger.error(`Admin edit character error: ${error.message}`);
+      logger.error(`Admin character error: ${error.message}`);
       
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ 
