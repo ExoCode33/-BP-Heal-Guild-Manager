@@ -24,9 +24,16 @@ export async function updateDiscordNickname(client, guildId, userId, ign) {
     }
 
     // Step 3: Check if nickname is already correct
-    if (member.nickname === ign) {
+    // Note: member.displayName shows actual name visible in Discord
+    // member.nickname is null if no custom nickname set
+    const currentDisplayName = member.nickname || member.user.username;
+    
+    if (currentDisplayName === ign) {
+      console.log(`[NICKNAME SYNC] ✅ Already correct: ${ign}`);
       return { success: true }; // Already correct, no need to update
     }
+    
+    console.log(`[NICKNAME SYNC] 🔄 Mismatch: "${currentDisplayName}" → "${ign}"`);
 
     // Step 4: Check if IGN is valid (not too long)
     if (ign.length > 32) {
