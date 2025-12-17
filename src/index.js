@@ -3,12 +3,79 @@ import { readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import logger from './utils/logger.js';
-import performanceMonitor from './utils/performanceMonitor.js';
 import db from './services/database.js';
 import sheetsService from './services/sheets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// ============================================================================
+// ✅ EMBEDDED MEMORY LEAK PREVENTION (No separate file needed)
+// ============================================================================
+
+class MemoryMonitor {
+  constructor() {
+    this.gcThreshold = parseInt(process.env.MEMORY_GC_THRESHOLD) || 150; // MB
+    this.criticalThreshold = parseInt(process.env.MEMORY_CRITICAL_THRESHOLD) || 200; // MB
+    this.checkInterval = null;
+    this.gcCount = 0;
+    this.lastGC = 0;
+  }
+
+  start(intervalMs = 60000) {
+    console.log(`[MEMORY] Starting monitor (GC at ${this.gcThreshold}MB, Critical at ${this.criticalThreshold}MB)`);
+    
+    this.checkInterval = setInterval(() => {
+      const heapUsedMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      
+      // Critical - force GC immediately
+      if (heapUsedMB >= this.criticalThreshold) {
+        console.error(`[MEMORY] 🔴 CRITICAL: ${heapUsedMB}MB - forcing GC`);
+        this.forceGC('critical');
+      }
+      // High - trigger GC if we haven't done one recently
+      else if (heapUsedMB >= this.gcThreshold) {
+        const timeSinceLastGC = Date.now() - this.lastGC;
+        if (timeSinceLastGC > 60000) { // Max once per minute
+          console.warn(`[MEMORY] ⚠️  High: ${heapUsedMB}MB - triggering GC`);
+          this.forceGC('preventive');
+        }
+      }
+    }, intervalMs);
+  }
+
+  forceGC(reason) {
+    if (!global.gc) {
+      console.warn('[MEMORY] GC not available (start with --expose-gc)');
+      return;
+    }
+
+    const before = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    
+    try {
+      global.gc();
+      const after = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      const freed = before - after;
+      
+      this.gcCount++;
+      this.lastGC = Date.now();
+      
+      console.log(`[MEMORY] ♻️  GC (${reason}): ${before}MB → ${after}MB (freed ${freed}MB)`);
+    } catch (error) {
+      console.error(`[MEMORY] GC failed: ${error.message}`);
+    }
+  }
+
+  stop() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+      console.log('[MEMORY] Monitor stopped');
+    }
+  }
+}
+
+const memoryMonitor = new MemoryMonitor();
 
 // ============================================================================
 // CLIENT INITIALIZATION
@@ -73,12 +140,12 @@ client.once(Events.ClientReady, async () => {
   console.log(`[STARTUP] Bot logged in as ${client.user.tag}`);
   
   try {
-    // ✅ 1. START PERFORMANCE MONITORING FIRST
-    console.log('[STARTUP] Starting performance monitor...');
-    performanceMonitor.startMonitoring(60000); // Check every 60 seconds
-    console.log('[STARTUP] ✓ Performance monitor started');
+    // ✅ 1. START MEMORY MONITORING FIRST
+    console.log('[STARTUP] Starting memory monitor...');
+    memoryMonitor.start(60000); // Check every 60 seconds
+    console.log('[STARTUP] ✓ Memory monitor started');
     
-    // ✅ 2. MAKE LOGGER AVAILABLE GLOBALLY (for performance monitor)
+    // ✅ 2. MAKE LOGGER AVAILABLE GLOBALLY
     global.logger = logger;
     
     // ✅ 3. INITIALIZE LOGGER WITH DISCORD CLIENT
@@ -264,9 +331,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // Handle buttons
   else if (interaction.isButton()) {
     try {
-      // Dynamic import of button handler
-      const { handleButton } = await import('./handlers/interactions/buttons.js');
-      await handleButton(interaction);
+      const { handleButtonInteraction } = await import('./handlers/interactions.js');
+      await handleButtonInteraction(interaction);
     } catch (error) {
       console.error('[ERROR] Button interaction error:', error);
       await logger.logError('Button', 'Button interaction failed', error, {
@@ -279,9 +345,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // Handle select menus
   else if (interaction.isStringSelectMenu()) {
     try {
-      // Dynamic import of select menu handler
-      const { handleSelectMenu } = await import('./handlers/interactions/selectMenus.js');
-      await handleSelectMenu(interaction);
+      const { handleSelectMenuInteraction } = await import('./handlers/interactions.js');
+      await handleSelectMenuInteraction(interaction);
     } catch (error) {
       console.error('[ERROR] Select menu interaction error:', error);
       await logger.logError('SelectMenu', 'Select menu interaction failed', error, {
@@ -294,9 +359,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // Handle modals
   else if (interaction.isModalSubmit()) {
     try {
-      // Dynamic import of modal handler
-      const { handleModal } = await import('./handlers/interactions/modals.js');
-      await handleModal(interaction);
+      const { handleModalSubmit } = await import('./handlers/interactions.js');
+      await handleModalSubmit(interaction);
     } catch (error) {
       console.error('[ERROR] Modal interaction error:', error);
       await logger.logError('Modal', 'Modal submission failed', error, {
@@ -341,11 +405,9 @@ async function shutdown(signal) {
   console.log(`[SHUTDOWN] Received ${signal} signal`);
   
   try {
-    // Stop performance monitoring
-    if (performanceMonitor) {
-      performanceMonitor.stopMonitoring();
-      console.log('[SHUTDOWN] Performance monitor stopped');
-    }
+    // Stop memory monitoring
+    memoryMonitor.stop();
+    console.log('[SHUTDOWN] Memory monitor stopped');
     
     // Stop logger cleanup
     if (logger) {
