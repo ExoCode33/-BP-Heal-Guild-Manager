@@ -1,3 +1,4 @@
+import { MessageFlags } from 'discord.js';
 import config from '../config/index.js';
 import logger from '../services/logger.js';
 import { CharacterRepo } from '../database/repositories.js';
@@ -5,6 +6,8 @@ import { profileEmbed } from '../ui/embeds.js';
 import * as ui from '../ui/components.js';
 import * as reg from './registration.js';
 import * as edit from './editing.js';
+
+const ephemeralFlag = { flags: MessageFlags.Ephemeral };
 
 function extractUserId(customId) {
   const parts = customId.split('_');
@@ -20,7 +23,7 @@ export async function route(interaction) {
   const userId = extractUserId(customId);
 
   if (!isOwner(interaction, userId)) {
-    return interaction.reply({ content: 'This is not your session.', ephemeral: true });
+    return interaction.reply({ content: 'This is not your session.', ...ephemeralFlag });
   }
 
   logger.interaction(interaction.isButton() ? 'button' : 'select', customId, interaction.user.username);
@@ -70,7 +73,7 @@ export async function route(interaction) {
   } catch (e) {
     logger.error('Router', `Failed handling ${customId}`, e);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Something went wrong.', ephemeral: true });
+      await interaction.reply({ content: 'Something went wrong.', ...ephemeralFlag });
     }
   }
 }
@@ -80,7 +83,7 @@ export async function routeSelectMenu(interaction) {
   const userId = extractUserId(customId);
 
   if (!isOwner(interaction, userId)) {
-    return interaction.reply({ content: 'This is not your session.', ephemeral: true });
+    return interaction.reply({ content: 'This is not your session.', ...ephemeralFlag });
   }
 
   logger.interaction('select', customId, interaction.user.username);
