@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import config from '../config/index.js';
 import logger from '../services/logger.js';
 import { CharacterRepo, EphemeralRepo } from '../database/repositories.js';
@@ -7,6 +7,8 @@ import { embed, successEmbed, errorEmbed } from '../ui/embeds.js';
 import { syncAllNicknames } from '../services/nickname.js';
 import sheets from '../services/sheets.js';
 import { ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+
+const ephemeralFlag = { flags: MessageFlags.Ephemeral };
 
 const EPHEMERAL_OPTIONS = [
   { id: 'register', label: 'Register Character', emoji: '📝' },
@@ -56,7 +58,7 @@ export async function execute(interaction) {
 }
 
 async function handleSync(interaction) {
-  await interaction.deferReply({ ephemeral: config.ephemeral.admin });
+  await interaction.deferReply(ephemeralFlag);
 
   try {
     const chars = await CharacterRepo.findAll();
@@ -69,7 +71,7 @@ async function handleSync(interaction) {
 }
 
 async function handleNicknames(interaction) {
-  await interaction.deferReply({ ephemeral: config.ephemeral.admin });
+  await interaction.deferReply(ephemeralFlag);
 
   try {
     const chars = await CharacterRepo.findAll();
@@ -113,7 +115,7 @@ async function handleLogs(interaction) {
   const e = embed('📋 Log Settings', 
     `Currently logging: **${enabled.length}** categories\n\nSelect which events to log:`);
 
-  await interaction.reply({ embeds: [e], components: [row], ephemeral: true });
+  await interaction.reply({ embeds: [e], components: [row], ...ephemeralFlag });
 }
 
 async function handleEphemeral(interaction) {
@@ -142,7 +144,7 @@ async function handleEphemeral(interaction) {
   const e = embed('👁️ Ephemeral Settings', 
     `**Currently private:** ${currentList}\n\nSelect which responses should be ephemeral (only visible to the user):`);
 
-  await interaction.reply({ embeds: [e], components: [row], ephemeral: true });
+  await interaction.reply({ embeds: [e], components: [row], ...ephemeralFlag });
 }
 
 async function handleStats(interaction) {
@@ -169,20 +171,20 @@ async function handleStats(interaction) {
 
   const statsText = `
 **📊 Character Stats**
-• Total Users: ${uniqueUsers}
-• Main Characters: ${mains}
-• Alt Characters: ${alts}
-• Subclasses: ${subs}
+- Total Users: ${uniqueUsers}
+- Main Characters: ${mains}
+- Alt Characters: ${alts}
+- Subclasses: ${subs}
 
 **🎭 Top Classes**
 ${topClasses || 'No data'}
 
 **💾 System**
-• Memory: ${memMB} MB
-• Uptime: ${formatUptime(process.uptime())}
+- Memory: ${memMB} MB
+- Uptime: ${formatUptime(process.uptime())}
 `;
 
-  await interaction.reply({ embeds: [embed('Bot Statistics', statsText)], ephemeral: config.ephemeral.admin });
+  await interaction.reply({ embeds: [embed('Bot Statistics', statsText)], ...ephemeralFlag });
 }
 
 async function handleDelete(interaction) {
@@ -190,7 +192,7 @@ async function handleDelete(interaction) {
   const chars = await CharacterRepo.findAllByUser(user.id);
 
   if (chars.length === 0) {
-    return interaction.reply({ embeds: [errorEmbed(`${user.username} has no registered characters.`)], ephemeral: true });
+    return interaction.reply({ embeds: [errorEmbed(`${user.username} has no registered characters.`)], ...ephemeralFlag });
   }
 
   await CharacterRepo.deleteAllByUser(user.id);
@@ -198,7 +200,7 @@ async function handleDelete(interaction) {
 
   await interaction.reply({
     embeds: [successEmbed(`Deleted all data for ${user.username} (${chars.length} characters).`)],
-    ephemeral: config.ephemeral.admin
+    ...ephemeralFlag
   });
 
   sheets.sync(await CharacterRepo.findAll(), interaction.client);
