@@ -16,7 +16,16 @@ import { validateUID, formatScore } from '../ui/utils.js';
 async function returnToProfile(interaction, userId) {
   const chars = await CharacterRepo.findAllByUser(userId);
   const main = chars.find(c => c.character_type === 'main');
-  const profileEmb = await profileEmbed(interaction.user, chars, interaction);
+  
+  // Get the actual user object
+  let user;
+  try {
+    user = await interaction.client.users.fetch(userId);
+  } catch (e) {
+    user = interaction.user;
+  }
+  
+  const profileEmb = await profileEmbed(user, chars, interaction);
   const buttons = ui.profileButtons(userId, !!main);
   await interaction.update({ embeds: [profileEmb], components: buttons });
 }
@@ -78,9 +87,9 @@ export async function showEditMenu(interaction, userId) {
   const alts = chars.filter(c => c.character_type === 'alt');
   const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
-  if (!main) {
+  if (!main && alts.length === 0 && subs.length === 0) {
     return interaction.update({
-      embeds: [errorEmbed('You need to register a main character first!')],
+      embeds: [errorEmbed('No characters to edit!')],
       components: [ui.backButton(`back_profile_${userId}`)]
     });
   }
@@ -316,12 +325,20 @@ export async function handleEditModal(interaction, userId, field) {
 
   state.clear(userId, 'edit');
 
+  // Get the actual user object
+  let user;
+  try {
+    user = await interaction.client.users.fetch(userId);
+  } catch (e) {
+    user = interaction.user;
+  }
+
   const chars = await CharacterRepo.findAllByUser(userId);
   const main = chars.find(c => c.character_type === 'main');
-  const profileEmb = await profileEmbed(interaction.user, chars, interaction);
+  const profileEmb = await profileEmbed(user, chars, interaction);
   const buttons = ui.profileButtons(userId, !!main);
 
-  const isEph = await isEphemeral(interaction.guildId, 'edit');
+  const isEph = await isEphemeral(interaction.guildId, 'character');
   await interaction.reply({ embeds: [profileEmb], components: buttons, ...(isEph ? ephemeralFlag : {}) });
   sheets.sync(await CharacterRepo.findAll(), interaction.client);
 }
@@ -342,10 +359,19 @@ export async function handleRemoveType(interaction, userId) {
   const type = interaction.values[0];
   state.set(userId, 'remove', { type });
 
-  if (type === 'main') {
+  if (type === 'all') {
     const e = embed('⚠️ Delete All Data', 
       '**This will permanently delete:**\n• Your main character\n• All alt characters\n• All subclasses\n\nAre you sure?');
     const buttons = ui.confirmButtons(userId, 'deleteall');
+    return interaction.update({ embeds: [e], components: buttons });
+  }
+
+  if (type === 'main') {
+    const main = await CharacterRepo.findMain(userId);
+    state.update(userId, 'remove', { charId: main.id, char: main });
+    const e = embed('🗑️ Remove Main Character', 
+      `**Are you sure you want to remove your main character?**\n\n🎮 **${main.ign}**\n🎭 ${main.class} • ${main.subclass}\n\n⚠️ Your alts and subclasses will NOT be deleted.`);
+    const buttons = ui.confirmButtons(userId, 'delete');
     return interaction.update({ embeds: [e], components: buttons });
   }
 
