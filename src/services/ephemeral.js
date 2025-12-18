@@ -1,22 +1,21 @@
 import { EphemeralRepo } from '../database/repositories.js';
 
 const cache = new Map();
-const CACHE_TTL = 60000;
 
 export async function isEphemeral(guildId, type) {
-  const cacheKey = guildId;
-  const cached = cache.get(cacheKey);
-  
-  if (cached && Date.now() - cached.time < CACHE_TTL) {
-    return cached.commands.includes(type);
+  if (!guildId) return true;
+
+  let settings = cache.get(guildId);
+  if (!settings) {
+    settings = await EphemeralRepo.get(guildId);
+    cache.set(guildId, settings);
+    setTimeout(() => cache.delete(guildId), 60000);
   }
 
-  const commands = await EphemeralRepo.get(guildId);
-  cache.set(cacheKey, { commands, time: Date.now() });
-  
-  return commands.includes(type);
-}
+  // Map old values to new simplified ones
+  if (type === 'register' || type === 'edit' || type === 'view') {
+    return settings.includes('character');
+  }
 
-export function clearCache(guildId) {
-  cache.delete(guildId);
+  return settings.includes(type);
 }
