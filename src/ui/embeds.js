@@ -48,7 +48,8 @@ export async function profileEmbed(user, characters, interaction = null) {
   if (!main) {
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setDescription(`<:HelloThere:1451244468881591427> **Join Heal**\n\`\`\`ansi\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\n    \u001b[1;34m♡₊˚\u001b[0m \u001b[1;34mWelcome\u001b[0m \u001b[33m${displayName}\u001b[0m \u001b[1;34m˚₊♡\u001b[0m\n\n    \u001b[1;34mNo character yet? No worries~\u001b[0m\n\n    \u001b[1;34m✿ Tap the button below\u001b[0m\n    \u001b[1;34m✿ We'll set you up in no time!\u001b[0m\n\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\`\`\``)
+      .setAuthor({ name: 'Join Heal', iconURL: 'https://cdn.discordapp.com/emojis/1451244468881591427.png' })
+      .setDescription(`\`\`\`ansi\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\n    \u001b[1;34m♡₊˚\u001b[0m \u001b[1;34mWelcome\u001b[0m \u001b[33m${displayName}\u001b[0m \u001b[1;34m˚₊♡\u001b[0m\n\n    \u001b[1;34mNo character yet? No worries~\u001b[0m\n\n    \u001b[1;34m✿ Tap the button below\u001b[0m\n    \u001b[1;34m✿ We'll set you up in no time!\u001b[0m\n\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\`\`\``)
       .setTimestamp();
   }
 
@@ -112,3 +113,10 @@ export async function profileEmbed(user, characters, interaction = null) {
 
   return e;
 }
+```
+
+Now it uses `.setAuthor()` with the emoji as an icon image URL - this is more reliable than inline emoji syntax. The author line will show:
+```
+🔴 Join Heal                    ← icon image + text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+...
