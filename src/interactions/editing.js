@@ -3,7 +3,7 @@ import state from '../services/state.js';
 import logger from '../services/logger.js';
 import config from '../config/index.js';
 import { isEphemeral } from '../services/ephemeral.js';
-import { CharacterRepo } from '../database/repositories.js';
+import { CharacterRepo, BattleImagineRepo } from '../database/repositories.js';
 
 const ephemeralFlag = { flags: MessageFlags.Ephemeral };
 import { embed, errorEmbed, successEmbed, profileEmbed } from '../ui/embeds.js';
@@ -78,8 +78,15 @@ export async function showEditMenu(interaction, userId) {
   const alts = chars.filter(c => c.character_type === 'alt');
   const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
-  const e = embed('✏️ Edit Character', 'What would you like to edit?');
-  const row = ui.editTypeSelect(userId, !!main, alts.length > 0, subs.length > 0);
+  if (!main) {
+    return interaction.update({
+      embeds: [errorEmbed('You need to register a main character first!')],
+      components: [ui.backButton(`back_profile_${userId}`)]
+    });
+  }
+
+  const e = embed('✏️ Edit Character', 'Which type of character do you want to edit?');
+  const row = ui.editTypeSelect(userId, main, alts, subs);
   const back = ui.backButton(`back_profile_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
 }
@@ -90,8 +97,9 @@ export async function handleEditType(interaction, userId) {
 
   if (type === 'main') {
     const main = await CharacterRepo.findMain(userId);
+    const bi = await BattleImagineRepo.findByCharacter(main.id);
     state.update(userId, 'edit', { charId: main.id, char: main });
-    return showFieldSelect(interaction, userId, 'main');
+    return showFieldSelect(interaction, userId, 'main', main, bi);
   }
 
   if (type === 'subclass') {
@@ -100,11 +108,11 @@ export async function handleEditType(interaction, userId) {
 
     if (subs.length === 1) {
       state.update(userId, 'edit', { charId: subs[0].id, char: subs[0] });
-      return showFieldSelect(interaction, userId, 'subclass');
+      return showFieldSelect(interaction, userId, 'subclass', subs[0], []);
     }
 
-    const e = embed('✏️ Edit Subclass', 'Which subclass?');
-    const row = ui.characterListSelect(userId, subs, 'edit');
+    const e = embed('✏️ Edit Subclass', 'Which subclass do you want to edit?');
+    const row = ui.subclassListSelect(userId, subs, 'edit');
     const back = ui.backButton(`edit_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
   }
@@ -112,29 +120,39 @@ export async function handleEditType(interaction, userId) {
   const alts = await CharacterRepo.findAlts(userId);
 
   if (alts.length === 1) {
+    const bi = await BattleImagineRepo.findByCharacter(alts[0].id);
     state.update(userId, 'edit', { charId: alts[0].id, char: alts[0] });
-    return showFieldSelect(interaction, userId, 'alt');
+    return showFieldSelect(interaction, userId, 'alt', alts[0], bi);
   }
 
-  const e = embed('✏️ Edit Alt', 'Which alt?');
-  const row = ui.characterListSelect(userId, alts, 'edit');
+  const e = embed('✏️ Edit Alt', 'Which alt do you want to edit?');
+  const row = ui.altListSelect(userId, alts, 'edit');
   const back = ui.backButton(`edit_${userId}`);
   return interaction.update({ embeds: [e], components: [row, back] });
 }
 
-export async function handleEditCharSelect(interaction, userId) {
+export async function handleEditAltSelect(interaction, userId) {
   const charId = parseInt(interaction.values[0]);
   const char = await CharacterRepo.findById(charId);
-  const s = state.get(userId, 'edit');
+  const bi = await BattleImagineRepo.findByCharacter(charId);
   state.update(userId, 'edit', { charId, char });
-  return showFieldSelect(interaction, userId, s.type);
+  return showFieldSelect(interaction, userId, 'alt', char, bi);
 }
 
-async function showFieldSelect(interaction, userId, type) {
-  const s = state.get(userId, 'edit');
-  const charInfo = type === 'subclass' ? `**${s.char.class} - ${s.char.subclass}**` : `**${s.char.ign}**`;
-  const e = embed('✏️ Edit Field', `Editing: ${charInfo}\n\nWhat do you want to change?`);
-  const row = ui.editFieldSelect(userId, type);
+export async function handleEditSubclassSelect(interaction, userId) {
+  const charId = parseInt(interaction.values[0]);
+  const char = await CharacterRepo.findById(charId);
+  state.update(userId, 'edit', { charId, char });
+  return showFieldSelect(interaction, userId, 'subclass', char, []);
+}
+
+async function showFieldSelect(interaction, userId, type, char, battleImagines) {
+  const charInfo = type === 'subclass' 
+    ? `**${char.class} - ${char.subclass}**` 
+    : `**${char.ign}** - ${char.class}`;
+  
+  const e = embed('✏️ Edit Character', `Editing: ${charInfo}\n\nChoose what you want to edit:`);
+  const row = ui.editFieldSelect(userId, char, type, battleImagines);
   const back = ui.backButton(`edit_type_back_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
 }
@@ -149,7 +167,7 @@ export async function handleFieldSelect(interaction, userId) {
   }
 
   if (field === 'class') {
-    const e = embed('🎭 Edit Class', 'Choose new class:');
+    const e = embed('🎭 Edit Class', `Current: **${s.char.class} - ${s.char.subclass}**\n\nChoose new class:`);
     const row = ui.classSelect(userId);
     const back = ui.backButton(`edit_field_back_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
@@ -168,6 +186,62 @@ export async function handleFieldSelect(interaction, userId) {
     const back = ui.backButton(`edit_field_back_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
   }
+
+  if (field === 'battle_imagines') {
+    const currentBI = await BattleImagineRepo.findByCharacter(s.charId);
+    const e = embed('⚔️ Edit Battle Imagines', 'Select a Battle Imagine to edit:');
+    const row = ui.editBattleImagineListSelect(userId, currentBI);
+    const back = ui.backButton(`edit_field_back_${userId}`);
+    return interaction.update({ embeds: [e], components: [row, back] });
+  }
+}
+
+export async function handleEditBattleImagineSelect(interaction, userId) {
+  const imagineName = interaction.values[0];
+  const s = state.get(userId, 'edit');
+  
+  const currentBI = await BattleImagineRepo.findByCharacter(s.charId);
+  const current = currentBI.find(bi => bi.imagine_name === imagineName);
+  const imagine = config.battleImagines.find(bi => bi.name === imagineName);
+  
+  state.update(userId, 'edit', { editingBI: imagineName });
+  
+  const e = embed('⚔️ Edit Battle Imagine', `**${imagineName}**\n\nCurrent: ${current ? current.tier : 'Not set'}\n\nSelect new tier:`);
+  const row = ui.editBattleImagineTierSelect(userId, imagine, current?.tier);
+  const back = ui.backButton(`edit_bi_back_${userId}`);
+  return interaction.update({ embeds: [e], components: [row, back] });
+}
+
+export async function handleEditBattleImagineTier(interaction, userId) {
+  const tier = interaction.values[0];
+  const s = state.get(userId, 'edit');
+  
+  if (tier === 'remove') {
+    await BattleImagineRepo.deleteByCharacterAndName(s.charId, s.editingBI);
+    logger.edit(interaction.user.username, 'battle_imagine', s.editingBI, 'removed');
+  } else {
+    await BattleImagineRepo.add(s.charId, s.editingBI, tier);
+    logger.edit(interaction.user.username, 'battle_imagine', s.editingBI, tier);
+  }
+  
+  state.update(userId, 'edit', { editingBI: null });
+  
+  const currentBI = await BattleImagineRepo.findByCharacter(s.charId);
+  const e = embed('⚔️ Edit Battle Imagines', 'Select a Battle Imagine to edit:');
+  const row = ui.editBattleImagineListSelect(userId, currentBI);
+  const back = ui.backButton(`edit_field_back_${userId}`);
+  
+  await interaction.update({ embeds: [e], components: [row, back] });
+  sheets.sync(await CharacterRepo.findAll(), interaction.client);
+}
+
+export async function backToBattleImagineList(interaction, userId) {
+  const s = state.get(userId, 'edit');
+  const currentBI = await BattleImagineRepo.findByCharacter(s.charId);
+  const e = embed('⚔️ Edit Battle Imagines', 'Select a Battle Imagine to edit:');
+  const row = ui.editBattleImagineListSelect(userId, currentBI);
+  const back = ui.backButton(`edit_field_back_${userId}`);
+  return interaction.update({ embeds: [e], components: [row, back] });
 }
 
 export async function handleEditClass(interaction, userId) {
@@ -259,7 +333,7 @@ export async function showRemoveMenu(interaction, userId) {
   const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
 
   const e = embed('🗑️ Remove Character', 'What would you like to remove?');
-  const row = ui.removeTypeSelect(userId, !!main, alts.length > 0, subs.length > 0);
+  const row = ui.removeTypeSelect(userId, main, alts, subs);
   const back = ui.backButton(`back_profile_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
 }
@@ -281,14 +355,14 @@ export async function handleRemoveType(interaction, userId) {
 
     if (subs.length === 1) {
       state.update(userId, 'remove', { charId: subs[0].id, char: subs[0] });
-      const e = embed('🗑️ Delete Subclass', 
-        `Delete **${subs[0].class} - ${subs[0].subclass}**?`);
+      const e = embed('🗑️ Remove Subclass', 
+        `**Are you sure you want to remove this subclass?**\n\n🎭 **${subs[0].class} • ${subs[0].subclass}**\n💪 ${formatScore(subs[0].ability_score)}`);
       const buttons = ui.confirmButtons(userId, 'delete');
       return interaction.update({ embeds: [e], components: buttons });
     }
 
-    const e = embed('🗑️ Delete Subclass', 'Which subclass?');
-    const row = ui.characterListSelect(userId, subs, 'remove');
+    const e = embed('🗑️ Remove Subclass', 'Which subclass do you want to remove?');
+    const row = ui.subclassListSelect(userId, subs, 'remove');
     const back = ui.backButton(`remove_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
   }
@@ -297,25 +371,36 @@ export async function handleRemoveType(interaction, userId) {
 
   if (alts.length === 1) {
     state.update(userId, 'remove', { charId: alts[0].id, char: alts[0] });
-    const e = embed('🗑️ Delete Alt', `Delete **${alts[0].ign}**?`);
+    const e = embed('🗑️ Remove Alt', 
+      `**Are you sure you want to remove this alt?**\n\n🎮 **${alts[0].ign}**\n🎭 ${alts[0].class} • ${alts[0].subclass}`);
     const buttons = ui.confirmButtons(userId, 'delete');
     return interaction.update({ embeds: [e], components: buttons });
   }
 
-  const e = embed('🗑️ Delete Alt', 'Which alt?');
-  const row = ui.characterListSelect(userId, alts, 'remove');
+  const e = embed('🗑️ Remove Alt', 'Which alt do you want to remove?');
+  const row = ui.altListSelect(userId, alts, 'remove');
   const back = ui.backButton(`remove_${userId}`);
   return interaction.update({ embeds: [e], components: [row, back] });
 }
 
-export async function handleRemoveCharSelect(interaction, userId) {
+export async function handleRemoveAltSelect(interaction, userId) {
   const charId = parseInt(interaction.values[0]);
   const char = await CharacterRepo.findById(charId);
-  const s = state.get(userId, 'remove');
   state.update(userId, 'remove', { charId, char });
 
-  const label = s.type === 'subclass' ? `${char.class} - ${char.subclass}` : char.ign;
-  const e = embed('🗑️ Confirm Delete', `Delete **${label}**?`);
+  const e = embed('🗑️ Remove Alt', 
+    `**Are you sure you want to remove this alt?**\n\n🎮 **${char.ign}**\n🎭 ${char.class} • ${char.subclass}`);
+  const buttons = ui.confirmButtons(userId, 'delete');
+  await interaction.update({ embeds: [e], components: buttons });
+}
+
+export async function handleRemoveSubclassSelect(interaction, userId) {
+  const charId = parseInt(interaction.values[0]);
+  const char = await CharacterRepo.findById(charId);
+  state.update(userId, 'remove', { charId, char });
+
+  const e = embed('🗑️ Remove Subclass', 
+    `**Are you sure you want to remove this subclass?**\n\n🎭 **${char.class} • ${char.subclass}**\n💪 ${formatScore(char.ability_score)}`);
   const buttons = ui.confirmButtons(userId, 'delete');
   await interaction.update({ embeds: [e], components: buttons });
 }
@@ -363,12 +448,13 @@ export async function backToEditType(interaction, userId) {
 
 export async function backToFieldSelect(interaction, userId) {
   const s = state.get(userId, 'edit');
-  return showFieldSelect(interaction, userId, s.type);
+  const bi = s.type !== 'subclass' ? await BattleImagineRepo.findByCharacter(s.charId) : [];
+  return showFieldSelect(interaction, userId, s.type, s.char, bi);
 }
 
 export async function backToClassSelect(interaction, userId) {
   const s = state.get(userId, 'edit');
-  const e = embed('🎭 Edit Class', 'Choose new class:');
+  const e = embed('🎭 Edit Class', `Current: **${s.char.class} - ${s.char.subclass}**\n\nChoose new class:`);
   const row = ui.classSelect(userId);
   const back = ui.backButton(`edit_field_back_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
