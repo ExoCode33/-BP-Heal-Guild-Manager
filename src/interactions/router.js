@@ -1,9 +1,6 @@
 import { MessageFlags } from 'discord.js';
-import config from '../config/index.js';
 import logger from '../services/logger.js';
-import { CharacterRepo } from '../database/repositories.js';
-import { profileEmbed } from '../ui/embeds.js';
-import * as ui from '../ui/components.js';
+import state from '../services/state.js';
 import * as reg from './registration.js';
 import * as edit from './editing.js';
 
@@ -89,16 +86,16 @@ export async function routeSelectMenu(interaction) {
   logger.interaction('select', customId, interaction.user.username);
 
   try {
+    const s = state.get(userId, 'edit');
+
     if (customId.startsWith('reg_class_')) {
-      if (interaction.message.components.some(r => 
-        r.components.some(c => c.customId?.startsWith('edit_field_')))) {
+      if (s?.field === 'class') {
         return edit.handleEditClass(interaction, userId);
       }
       return reg.handleClass(interaction, userId);
     }
 
     if (customId.startsWith('reg_subclass_')) {
-      const s = require('../services/state.js').default.get(userId, 'edit');
       if (s?.field === 'class') {
         return edit.handleEditSubclass(interaction, userId);
       }
@@ -106,7 +103,6 @@ export async function routeSelectMenu(interaction) {
     }
 
     if (customId.startsWith('reg_score_')) {
-      const s = require('../services/state.js').default.get(userId, 'edit');
       if (s?.field === 'score') {
         return edit.handleEditScore(interaction, userId);
       }
@@ -114,7 +110,6 @@ export async function routeSelectMenu(interaction) {
     }
 
     if (customId.startsWith('reg_guild_')) {
-      const s = require('../services/state.js').default.get(userId, 'edit');
       if (s?.field === 'guild') {
         return edit.handleEditGuild(interaction, userId);
       }
