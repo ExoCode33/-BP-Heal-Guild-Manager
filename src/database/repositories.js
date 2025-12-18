@@ -15,10 +15,7 @@ export const CharacterRepo = {
   },
 
   async findById(id) {
-    const result = await db.query(
-      `SELECT *, $1 as role FROM characters WHERE id = $1`,
-      [id]
-    );
+    const result = await db.query(`SELECT * FROM characters WHERE id = $1`, [id]);
     if (result.rows[0]) {
       result.rows[0].role = getRole(result.rows[0].class);
     }
@@ -145,6 +142,13 @@ export const BattleImagineRepo = {
 
   async deleteByCharacter(characterId) {
     await db.query(`DELETE FROM battle_imagines WHERE character_id = $1`, [characterId]);
+  },
+
+  async deleteByCharacterAndName(characterId, imagineName) {
+    await db.query(
+      `DELETE FROM battle_imagines WHERE character_id = $1 AND imagine_name = $2`,
+      [characterId, imagineName]
+    );
   }
 };
 
