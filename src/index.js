@@ -1,11 +1,11 @@
-import { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, Events, MessageFlags } from 'discord.js';
 import config from './config/index.js';
 import db from './database/index.js';
 import logger from './services/logger.js';
 import sheets from './services/sheets.js';
-import { loadCommands, getCommandData } from './commands/index.js';
+import { loadCommands } from './commands/index.js';
 import { route, routeSelectMenu, routeModal } from './interactions/router.js';
-import { handleLogSelect, handleEphemeralSelect } from './commands/admin.js';
+import { handleLogSelect, handleLogChannelSelect, handleLogBatchSelect, handleLogCategoriesSelect, handleEphemeralSelect } from './commands/admin.js';
 import { CharacterRepo } from './database/repositories.js';
 import { syncAllNicknames } from './services/nickname.js';
 
@@ -20,30 +20,6 @@ const commands = loadCommands();
 
 client.once(Events.ClientReady, async () => {
   console.log(`[BOT] Logged in as ${client.user.tag}`);
-
-  // Auto-deploy commands
-  try {
-    const rest = new REST().setToken(config.discord.token);
-    
-    // Clear old commands
-    await rest.put(Routes.applicationCommands(config.discord.clientId), { body: [] });
-    
-    if (config.discord.guildId) {
-      await rest.put(
-        Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId),
-        { body: [] }
-      );
-      
-      const commandData = getCommandData();
-      await rest.put(
-        Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId),
-        { body: commandData }
-      );
-      console.log(`[BOT] Deployed ${commandData.length} commands`);
-    }
-  } catch (e) {
-    console.error('[BOT] Failed to deploy commands:', e);
-  }
 
   await db.initialize();
   await logger.init(client);
@@ -90,6 +66,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('admin_logs_channel_')) {
+        return handleLogChannelSelect(interaction);
+      }
+      if (interaction.customId.startsWith('admin_logs_batch_')) {
+        return handleLogBatchSelect(interaction);
+      }
+      if (interaction.customId.startsWith('admin_logs_categories_')) {
+        return handleLogCategoriesSelect(interaction);
+      }
       if (interaction.customId.startsWith('admin_logs_')) {
         return handleLogSelect(interaction);
       }
