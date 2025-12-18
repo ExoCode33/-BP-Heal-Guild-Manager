@@ -26,6 +26,7 @@ export async function route(interaction) {
   logger.interaction(interaction.isButton() ? 'button' : 'select', customId, interaction.user.username);
 
   try {
+    // Registration
     if (customId.startsWith('reg_start_')) return reg.start(interaction, userId, 'main');
     if (customId.startsWith('reg_region_')) return reg.handleRegion(interaction, userId);
     if (customId.startsWith('reg_country_')) return reg.handleCountry(interaction, userId);
@@ -36,6 +37,7 @@ export async function route(interaction) {
     if (customId.startsWith('reg_bi_')) return reg.handleBattleImagine(interaction, userId);
     if (customId.startsWith('reg_guild_')) return reg.handleGuild(interaction, userId);
 
+    // Back buttons
     if (customId.startsWith('back_profile_')) return edit.backToProfile(interaction, userId);
     if (customId.startsWith('back_region_')) return reg.backToRegion(interaction, userId);
     if (customId.startsWith('back_country_')) return reg.backToCountry(interaction, userId);
@@ -46,22 +48,33 @@ export async function route(interaction) {
     if (customId.startsWith('back_bi_')) return reg.backToBattleImagine(interaction, userId);
     if (customId.startsWith('retry_ign_')) return reg.retryIGN(interaction, userId);
 
+    // Add character
     if (customId.startsWith('add_type_')) return edit.handleAddType(interaction, userId);
     if (customId.startsWith('add_')) return edit.showAddMenu(interaction, userId);
     if (customId.startsWith('parent_')) return edit.handleParentSelect(interaction, userId);
 
+    // Edit character - back buttons
     if (customId.startsWith('edit_type_back_')) return edit.backToEditType(interaction, userId);
-    if (customId.startsWith('edit_type_')) return edit.handleEditType(interaction, userId);
-    if (customId.startsWith('edit_char_')) return edit.handleEditCharSelect(interaction, userId);
     if (customId.startsWith('edit_field_back_')) return edit.backToFieldSelect(interaction, userId);
-    if (customId.startsWith('edit_field_')) return edit.handleFieldSelect(interaction, userId);
     if (customId.startsWith('edit_class_back_')) return edit.backToClassSelect(interaction, userId);
+    if (customId.startsWith('edit_bi_back_')) return edit.backToBattleImagineList(interaction, userId);
+    
+    // Edit character - selections
+    if (customId.startsWith('edit_type_')) return edit.handleEditType(interaction, userId);
+    if (customId.startsWith('edit_alt_')) return edit.handleEditAltSelect(interaction, userId);
+    if (customId.startsWith('edit_subclass_')) return edit.handleEditSubclassSelect(interaction, userId);
+    if (customId.startsWith('edit_field_')) return edit.handleFieldSelect(interaction, userId);
+    if (customId.startsWith('edit_bi_select_')) return edit.handleEditBattleImagineSelect(interaction, userId);
+    if (customId.startsWith('edit_bi_tier_')) return edit.handleEditBattleImagineTier(interaction, userId);
     if (customId.startsWith('edit_')) return edit.showEditMenu(interaction, userId);
 
+    // Remove character
     if (customId.startsWith('remove_type_')) return edit.handleRemoveType(interaction, userId);
-    if (customId.startsWith('remove_char_')) return edit.handleRemoveCharSelect(interaction, userId);
+    if (customId.startsWith('remove_alt_')) return edit.handleRemoveAltSelect(interaction, userId);
+    if (customId.startsWith('remove_subclass_')) return edit.handleRemoveSubclassSelect(interaction, userId);
     if (customId.startsWith('remove_')) return edit.showRemoveMenu(interaction, userId);
 
+    // Confirm/cancel
     if (customId.startsWith('confirm_deleteall_')) return edit.confirmDeleteAll(interaction, userId);
     if (customId.startsWith('confirm_delete_')) return edit.confirmDelete(interaction, userId);
     if (customId.startsWith('cancel_')) return edit.cancelAction(interaction, userId);
