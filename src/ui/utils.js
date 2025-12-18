@@ -30,6 +30,12 @@ export const getClassEmoji = (guild, className) => {
   return emoji ? emoji.toString() : '';
 };
 
+export const getJoinHealEmoji = (guild) => {
+  if (!guild) return '';
+  const emoji = guild.emojis.cache.find(e => e.name === 'TinaHello');
+  return emoji ? emoji.toString() : '';
+};
+
 export const validateUID = (uid) => /^\d+$/.test(uid);
 
 export const truncate = (str, len) => str.length > len ? str.slice(0, len - 3) + '...' : str;
