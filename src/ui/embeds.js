@@ -46,9 +46,22 @@ export async function profileEmbed(user, characters, interaction = null) {
   const timeText = tz ? `\n🌍 ${formatTime(tz)}` : '';
 
   if (!main) {
+    const welcomeText = [
+      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
+      '',
+      '\u001b[1;34m          \u2661\u208A\u02DA Welcome\u001b[0m \u001b[33m' + displayName + '\u001b[0m \u001b[1;34m\u02DA\u208A\u2661\u001b[0m',
+      '',
+      '\u001b[1;34m        No character yet? No worries~\u001b[0m',
+      '',
+      '\u001b[1;34m           \u2022 Tap the button below\u001b[0m',
+      '\u001b[1;34m         \u2022 We\'ll set you up in no time!\u001b[0m',
+      '',
+      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
+    ].join('\n');
+
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setDescription(`## 🩷 **Join Heal**\n\`\`\`ansi\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\n\u001b[1;34m          ♡₊˚ Welcome\u001b[0m \u001b[33m${displayName}\u001b[0m \u001b[1;34m˚₊♡\u001b[0m\n\n\u001b[1;34m        No character yet? No worries~\u001b[0m\n\n\u001b[1;34m           • Tap the button below\u001b[0m\n\u001b[1;34m         • We'll set you up in no time!\u001b[0m\n\n\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n\`\`\``)
+      .setDescription(`## 🩷 **Join Heal**\n\`\`\`ansi\n${welcomeText}\n\`\`\``)
       .setTimestamp();
   }
 
@@ -56,19 +69,19 @@ export async function profileEmbed(user, characters, interaction = null) {
   const classEmoji = getClassEmoji(interaction?.guild, main.class);
 
   let mainSection = '```ansi\n';
-  mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-  mainSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${main.ign}\n`;
-  mainSection += `\u001b[1;34m🆔 UID:\u001b[0m ${main.uid}\n`;
-  mainSection += `\u001b[1;34m🎭 Class:\u001b[0m ${main.class} • ${main.subclass} ${roleEmoji}\n`;
-  mainSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatScore(main.ability_score)}\n`;
+  mainSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+  mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m ' + main.ign + '\n';
+  mainSection += '\u001b[1;34m🆔 UID:\u001b[0m ' + main.uid + '\n';
+  mainSection += '\u001b[1;34m🎭 Class:\u001b[0m ' + main.class + ' • ' + main.subclass + ' ' + roleEmoji + '\n';
+  mainSection += '\u001b[1;34m💪 Score:\u001b[0m ' + formatScore(main.ability_score) + '\n';
 
   const mainBI = await BattleImagineRepo.findByCharacter(main.id);
   if (mainBI.length > 0) {
-    mainSection += `\u001b[1;34m⚔️ Battle Imagines:\u001b[0m ${mainBI.map(b => `${b.imagine_name} ${b.tier}`).join(', ')}\n`;
+    mainSection += '\u001b[1;34m⚔️ Battle Imagines:\u001b[0m ' + mainBI.map(b => b.imagine_name + ' ' + b.tier).join(', ') + '\n';
   }
 
-  mainSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${main.guild || 'None'}\n`;
-  mainSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+  mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m ' + (main.guild || 'None') + '\n';
+  mainSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '```';
 
   const e = new EmbedBuilder()
@@ -80,11 +93,11 @@ export async function profileEmbed(user, characters, interaction = null) {
     let subSection = '```ansi\n';
     subs.forEach((sub, i) => {
       const subRoleEmoji = getRoleEmoji(sub.role);
-      subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      subSection += `\u001b[1;34m🎭 Class:\u001b[0m ${sub.class} • ${sub.subclass} ${subRoleEmoji}\n`;
-      subSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatScore(sub.ability_score)}\n`;
+      subSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+      subSection += '\u001b[1;34m🎭 Class:\u001b[0m ' + sub.class + ' • ' + sub.subclass + ' ' + subRoleEmoji + '\n';
+      subSection += '\u001b[1;34m💪 Score:\u001b[0m ' + formatScore(sub.ability_score) + '\n';
     });
-    subSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+    subSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     subSection += '```';
     e.addFields({ name: `📊 Subclass${subs.length > 1 ? 'es' : ''} (${subs.length})`, value: subSection, inline: false });
   }
@@ -93,37 +106,22 @@ export async function profileEmbed(user, characters, interaction = null) {
     let altSection = '```ansi\n';
     for (const alt of alts) {
       const altRoleEmoji = getRoleEmoji(alt.role);
-      altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
-      altSection += `\u001b[1;34m🎮 IGN:\u001b[0m ${alt.ign}  \u001b[1;34m🆔 UID:\u001b[0m ${alt.uid}\n`;
-      altSection += `\u001b[1;34m🎭 Class:\u001b[0m ${alt.class} • ${alt.subclass} ${altRoleEmoji}\n`;
-      altSection += `\u001b[1;34m💪 Score:\u001b[0m ${formatScore(alt.ability_score)}\n`;
+      altSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+      altSection += '\u001b[1;34m🎮 IGN:\u001b[0m ' + alt.ign + '  \u001b[1;34m🆔 UID:\u001b[0m ' + alt.uid + '\n';
+      altSection += '\u001b[1;34m🎭 Class:\u001b[0m ' + alt.class + ' • ' + alt.subclass + ' ' + altRoleEmoji + '\n';
+      altSection += '\u001b[1;34m💪 Score:\u001b[0m ' + formatScore(alt.ability_score) + '\n';
 
       const altBI = await BattleImagineRepo.findByCharacter(alt.id);
       if (altBI.length > 0) {
-        altSection += `\u001b[1;34m⚔️ Battle Imagines:\u001b[0m ${altBI.map(b => `${b.imagine_name} ${b.tier}`).join(', ')}\n`;
+        altSection += '\u001b[1;34m⚔️ Battle Imagines:\u001b[0m ' + altBI.map(b => b.imagine_name + ' ' + b.tier).join(', ') + '\n';
       }
 
-      altSection += `\u001b[1;34m🏰 Guild:\u001b[0m ${alt.guild || 'None'}\n`;
+      altSection += '\u001b[1;34m🏰 Guild:\u001b[0m ' + (alt.guild || 'None') + '\n';
     }
-    altSection += `\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n`;
+    altSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     altSection += '```';
     e.addFields({ name: `🎭 Alts (${alts.length})`, value: altSection, inline: false });
   }
 
   return e;
 }
-```
-
-Now it should look like:
-```
-🩷 Join Heal
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-          ♡₊˚ Welcome Ems ˚₊♡
-
-        No character yet? No worries~
-
-           • Tap the button below
-         • We'll set you up in no time!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
