@@ -59,12 +59,9 @@ export default {
     nicknameInterval: int(process.env.NICKNAME_SYNC_INTERVAL, 300000)
   },
   logging: {
-    channelId: process.env.LOG_CHANNEL_ID,
-    maxMessages: int(process.env.MAX_LOG_MESSAGES, 500),
-    cleanupInterval: int(process.env.LOG_CLEANUP_INTERVAL, 3600000),
     adminRoleId: process.env.ADMIN_ROLE_ID
   },
   ephemeral: {
-    defaults: ['register', 'edit', 'admin']
+    defaults: ['character', 'admin']
   }
 };
