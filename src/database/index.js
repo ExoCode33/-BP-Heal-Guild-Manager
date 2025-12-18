@@ -56,17 +56,32 @@ class Database {
     await this.query(`
       CREATE TABLE IF NOT EXISTS log_settings (
         guild_id VARCHAR(20) PRIMARY KEY,
-        enabled_categories TEXT[] DEFAULT ARRAY['startup','shutdown','error','warning','reg_complete','delete_character','sync_sheets','sync_nickname','db_error'],
+        log_channel_id VARCHAR(20),
+        enabled_categories TEXT[] DEFAULT ARRAY['startup','shutdown','errors','commands','adminCommands','registration','editing','deletion','sheetsSync'],
+        batch_interval INTEGER DEFAULT 0,
         ping_role_id VARCHAR(20),
         ping_on_error BOOLEAN DEFAULT false,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
+    // Add new columns for existing installations
+    await this.query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='log_settings' AND column_name='log_channel_id') THEN
+          ALTER TABLE log_settings ADD COLUMN log_channel_id VARCHAR(20);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='log_settings' AND column_name='batch_interval') THEN
+          ALTER TABLE log_settings ADD COLUMN batch_interval INTEGER DEFAULT 0;
+        END IF;
+      END $$;
+    `);
+
     await this.query(`
       CREATE TABLE IF NOT EXISTS ephemeral_settings (
         guild_id VARCHAR(20) PRIMARY KEY,
-        ephemeral_commands TEXT[] DEFAULT ARRAY['register','edit','admin'],
+        ephemeral_commands TEXT[] DEFAULT ARRAY['character','admin'],
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
