@@ -66,14 +66,19 @@ export function regionSelect(userId) {
   );
 }
 
-// ✨ UPDATED: Added descriptions
+// ✨ UPDATED: Added descriptions - Fixed emoji extraction
 export function countrySelect(userId, region) {
   const countries = Object.keys(REGIONS[region]);
-  const options = countries.map(c => ({
-    label: c,
-    value: c,
-    description: 'Select your location'
-  }));
+  const options = countries.map(c => {
+    // Extract emoji safely - gets everything before the first space
+    const emoji = c.split(' ')[0] || '🏳️';
+    return {
+      label: c,
+      value: c,
+      description: 'Select your location',
+      emoji: emoji
+    };
+  });
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`reg_country_${userId}`)
