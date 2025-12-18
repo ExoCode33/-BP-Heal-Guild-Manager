@@ -10,8 +10,23 @@ export const embed = (title, description) => {
     .setTimestamp();
 };
 
+// ✨ NEW: Centered cute registration embeds
 export const stepEmbed = (step, total, title, description) => {
-  return embed(title, `${description}\n\n*Step ${step} of ${total}*`);
+  const ansiText = [
+    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
+    `\u001b[1;34m${title}\u001b[0m`,
+    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
+    '',
+    description,
+    '',
+    `\u001b[0;36m✨ Step ${step} of ${total}\u001b[0m`,
+    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
+  ].join('\n');
+
+  return new EmbedBuilder()
+    .setColor(COLORS.PRIMARY)
+    .setDescription(`\`\`\`ansi\n${ansiText}\n\`\`\``)
+    .setTimestamp();
 };
 
 export const errorEmbed = (message) => {
