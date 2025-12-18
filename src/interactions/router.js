@@ -15,17 +15,34 @@ function isOwner(interaction, targetUserId) {
   return interaction.user.id === targetUserId;
 }
 
+function isAdmin(interaction) {
+  return interaction.member?.permissions?.has('Administrator');
+}
+
 export async function route(interaction) {
   const customId = interaction.customId;
   const userId = extractUserId(customId);
+  const isAdminAction = customId.startsWith('admin_');
 
-  if (!isOwner(interaction, userId)) {
+  // Check ownership - admins can bypass for admin_ prefixed actions
+  if (!isOwner(interaction, userId) && !isAdminAction) {
     return interaction.reply({ content: 'This is not your session.', ...ephemeralFlag });
+  }
+
+  // For admin actions, verify they have admin perms
+  if (isAdminAction && !isAdmin(interaction)) {
+    return interaction.reply({ content: 'You need Administrator permission.', ...ephemeralFlag });
   }
 
   logger.interaction(interaction.isButton() ? 'button' : 'select', customId, interaction.user.username);
 
   try {
+    // Admin actions (operate on other users)
+    if (customId.startsWith('admin_reg_start_')) return reg.start(interaction, userId, 'main');
+    if (customId.startsWith('admin_add_')) return edit.showAddMenu(interaction, userId);
+    if (customId.startsWith('admin_edit_')) return edit.showEditMenu(interaction, userId);
+    if (customId.startsWith('admin_remove_')) return edit.showRemoveMenu(interaction, userId);
+
     // Registration
     if (customId.startsWith('reg_start_')) return reg.start(interaction, userId, 'main');
     if (customId.startsWith('reg_region_')) return reg.handleRegion(interaction, userId);
@@ -91,9 +108,14 @@ export async function route(interaction) {
 export async function routeSelectMenu(interaction) {
   const customId = interaction.customId;
   const userId = extractUserId(customId);
+  const isAdminAction = customId.startsWith('admin_');
 
-  if (!isOwner(interaction, userId)) {
+  if (!isOwner(interaction, userId) && !isAdminAction) {
     return interaction.reply({ content: 'This is not your session.', ...ephemeralFlag });
+  }
+
+  if (isAdminAction && !isAdmin(interaction)) {
+    return interaction.reply({ content: 'You need Administrator permission.', ...ephemeralFlag });
   }
 
   logger.interaction('select', customId, interaction.user.username);
