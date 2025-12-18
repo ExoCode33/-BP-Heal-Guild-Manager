@@ -51,10 +51,10 @@ export async function profileEmbed(user, characters, interaction = null) {
       '',
       '\u001b[1;34m          \u2661\u208A\u02DA Welcome\u001b[0m \u001b[33m' + displayName + '\u001b[0m \u001b[1;34m\u02DA\u208A\u2661\u001b[0m',
       '',
-      '\u001b[1;34m        No character yet? No worries~\u001b[0m',
+      '\u001b[1;34m    No character yet? No worries~\u001b[0m',
       '',
-      '\u001b[1;34m           \u2022 Tap the button below\u001b[0m',
-      '\u001b[1;34m         \u2022 We\'ll set you up in no time!\u001b[0m',
+      '\u001b[1;34m    \u2022 Tap the button below\u001b[0m',
+      '\u001b[1;34m    \u2022 We\'ll set you up in no time!\u001b[0m',
       '',
       '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
     ].join('\n');
@@ -125,3 +125,18 @@ export async function profileEmbed(user, characters, interaction = null) {
 
   return e;
 }
+```
+
+Now shows:
+```
+🩷 Join Heal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+          ♡₊˚ Welcome Ems ˚₊♡
+
+    No character yet? No worries~
+
+    • Tap the button below
+    • We'll set you up in no time!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
