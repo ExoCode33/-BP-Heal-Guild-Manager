@@ -50,8 +50,14 @@ export function confirmButtons(userId, action) {
   )];
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function regionSelect(userId) {
-  const options = Object.keys(REGIONS).map(r => ({ label: r, value: r, emoji: '🌍' }));
+  const options = Object.keys(REGIONS).map(r => ({
+    label: r,
+    value: r,
+    emoji: '🌍',
+    description: 'Where you\'re playing from'
+  }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`reg_region_${userId}`)
@@ -60,9 +66,14 @@ export function regionSelect(userId) {
   );
 }
 
+// ✨ UPDATED: Added descriptions
 export function countrySelect(userId, region) {
   const countries = Object.keys(REGIONS[region]);
-  const options = countries.map(c => ({ label: c, value: c }));
+  const options = countries.map(c => ({
+    label: c,
+    value: c,
+    description: 'Select your location'
+  }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`reg_country_${userId}`)
@@ -71,10 +82,14 @@ export function countrySelect(userId, region) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function timezoneSelect(userId, region, country) {
   const timezones = REGIONS[region][country];
   const options = Object.entries(timezones).map(([label, value]) => ({
-    label, value, description: label
+    label,
+    value,
+    description: label.split('(')[1]?.replace(')', '') || 'Timezone',
+    emoji: '🕐'
   }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -84,6 +99,7 @@ export function timezoneSelect(userId, region, country) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function classSelect(userId) {
   const options = Object.entries(CLASSES).map(([name, data]) => ({
     label: name,
@@ -99,6 +115,7 @@ export function classSelect(userId) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function subclassSelect(userId, className) {
   const data = CLASSES[className];
   const options = data.subclasses.map(s => ({
@@ -115,8 +132,14 @@ export function subclassSelect(userId, className) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function scoreSelect(userId) {
-  const options = ABILITY_SCORES.map(s => ({ label: s.label, value: s.value }));
+  const options = ABILITY_SCORES.map(s => ({
+    label: s.label,
+    value: s.value,
+    description: 'Your ability score range',
+    emoji: '💪'
+  }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`reg_score_${userId}`)
@@ -125,13 +148,15 @@ export function scoreSelect(userId) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function battleImagineSelect(userId, imagine) {
   const options = [
-    { label: 'Skip / Don\'t own', value: 'skip', emoji: '⏭️' },
+    { label: 'Skip / Don\'t own', value: 'skip', emoji: '⏭️', description: 'I don\'t have this imagine' },
     ...TIERS.map(t => ({
       label: t,
       value: t,
-      emoji: imagine.logo ? { id: imagine.logo } : '⭐'
+      emoji: imagine.logo ? { id: imagine.logo } : '⭐',
+      description: `Highest tier: ${t}`
     }))
   ];
   return new ActionRowBuilder().addComponents(
@@ -142,8 +167,14 @@ export function battleImagineSelect(userId, imagine) {
   );
 }
 
+// ✨ UPDATED: Added descriptions and emojis
 export function guildSelect(userId) {
-  const options = config.guilds.map(g => ({ label: g.name, value: g.name }));
+  const options = config.guilds.map(g => ({
+    label: g.name,
+    value: g.name,
+    description: 'Choose your guild',
+    emoji: '🏰'
+  }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`reg_guild_${userId}`)
