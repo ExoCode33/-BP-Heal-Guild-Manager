@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import logger from '../services/logger.js';
 import config from '../config/index.js';
 import { isEphemeral } from '../services/ephemeral.js';
@@ -7,6 +7,8 @@ import { LogSettingsRepo, EphemeralRepo } from '../database/repositories.js';
 import sheets from '../services/sheets.js';
 import { syncAllNicknames } from '../services/nickname.js';
 import { LOG_CATEGORIES } from '../config/logCategories.js';
+import { profileEmbed } from '../ui/embeds.js';
+import * as ui from '../ui/components.js';
 
 export const data = new SlashCommandBuilder()
   .setName('admin')
@@ -20,7 +22,11 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub => sub
     .setName('delete')
     .setDescription('Delete a user\'s data')
-    .addUserOption(opt => opt.setName('user').setDescription('User to delete').setRequired(true)));
+    .addUserOption(opt => opt.setName('user').setDescription('User to delete').setRequired(true)))
+  .addSubcommand(sub => sub
+    .setName('character')
+    .setDescription('View/edit another user\'s character')
+    .addUserOption(opt => opt.setName('user').setDescription('User to manage').setRequired(true)));
 
 function embed(title, description) {
   return new EmbedBuilder()
@@ -89,11 +95,8 @@ async function handleEphemeral(interaction) {
   const current = await EphemeralRepo.get(interaction.guildId);
 
   const options = [
-    { label: 'Register Character', value: 'register', description: 'Registration flow responses' },
-    { label: 'Edit Character', value: 'edit', description: 'Edit flow responses' },
-    { label: 'View Profile', value: 'view', description: 'Profile view responses' },
-    { label: 'Admin Commands', value: 'admin', description: 'Admin command responses' },
-    { label: 'Member List', value: 'list', description: '/character list responses' }
+    { label: 'Character Commands', value: 'character', description: '/character responses (register, edit, view)' },
+    { label: 'Admin Commands', value: 'admin', description: '/admin command responses' }
   ].map(opt => ({ ...opt, default: current.includes(opt.value) }));
 
   const row = new ActionRowBuilder().addComponents(
@@ -163,6 +166,24 @@ async function handleDelete(interaction) {
   await interaction.reply({ embeds: [e], ephemeral: isEph });
 }
 
+async function handleCharacter(interaction) {
+  const isEph = await isEphemeral(interaction.guildId, 'admin');
+  const target = interaction.options.getUser('user');
+
+  const chars = await CharacterRepo.findAllByUser(target.id);
+  const main = chars.find(c => c.character_type === 'main');
+
+  if (!main && chars.length === 0) {
+    const e = embed('❌ No Character', `**${target.username}** hasn't registered yet.`);
+    return interaction.reply({ embeds: [e], ephemeral: isEph });
+  }
+
+  const profileEmb = await profileEmbed(target, chars, interaction);
+  const buttons = ui.adminProfileButtons(target.id, !!main);
+
+  await interaction.reply({ embeds: [profileEmb], components: buttons, ephemeral: isEph });
+}
+
 export async function execute(interaction) {
   const sub = interaction.options.getSubcommand();
   logger.command('admin', interaction.user.username, sub);
@@ -174,6 +195,7 @@ export async function execute(interaction) {
     if (sub === 'ephemeral') return await handleEphemeral(interaction);
     if (sub === 'stats') return await handleStats(interaction);
     if (sub === 'delete') return await handleDelete(interaction);
+    if (sub === 'character') return await handleCharacter(interaction);
   } catch (e) {
     logger.error('Admin', `${sub} failed`, e);
     const isEph = await isEphemeral(interaction.guildId, 'admin');
