@@ -43,27 +43,19 @@ export async function route(interaction) {
     if (customId.startsWith('admin_edit_')) return edit.showEditMenu(interaction, userId);
     if (customId.startsWith('admin_remove_')) return edit.showRemoveMenu(interaction, userId);
 
-    // Registration
+    // Registration - START
     if (customId.startsWith('reg_start_')) return reg.start(interaction, userId, 'main');
-    if (customId.startsWith('reg_region_')) return reg.handleRegion(interaction, userId);
-    if (customId.startsWith('reg_country_')) return reg.handleCountry(interaction, userId);
-    if (customId.startsWith('reg_timezone_')) return reg.handleTimezone(interaction, userId);
-    if (customId.startsWith('reg_class_')) return reg.handleClass(interaction, userId);
-    if (customId.startsWith('reg_subclass_')) return reg.handleSubclass(interaction, userId);
-    if (customId.startsWith('reg_score_')) return reg.handleScore(interaction, userId);
-    if (customId.startsWith('reg_bi_')) return reg.handleBattleImagine(interaction, userId);
-    if (customId.startsWith('reg_guild_')) return reg.handleGuild(interaction, userId);
 
     // Back buttons
-    if (customId.startsWith('back_profile_')) return edit.backToProfile(interaction, userId);
-    if (customId.startsWith('back_region_')) return reg.backToRegion(interaction, userId);
-    if (customId.startsWith('back_country_')) return reg.backToCountry(interaction, userId);
-    if (customId.startsWith('back_timezone_')) return reg.backToTimezone(interaction, userId);
-    if (customId.startsWith('back_class_')) return reg.backToClass(interaction, userId);
-    if (customId.startsWith('back_subclass_')) return reg.backToSubclass(interaction, userId);
-    if (customId.startsWith('back_score_')) return reg.backToScore(interaction, userId);
-    if (customId.startsWith('back_bi_')) return reg.backToBattleImagine(interaction, userId);
-    if (customId.startsWith('retry_ign_')) return reg.retryIGN(interaction, userId);
+    if (customId.startsWith('back_to_profile_')) return edit.backToProfile(interaction, userId);
+    if (customId.startsWith('back_to_region_')) return reg.backToRegion(interaction, userId);
+    if (customId.startsWith('back_to_country_')) return reg.backToCountry(interaction, userId);
+    if (customId.startsWith('back_to_timezone_')) return reg.backToTimezone(interaction, userId);
+    if (customId.startsWith('back_to_class_')) return reg.backToClass(interaction, userId);
+    if (customId.startsWith('back_to_subclass_')) return reg.backToSubclass(interaction, userId);
+    if (customId.startsWith('back_to_score_')) return reg.backToScore(interaction, userId);
+    if (customId.startsWith('back_to_battle_imagine_')) return reg.backToBattleImagine(interaction, userId);
+    if (customId.startsWith('retry_ign_uid_')) return reg.retryIGN(interaction, userId);
 
     // Add character
     if (customId.startsWith('add_type_')) return edit.handleAddType(interaction, userId);
@@ -121,39 +113,57 @@ export async function routeSelectMenu(interaction) {
   logger.interaction('select', customId, interaction.user.username);
 
   try {
-    const s = state.get(userId, 'edit');
-
-    if (customId.startsWith('reg_class_')) {
+    // Registration select menus - these need to be routed to registration handlers
+    if (customId.startsWith('select_region_')) return reg.handleRegion(interaction, userId);
+    if (customId.startsWith('select_country_')) return reg.handleCountry(interaction, userId);
+    if (customId.startsWith('select_timezone_')) return reg.handleTimezone(interaction, userId);
+    if (customId.startsWith('select_class_')) {
+      const s = state.get(userId, 'edit');
       if (s?.field === 'class') {
         return edit.handleEditClass(interaction, userId);
       }
       return reg.handleClass(interaction, userId);
     }
-
-    if (customId.startsWith('reg_subclass_')) {
+    if (customId.startsWith('select_subclass_')) {
+      const s = state.get(userId, 'edit');
       if (s?.field === 'class') {
         return edit.handleEditSubclass(interaction, userId);
       }
       return reg.handleSubclass(interaction, userId);
     }
-
-    if (customId.startsWith('reg_score_')) {
+    if (customId.startsWith('select_ability_score_')) {
+      const s = state.get(userId, 'edit');
       if (s?.field === 'score') {
         return edit.handleEditScore(interaction, userId);
       }
       return reg.handleScore(interaction, userId);
     }
-
-    if (customId.startsWith('reg_guild_')) {
+    if (customId.startsWith('select_battle_imagine_')) return reg.handleBattleImagine(interaction, userId);
+    if (customId.startsWith('select_guild_')) {
+      const s = state.get(userId, 'edit');
       if (s?.field === 'guild') {
         return edit.handleEditGuild(interaction, userId);
       }
       return reg.handleGuild(interaction, userId);
     }
 
-    return route(interaction);
+    // Edit character type selections
+    if (customId.startsWith('add_type_')) return edit.handleAddType(interaction, userId);
+    if (customId.startsWith('edit_type_')) return edit.handleEditType(interaction, userId);
+    if (customId.startsWith('remove_type_')) return edit.handleRemoveType(interaction, userId);
+    if (customId.startsWith('parent_')) return edit.handleParentSelect(interaction, userId);
+    if (customId.startsWith('edit_alt_')) return edit.handleEditAltSelect(interaction, userId);
+    if (customId.startsWith('edit_subclass_')) return edit.handleEditSubclassSelect(interaction, userId);
+    if (customId.startsWith('edit_field_')) return edit.handleFieldSelect(interaction, userId);
+    if (customId.startsWith('edit_bi_select_')) return edit.handleEditBattleImagineSelect(interaction, userId);
+    if (customId.startsWith('edit_bi_tier_')) return edit.handleEditBattleImagineTier(interaction, userId);
+
+    logger.warning('Router', `Unknown select customId: ${customId}`);
   } catch (e) {
     logger.error('Router', `Failed handling select ${customId}`, e);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: 'Something went wrong.', ...ephemeralFlag });
+    }
   }
 }
 
@@ -164,10 +174,12 @@ export async function routeModal(interaction) {
   logger.interaction('modal', customId, interaction.user.username);
 
   try {
-    if (customId.startsWith('reg_ign_')) {
+    // Registration modals
+    if (customId.startsWith('ign_modal_')) {
       return reg.handleIGN(interaction, userId);
     }
 
+    // Edit modals
     if (customId.startsWith('edit_ign_')) {
       return edit.handleEditModal(interaction, userId, 'ign');
     }
@@ -175,7 +187,12 @@ export async function routeModal(interaction) {
     if (customId.startsWith('edit_uid_')) {
       return edit.handleEditModal(interaction, userId, 'uid');
     }
+
+    logger.warning('Router', `Unknown modal customId: ${customId}`);
   } catch (e) {
     logger.error('Router', `Failed handling modal ${customId}`, e);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: 'Something went wrong.', ...ephemeralFlag });
+    }
   }
 }
