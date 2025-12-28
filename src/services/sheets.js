@@ -8,6 +8,7 @@ class GoogleSheetsService {
   constructor() {
     this.auth = null;
     this.sheets = null;
+    this.client = null; // Discord client for fetching usernames
     this.spreadsheetId = config.sheets.id;
     
     // Rate limiting
@@ -396,13 +397,19 @@ class GoogleSheetsService {
           // Silently continue
         }
         
-        // ✅ Get Discord username from enriched character data
+        // ✅ Get Discord username from Discord API
         let discordName = userId; // Fallback to user ID
         
+        if (this.client) {
+          try {
+            const user = await this.client.users.fetch(userId);
+            discordName = user.username;
+          } catch (error) {
+            console.log(`⚠️  [SHEETS] Could not fetch username for ${userId}`);
+          }
+        }
+        
         if (mainChar) {
-          // Use discord_name from enriched data, fallback to userId
-          discordName = mainChar.discord_name || userId;
-          
           // ✅ UPDATED: Format timezone - we'll add the time via formula later
           const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
           
@@ -472,8 +479,8 @@ class GoogleSheetsService {
         }
 
         for (const alt of alts) {
-          // Use alt's discord_name if available (fallback to already-set discordName from main)
-          const altDiscordName = alt.discord_name || discordName;
+          // Use the already-fetched discordName (same user, same Discord name)
+          const altDiscordName = discordName;
           
           // ✅ NEW: Get Battle Imagines for alt
           const altBattleImagines = await BattleImagineRepo.findByCharacter(alt.id);
@@ -1347,6 +1354,7 @@ class GoogleSheetsService {
   }
 
   async sync(characters, client) {
+    this.client = client; // Store client for fetching Discord usernames
     return await this.fullSync(characters);
   }
 }
