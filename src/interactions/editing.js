@@ -1,4 +1,4 @@
-import { MessageFlags } from 'discord.js';
+import { MessageFlags, EmbedBuilder } from 'discord.js';
 import state from '../services/state.js';
 import logger from '../services/logger.js';
 import config from '../config/index.js';
@@ -301,6 +301,68 @@ export async function handleEditGuild(interaction, userId) {
   const oldVal = s.char.guild || 'None';
   await CharacterRepo.update(s.charId, { guild });
   logger.edit(interaction.user.username, 'guild', oldVal, guild);
+
+  // Handle role changes and notifications for main character
+  const isMain = s.type === 'main';
+  if (isMain) {
+    try {
+      const guildObj = await interaction.client.guilds.fetch(config.discord.guildId);
+      const member = await guildObj.members.fetch(userId);
+      
+      if (guild === 'Visitor') {
+        // Switching TO Visitor
+        if (config.roles.visitor) {
+          await member.roles.add(config.roles.visitor);
+          console.log(`[EDIT] Added Visitor role to ${userId}`);
+        }
+        
+        if (config.roles.registered && member.roles.cache.has(config.roles.registered)) {
+          await member.roles.remove(config.roles.registered);
+          console.log(`[EDIT] Removed Registered role from ${userId}`);
+        }
+      } else {
+        // Switching FROM Visitor to actual guild
+        if (config.roles.registered) {
+          await member.roles.add(config.roles.registered);
+          console.log(`[EDIT] Added Registered role to ${userId}`);
+        }
+        
+        if (config.roles.visitor && member.roles.cache.has(config.roles.visitor)) {
+          await member.roles.remove(config.roles.visitor);
+          console.log(`[EDIT] Removed Visitor role from ${userId}`);
+        }
+        
+        // Notify admins if changing to iDolls
+        if (guild === 'iDolls' && config.roles.guild1 && config.channels.admin) {
+          try {
+            const adminChannel = await interaction.client.channels.fetch(config.channels.admin);
+            
+            const embedMsg = new EmbedBuilder()
+              .setColor('#EC4899')
+              .setTitle('🏰 Member Changed Guild to iDolls')
+              .setDescription(`**${member.user.username}** changed their guild from **${oldVal}** to **${guild}**.\n\nPlease assign the guild role: <@&${config.roles.guild1}>`)
+              .addFields(
+                { name: 'User', value: `<@${member.id}>`, inline: true },
+                { name: 'Old Guild', value: oldVal, inline: true },
+                { name: 'New Guild', value: guild, inline: true }
+              )
+              .setTimestamp();
+
+            await adminChannel.send({ 
+              content: `<@&${config.roles.guild1}> role needed for <@${member.id}>`,
+              embeds: [embedMsg] 
+            });
+            
+            console.log(`[EDIT] Notified admins about guild change for ${member.user.username}`);
+          } catch (error) {
+            console.error('[EDIT] Admin notification error:', error.message);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[EDIT] Role/notification error:', error.message);
+    }
+  }
 
   state.clear(userId, 'edit');
   await returnToProfile(interaction, userId);
