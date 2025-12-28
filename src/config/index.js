@@ -61,6 +61,16 @@ export default {
   logging: {
     adminRoleId: process.env.ADMIN_ROLE_ID
   },
+  // ✅ NEW: Role configuration
+  roles: {
+    registered: process.env.REGISTERED_ROLE_ID,
+    visitor: process.env.VISITOR_ROLE_ID,
+    guild1: process.env.GUILD_1_ROLE_ID
+  },
+  // ✅ NEW: Channel configuration
+  channels: {
+    admin: process.env.ADMIN_CHANNEL_ID
+  },
   ephemeral: {
     defaults: ['character', 'admin']
   }
