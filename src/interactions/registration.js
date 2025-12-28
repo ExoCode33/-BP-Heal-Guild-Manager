@@ -48,7 +48,7 @@ function clearActiveInteraction(userId) {
   activeInteractions.delete(userId);
 }
 
-// ✨ UPDATED: Helper to create centered, cute embeds with ANSI codes
+// Helper to create registration embeds with simple formatting (not centered)
 function createRegEmbed(step, total, title, description) {
   const ansiText = [
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
@@ -686,7 +686,7 @@ async function proceedToGuildSelection(interaction, userId) {
   // Calculate step number (after all battle imagines)
   const stepNum = totalSteps - 1;
   
-  const embed = createRegEmbed(stepNum, totalSteps, '💕 Did you finally join heal or still in denial ?', `**Score:** ${scoreLabel}`);
+  const embed = createRegEmbed(stepNum, totalSteps, '💕 Did you finally join iDolls or still in denial?', `**Score:** ${scoreLabel}`);
 
   const guildOptions = config.guilds.map(guild => ({
     label: guild.name,
