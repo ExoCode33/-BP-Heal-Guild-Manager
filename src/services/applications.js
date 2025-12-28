@@ -197,7 +197,6 @@ class ApplicationService {
       const guild = await this.client.guilds.fetch(config.discord.guildId);
       const member = await guild.members.fetch(application.user_id);
 
-      // ✅ FIX: Remove guild role when denied
       if (config.roles.guild1 && member.roles.cache.has(config.roles.guild1)) {
         await member.roles.remove(config.roles.guild1);
         console.log(`[APP] Removed guild role from ${application.user_id}`);
@@ -272,7 +271,6 @@ class ApplicationService {
 
       for (const app of pending) {
         try {
-          // Delete old Discord message FIRST
           if (app.message_id) {
             try {
               const oldMessage = await channel.messages.fetch(app.message_id);
@@ -283,14 +281,11 @@ class ApplicationService {
             }
           }
 
-          // ✅ FIX: Fetch the FULL application to get votes
           const fullApp = await ApplicationRepo.findById(app.id);
           
-          // Fetch user and characters
           const user = await this.client.users.fetch(app.user_id);
           const characters = await CharacterRepo.findAllByUser(app.user_id);
           
-          // Create new embed with PRESERVED votes from fullApp
           const embed = await profileEmbed(user, characters, { guild });
           const applicationEmbed = addVotingFooter(embed, fullApp);
           const buttons = createApplicationButtons(fullApp.id);
@@ -301,7 +296,6 @@ class ApplicationService {
             components: buttons
           });
 
-          // UPDATE the existing application with new message ID
           await ApplicationRepo.update(fullApp.id, { messageId: newMessage.id });
 
           console.log(`[APP] Updated application ID ${fullApp.id} with new message ${newMessage.id}, preserved ${fullApp.accept_votes?.length || 0} accept votes, ${fullApp.deny_votes?.length || 0} deny votes`);
