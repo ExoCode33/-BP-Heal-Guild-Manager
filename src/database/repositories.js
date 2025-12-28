@@ -161,6 +161,17 @@ export const ApplicationRepo = {
     return result.rows;
   },
 
+  async findAllByUserAndCharacter(userId, characterId) {
+    const result = await db.query(
+      `SELECT * FROM guild_applications 
+       WHERE user_id = $1 AND character_id = $2 
+       ORDER BY created_at DESC 
+       LIMIT 1`,
+      [userId, characterId]
+    );
+    return result.rows[0] || null;
+  },
+
   async addVote(id, userId, voteType) {
     const field = voteType === 'accept' ? 'accept_votes' : 'deny_votes';
     const otherField = voteType === 'accept' ? 'deny_votes' : 'accept_votes';
