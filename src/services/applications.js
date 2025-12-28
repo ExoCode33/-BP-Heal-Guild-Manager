@@ -21,6 +21,17 @@ class ApplicationService {
     }
 
     try {
+      // ✅ FIX: Check if application already exists for this user/character
+      const existingApp = await ApplicationRepo.findPending();
+      const duplicate = existingApp.find(app => 
+        app.user_id === userId && app.character_id === characterId
+      );
+      
+      if (duplicate) {
+        console.log(`[APP] Application already exists for user ${userId}, character ${characterId}`);
+        return duplicate;
+      }
+
       const channel = await this.client.channels.fetch(config.channels.admin);
       const user = await this.client.users.fetch(userId);
       const characters = await CharacterRepo.findAllByUser(userId);
@@ -66,6 +77,12 @@ class ApplicationService {
 
   async handleVote(interaction, applicationId, voteType) {
     try {
+      // ✅ FIX: Validate applicationId is a valid number
+      if (!applicationId || isNaN(applicationId)) {
+        console.error('[APP] Invalid application ID:', applicationId);
+        return interaction.reply({ content: '❌ Invalid application.', ephemeral: true });
+      }
+
       const application = await ApplicationRepo.findById(applicationId);
       if (!application) {
         return interaction.reply({ content: '❌ Application not found.', ephemeral: true });
@@ -107,6 +124,12 @@ class ApplicationService {
     }
 
     try {
+      // ✅ FIX: Validate applicationId
+      if (!applicationId || isNaN(applicationId)) {
+        console.error('[APP] Invalid application ID:', applicationId);
+        return interaction.reply({ content: '❌ Invalid application.', ephemeral: true });
+      }
+
       const application = await ApplicationRepo.findById(applicationId);
       if (!application) {
         return interaction.reply({ content: '❌ Application not found.', ephemeral: true });
@@ -135,6 +158,12 @@ class ApplicationService {
     }
 
     try {
+      // ✅ FIX: Validate applicationId
+      if (!applicationId || isNaN(applicationId)) {
+        console.error('[APP] Invalid application ID:', applicationId);
+        return interaction.update({ content: '❌ Invalid application.', components: [] });
+      }
+
       const application = await ApplicationRepo.findById(applicationId);
       if (!application) {
         return interaction.update({ content: '❌ Application not found.', components: [] });
