@@ -18,15 +18,12 @@ import { updateNickname } from '../services/nickname.js';
 import { profileEmbed } from '../ui/embeds.js';
 import * as ui from '../ui/components.js';
 
-// ✅ NEW: Track active interactions to prevent race conditions
 const activeInteractions = new Map();
 
-// ✅ NEW: Helper to check if user has active interaction
 function hasActiveInteraction(userId, interactionId) {
   const active = activeInteractions.get(userId);
   if (!active) return false;
   
-  // Clean up stale interactions (older than 3 seconds)
   if (Date.now() - active.timestamp > 3000) {
     activeInteractions.delete(userId);
     return false;
@@ -35,7 +32,6 @@ function hasActiveInteraction(userId, interactionId) {
   return active.id !== interactionId;
 }
 
-// ✅ NEW: Mark interaction as active
 function setActiveInteraction(userId, interactionId) {
   activeInteractions.set(userId, {
     id: interactionId,
@@ -43,21 +39,24 @@ function setActiveInteraction(userId, interactionId) {
   });
 }
 
-// ✅ NEW: Clear active interaction
 function clearActiveInteraction(userId) {
   activeInteractions.delete(userId);
 }
 
-// Helper to create registration embeds with simple formatting (not centered)
 function createRegEmbed(step, total, title, description) {
+  const titleLine = title.padStart((title.length + 42) / 2).padEnd(42);
+  const descLines = description.split('\n').map(line => 
+    line.padStart((line.length + 42) / 2).padEnd(42)
+  );
+  
   const ansiText = [
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
-    `\u001b[1;34m${title}\u001b[0m`,
+    `\u001b[1;34m${titleLine}\u001b[0m`,
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
     '',
-    description,
+    ...descLines.map(line => `\u001b[0;37m${line}\u001b[0m`),
     '',
-    `\u001b[0;36m✨ Step ${step} of ${total}\u001b[0m`,
+    `\u001b[0;36m${'✨ Step ' + step + ' of ' + total}`.padStart(((('✨ Step ' + step + ' of ' + total).length + 42) / 2)).padEnd(42) + '\u001b[0m',
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
   ].join('\n');
 
@@ -67,7 +66,6 @@ function createRegEmbed(step, total, title, description) {
     .setTimestamp();
 }
 
-// Helper to get class icon emoji ID (hardcoded Discord emoji IDs)
 function getClassIconId(className) {
   const iconMap = {
     'Beat Performer': '1448837920931840021',
@@ -87,7 +85,6 @@ function getTimezoneAbbr(timezoneLabel) {
   return match ? match[1] : timezoneLabel;
 }
 
-// Calculate total steps dynamically
 function getTotalSteps(characterType) {
   const baseSteps = {
     'main': 7,
@@ -106,13 +103,11 @@ function getTotalSteps(characterType) {
 }
 
 export async function start(interaction, userId, characterType = 'main') {
-  // ✅ NEW: Check for race condition
   if (hasActiveInteraction(userId, interaction.id)) {
     console.log(`[REGISTRATION] Race condition detected for ${userId}, ignoring duplicate interaction`);
     return;
   }
   
-  // ✅ NEW: Mark this interaction as active
   setActiveInteraction(userId, interaction.id);
   
   const currentState = state.get(userId, 'reg') || {};
@@ -120,7 +115,6 @@ export async function start(interaction, userId, characterType = 'main') {
   console.log('[REGISTRATION] Starting registration for user:', userId);
   console.log('[REGISTRATION] State:', JSON.stringify(currentState, null, 2));
   
-  // Check if adding alt and user already has timezone
   const existingTimezone = await TimezoneRepo.get(userId);
   const isAlt = characterType === 'alt' || currentState.characterType === 'alt';
   
@@ -157,7 +151,7 @@ export async function start(interaction, userId, characterType = 'main') {
     });
     
     const totalSteps = getTotalSteps('alt');
-    const embed = createRegEmbed(1, totalSteps, '🎭 Which class speaks to you?', `**Timezone:** ${timezoneAbbr} • ${timeString}`);
+    const embed = createRegEmbed(1, totalSteps, '🎭 Which class speaks to you?', `Timezone: ${timezoneAbbr} • ${timeString}`);
     
     const classOptions = Object.keys(CLASSES).map(className => {
       const iconId = getClassIconId(className);
@@ -190,12 +184,10 @@ export async function start(interaction, userId, characterType = 'main') {
       await interaction.update({ embeds: [embed], components: [row1, row2] });
     }
     
-    // ✅ NEW: Clear active interaction after successful update
     clearActiveInteraction(userId);
     return;
   }
   
-  // Main character registration - start with region
   state.set(userId, 'reg', { characterType });
   
   const totalSteps = getTotalSteps('main');
@@ -227,7 +219,6 @@ export async function start(interaction, userId, characterType = 'main') {
     await interaction.update({ embeds: [embed], components: [row1, row2] });
   }
   
-  // ✅ NEW: Clear active interaction after successful update
   clearActiveInteraction(userId);
 }
 
@@ -244,14 +235,17 @@ export async function handleRegion(interaction, userId) {
   state.set(userId, 'reg', { ...currentState, region });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(2, totalSteps, '🏳️ Choose Your Country', `**Region:** ${region}`);
+  const embed = createRegEmbed(2, totalSteps, '🏳️ Choose Your Country', `Region: ${region}`);
 
   const countries = Object.keys(REGIONS[region]);
-  const countryOptions = countries.map(country => ({
-    label: country,
-    value: country,
-    description: 'Select your location'
-  }));
+  const countryOptions = countries.map(country => {
+    const countryName = country.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '');
+    return {
+      label: countryName,
+      value: country,
+      description: region
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_country_${userId}`)
@@ -284,16 +278,83 @@ export async function handleCountry(interaction, userId) {
   state.set(userId, 'reg', { ...currentState, country });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(3, totalSteps, '🕐 Choose Your Timezone', `**Country:** ${country}`);
+  const countryName = country.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '');
+  const embed = createRegEmbed(3, totalSteps, '🕐 Choose Your Timezone', `Country: ${countryName}`);
 
   const timezones = REGIONS[currentState.region][country];
   
-  const timezoneOptions = Object.keys(timezones).map(tzLabel => ({
-    label: tzLabel,
-    value: timezones[tzLabel],
-    description: tzLabel.split('(')[1]?.replace(')', '') || 'Timezone',
-    emoji: '🕐'
-  }));
+  const timezoneOptions = Object.keys(timezones).map(tzLabel => {
+    const cityMap = {
+      'EST (Eastern)': 'New York',
+      'CST (Central)': 'Chicago',
+      'MST (Mountain)': 'Denver',
+      'PST (Pacific)': 'Los Angeles',
+      'AKST (Alaska)': 'Anchorage',
+      'HST (Hawaii)': 'Honolulu',
+      'AST (Atlantic)': 'Halifax',
+      'GMT (London)': 'London',
+      'CET (Paris)': 'Paris',
+      'CET (Berlin)': 'Berlin',
+      'CET (Rome)': 'Rome',
+      'CET (Madrid)': 'Madrid',
+      'CET (Amsterdam)': 'Amsterdam',
+      'CET (Brussels)': 'Brussels',
+      'CET (Vienna)': 'Vienna',
+      'CET (Warsaw)': 'Warsaw',
+      'CET (Stockholm)': 'Stockholm',
+      'EET (Athens)': 'Athens',
+      'TRT (Istanbul)': 'Istanbul',
+      'MSK (Moscow)': 'Moscow',
+      'YEKT (Yekaterinburg)': 'Yekaterinburg',
+      'NOVT (Novosibirsk)': 'Novosibirsk',
+      'VLAT (Vladivostok)': 'Vladivostok',
+      'JST (Tokyo)': 'Tokyo',
+      'KST (Seoul)': 'Seoul',
+      'CST (Beijing)': 'Beijing',
+      'HKT (Hong Kong)': 'Hong Kong',
+      'CST (Taipei)': 'Taipei',
+      'SGT (Singapore)': 'Singapore',
+      'ICT (Bangkok)': 'Bangkok',
+      'ICT (Ho Chi Minh)': 'Ho Chi Minh',
+      'PST (Manila)': 'Manila',
+      'WIB (Jakarta)': 'Jakarta',
+      'WITA (Bali)': 'Bali',
+      'IST (New Delhi)': 'New Delhi',
+      'GST (Dubai)': 'Dubai',
+      'AST (Riyadh)': 'Riyadh',
+      'AEDT (Sydney)': 'Sydney',
+      'AEST (Brisbane)': 'Brisbane',
+      'ACDT (Adelaide)': 'Adelaide',
+      'AWST (Perth)': 'Perth',
+      'ACST (Darwin)': 'Darwin',
+      'NZDT (Auckland)': 'Auckland',
+      'FJT (Suva)': 'Suva',
+      'SAST (Johannesburg)': 'Johannesburg',
+      'EET (Cairo)': 'Cairo',
+      'WAT (Lagos)': 'Lagos',
+      'EAT (Nairobi)': 'Nairobi',
+      'WET (Casablanca)': 'Casablanca',
+      'BRT (Brasília)': 'São Paulo',
+      'AMT (Amazon)': 'Manaus',
+      'ART (Buenos Aires)': 'Buenos Aires',
+      'CLT (Santiago)': 'Santiago',
+      'COT (Bogotá)': 'Bogotá',
+      'PET (Lima)': 'Lima',
+      'CST (Central)': 'Mexico City',
+      'MST (Mountain)': 'Chihuahua',
+      'PST (Pacific)': 'Tijuana'
+    };
+    
+    const cityName = cityMap[tzLabel] || tzLabel.split('(')[1]?.replace(')', '') || tzLabel;
+    const abbr = tzLabel.split(' ')[0];
+    
+    return {
+      label: cityName,
+      value: timezones[tzLabel],
+      description: abbr,
+      emoji: '🕐'
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_timezone_${userId}`)
@@ -345,7 +406,7 @@ export async function handleTimezone(interaction, userId) {
   });
 
   const totalSteps = getTotalSteps('main');
-  const embed = createRegEmbed(4, totalSteps, '🎭 Which class speaks to you?', `**Timezone:** ${timezoneAbbr} • ${timeString}`);
+  const embed = createRegEmbed(4, totalSteps, '🎭 Which class speaks to you?', `Timezone: ${timezoneAbbr} • ${timeString}`);
 
   const classOptions = Object.keys(CLASSES).map(className => {
     const iconId = getClassIconId(className);
@@ -392,7 +453,6 @@ export async function handleClass(interaction, userId) {
   const subclasses = CLASSES[className].subclasses;
   const classRole = CLASSES[className].role;
   
-  // Determine step numbers based on whether it's an alt or subclass
   const isAlt = currentState.characterType === 'alt';
   const isSubclass = currentState.type === 'subclass';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
@@ -406,7 +466,7 @@ export async function handleClass(interaction, userId) {
     stepNum = 5;
   }
   
-  const embed = createRegEmbed(stepNum, totalSteps, '✨ Subclass selection! Let\'s find your shine!', `**Class:** ${className}`);
+  const embed = createRegEmbed(stepNum, totalSteps, '✨ Subclass selection!', `Class: ${className}`);
 
   const subclassOptions = subclasses.map(subclassName => {
     const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
@@ -452,7 +512,6 @@ export async function handleSubclass(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   state.set(userId, 'reg', { ...currentState, subclass: subclassName });
   
-  // Determine step numbers based on whether it's an alt or subclass
   const isAlt = currentState.characterType === 'alt';
   const isSubclass = currentState.type === 'subclass';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
@@ -466,7 +525,7 @@ export async function handleSubclass(interaction, userId) {
     stepNum = 6;
   }
   
-  const embed = createRegEmbed(stepNum, totalSteps, '⚔️ What is your ability score?', `**Subclass:** ${subclassName}`);
+  const embed = createRegEmbed(stepNum, totalSteps, '⚔️ What is your ability score?', `Subclass: ${subclassName}`);
 
   const scoreOptions = ABILITY_SCORES.map(score => ({
     label: score.label,
@@ -505,11 +564,9 @@ export async function handleScore(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   state.set(userId, 'reg', { ...currentState, abilityScore });
 
-  // Check if this is a subclass registration
   const isSubclass = currentState.type === 'subclass';
   
   if (isSubclass) {
-    // For subclasses, skip battle imagines and guild selection, complete registration
     try {
       const parentChar = await CharacterRepo.findById(currentState.parentId);
       
@@ -559,7 +616,6 @@ export async function handleScore(interaction, userId) {
     return;
   }
 
-  // For main/alt characters, proceed to Battle Imagines
   state.set(userId, 'reg', { 
     ...currentState, 
     abilityScore,
@@ -567,20 +623,16 @@ export async function handleScore(interaction, userId) {
     currentImagineIndex: 0
   });
   
-  // Start Battle Imagine flow
   await showBattleImagineSelection(interaction, userId);
   
   clearActiveInteraction(userId);
 }
 
-// Show Battle Imagine selection for current imagine
 async function showBattleImagineSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   const { currentImagineIndex, battleImagines } = currentState;
   
-  // Check if we've shown all battle imagines
   if (currentImagineIndex >= config.battleImagines.length) {
-    // All battle imagines done, proceed to guild selection
     await proceedToGuildSelection(interaction, userId);
     return;
   }
@@ -589,7 +641,6 @@ async function showBattleImagineSelection(interaction, userId) {
   const isAlt = currentState.characterType === 'alt';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
-  // Calculate step number
   let baseStep;
   if (isAlt) {
     baseStep = 4;
@@ -598,17 +649,15 @@ async function showBattleImagineSelection(interaction, userId) {
   }
   const stepNum = baseStep + currentImagineIndex;
   
-  // Use custom emoji in title if available
   const titleEmoji = currentImagine.logo ? `<:bi:${currentImagine.logo}>` : '⚔️';
   
   const embed = createRegEmbed(
     stepNum, 
     totalSteps, 
     `${titleEmoji} Battle Imagine - ${currentImagine.name}`, 
-    `Do you own **${currentImagine.name}**?\n\nSelect the highest tier you own:`
+    `Do you own ${currentImagine.name}?\nSelect the highest tier you own:`
   );
   
-  // Build tier options with custom emoji
   const tierOptions = [
     {
       label: 'Skip / I don\'t own this',
@@ -618,7 +667,6 @@ async function showBattleImagineSelection(interaction, userId) {
     }
   ];
   
-  // Add tier options T0-T5
   for (const tier of TIERS) {
     const option = {
       label: tier,
@@ -658,7 +706,6 @@ export async function handleBattleImagine(interaction, userId) {
   const selectedTier = interaction.values[0];
   const currentImagine = config.battleImagines[currentState.currentImagineIndex];
   
-  // If not skipped, add to battle imagines array
   if (selectedTier !== 'skip') {
     currentState.battleImagines.push({
       name: currentImagine.name,
@@ -666,27 +713,23 @@ export async function handleBattleImagine(interaction, userId) {
     });
   }
   
-  // Move to next imagine
   currentState.currentImagineIndex++;
   state.set(userId, 'reg', currentState);
   
-  // Show next imagine or proceed to guild
   await showBattleImagineSelection(interaction, userId);
   
   clearActiveInteraction(userId);
 }
 
-// Proceed to guild selection after battle imagines
 async function proceedToGuildSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   const scoreLabel = ABILITY_SCORES.find(s => s.value === currentState.abilityScore)?.label || currentState.abilityScore;
   const isAlt = currentState.characterType === 'alt';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
-  // Calculate step number (after all battle imagines)
   const stepNum = totalSteps - 1;
   
-  const embed = createRegEmbed(stepNum, totalSteps, '💕 Did you finally join iDolls or still in denial?', `**Score:** ${scoreLabel}`);
+  const embed = createRegEmbed(stepNum, totalSteps, '💕 Did you finally join iDolls?', `Score: ${scoreLabel}\n\nOr still in denial?`);
 
   const guildOptions = config.guilds.map(guild => ({
     label: guild.name,
@@ -761,7 +804,6 @@ export async function handleIGN(interaction, userId) {
   console.log('[REGISTRATION] UID entered:', uid);
   console.log('[REGISTRATION] Final state:', JSON.stringify(currentState, null, 2));
 
-  // Validate UID is numbers only
   if (!/^\d+$/.test(uid)) {
     state.set(userId, 'reg', { 
       ...currentState, 
@@ -801,7 +843,6 @@ export async function handleIGN(interaction, userId) {
       parentId: null
     });
     
-    // Save Battle Imagines if any were selected
     if (currentState.battleImagines && currentState.battleImagines.length > 0) {
       for (const imagine of currentState.battleImagines) {
         await BattleImagineRepo.add(character.id, imagine.name, imagine.tier);
@@ -809,7 +850,6 @@ export async function handleIGN(interaction, userId) {
       console.log(`[REGISTRATION] Saved ${currentState.battleImagines.length} Battle Imagines`);
     }
     
-    // Sync nickname for main character
     if (currentState.characterType === 'main' && config.sync.nicknameEnabled) {
       try {
         await updateNickname(interaction.client, config.discord.guildId, userId, ign);
@@ -885,7 +925,6 @@ export async function retryIGN(interaction, userId) {
   await interaction.showModal(modal);
 }
 
-// Back button handlers
 export async function backToRegion(interaction, userId) {
   await start(interaction, userId);
 }
@@ -953,17 +992,14 @@ export async function backToBattleImagine(interaction, userId) {
     return;
   }
   
-  // If we're at the first battle imagine, go back to ability score
   if (currentState.currentImagineIndex === 0) {
     interaction.values = [currentState.subclass];
     await handleSubclass(interaction, userId);
     return;
   }
   
-  // Otherwise, go back to previous battle imagine
   currentState.currentImagineIndex--;
   
-  // Remove the last added imagine if user is going back
   if (currentState.battleImagines && currentState.battleImagines.length > 0) {
     currentState.battleImagines.pop();
   }
