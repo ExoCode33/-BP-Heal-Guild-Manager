@@ -197,6 +197,12 @@ class ApplicationService {
       const guild = await this.client.guilds.fetch(config.discord.guildId);
       const member = await guild.members.fetch(application.user_id);
 
+      // ✅ FIX: Remove guild role when denied
+      if (config.roles.guild1 && member.roles.cache.has(config.roles.guild1)) {
+        await member.roles.remove(config.roles.guild1);
+        console.log(`[APP] Removed guild role from ${application.user_id}`);
+      }
+
       if (config.roles.visitor) {
         await member.roles.add(config.roles.visitor);
       }
@@ -277,19 +283,17 @@ class ApplicationService {
             }
           }
 
+          // ✅ FIX: Fetch the FULL application to get votes
+          const fullApp = await ApplicationRepo.findById(app.id);
+          
           // Fetch user and characters
           const user = await this.client.users.fetch(app.user_id);
           const characters = await CharacterRepo.findAllByUser(app.user_id);
           
-          // Create new embed with PRESERVED votes
+          // Create new embed with PRESERVED votes from fullApp
           const embed = await profileEmbed(user, characters, { guild });
-          const applicationEmbed = addVotingFooter(embed, {
-            id: app.id,
-            guild_name: app.guild_name,
-            accept_votes: app.accept_votes || [],
-            deny_votes: app.deny_votes || []
-          });
-          const buttons = createApplicationButtons(app.id);
+          const applicationEmbed = addVotingFooter(embed, fullApp);
+          const buttons = createApplicationButtons(fullApp.id);
 
           const newMessage = await channel.send({
             content: `<@&${config.roles.guild1}> **Pending Application**`,
@@ -297,10 +301,10 @@ class ApplicationService {
             components: buttons
           });
 
-          // UPDATE the existing application with new message ID (don't create new one)
-          await ApplicationRepo.update(app.id, { messageId: newMessage.id });
+          // UPDATE the existing application with new message ID
+          await ApplicationRepo.update(fullApp.id, { messageId: newMessage.id });
 
-          console.log(`[APP] Updated application ID ${app.id} with new message ${newMessage.id}`);
+          console.log(`[APP] Updated application ID ${fullApp.id} with new message ${newMessage.id}, preserved ${fullApp.accept_votes?.length || 0} accept votes, ${fullApp.deny_votes?.length || 0} deny votes`);
         } catch (error) {
           console.error(`[APP] Error restoring application ${app.id}:`, error.message);
         }
