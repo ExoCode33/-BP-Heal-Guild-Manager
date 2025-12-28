@@ -1,5 +1,3 @@
-// /app/src/services/applications.js
-
 import { ApplicationRepo, CharacterRepo } from '../database/repositories.js';
 import { addVotingFooter, createApplicationButtons, createOverrideButtons } from '../ui/applications.js';
 import { profileEmbed } from '../ui/embeds.js';
@@ -264,33 +262,33 @@ class ApplicationService {
       if (pending.length === 0) return;
 
       const channel = await this.client.channels.fetch(config.channels.admin);
-      const messages = await channel.messages.fetch({ limit: 100 });
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
       for (const app of pending) {
         try {
-          // ✅ FIX: Delete old application from DB first to avoid unique constraint
-          await ApplicationRepo.delete(app.id);
-          console.log(`[APP] Deleted old application ID ${app.id}`);
-
-          // Delete old Discord message
-          try {
-            const oldMessage = messages.get(app.message_id);
-            if (oldMessage) {
+          // Delete old Discord message FIRST
+          if (app.message_id) {
+            try {
+              const oldMessage = await channel.messages.fetch(app.message_id);
               await oldMessage.delete();
               console.log(`[APP] Deleted old message ${app.message_id}`);
+            } catch (e) {
+              console.log(`[APP] Old message ${app.message_id} not found (already deleted)`);
             }
-          } catch (e) {
-            console.log(`[APP] Old message ${app.message_id} already deleted`);
           }
 
           // Fetch user and characters
           const user = await this.client.users.fetch(app.user_id);
           const characters = await CharacterRepo.findAllByUser(app.user_id);
           
-          // Create new embed and message
+          // Create new embed with PRESERVED votes
           const embed = await profileEmbed(user, characters, { guild });
-          const applicationEmbed = addVotingFooter(embed, app);
+          const applicationEmbed = addVotingFooter(embed, {
+            id: app.id,
+            guild_name: app.guild_name,
+            accept_votes: app.accept_votes || [],
+            deny_votes: app.deny_votes || []
+          });
           const buttons = createApplicationButtons(app.id);
 
           const newMessage = await channel.send({
@@ -299,16 +297,10 @@ class ApplicationService {
             components: buttons
           });
 
-          // Create new application entry with new message ID
-          await ApplicationRepo.create({
-            userId: app.user_id,
-            characterId: app.character_id,
-            guildName: app.guild_name,
-            messageId: newMessage.id,
-            channelId: channel.id
-          });
+          // UPDATE the existing application with new message ID (don't create new one)
+          await ApplicationRepo.update(app.id, { messageId: newMessage.id });
 
-          console.log(`[APP] Recreated application ID ${app.id} with new message ${newMessage.id}`);
+          console.log(`[APP] Updated application ID ${app.id} with new message ${newMessage.id}`);
         } catch (error) {
           console.error(`[APP] Error restoring application ${app.id}:`, error.message);
         }
