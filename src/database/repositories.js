@@ -128,3 +128,84 @@ export const EphemeralRepo = {
     await db.query(`INSERT INTO ephemeral_settings (guild_id, ephemeral_commands) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET ephemeral_commands = $2, updated_at = NOW()`, [guildId, commands]);
   }
 };
+
+export const ApplicationRepo = {
+  async create(data) {
+    const { userId, characterId, guildName, messageId, channelId } = data;
+    const result = await db.query(
+      `INSERT INTO guild_applications (user_id, character_id, guild_name, message_id, channel_id, status)
+       VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING *`,
+      [userId, characterId, guildName, messageId, channelId]
+    );
+    return result.rows[0];
+  },
+
+  async findById(id) {
+    const result = await db.query(`SELECT * FROM guild_applications WHERE id = $1`, [id]);
+    return result.rows[0] || null;
+  },
+
+  async findByMessageId(messageId) {
+    const result = await db.query(`SELECT * FROM guild_applications WHERE message_id = $1`, [messageId]);
+    return result.rows[0] || null;
+  },
+
+  async findPending() {
+    const result = await db.query(
+      `SELECT a.*, c.ign, c.uid, c.class, c.subclass, c.ability_score 
+       FROM guild_applications a 
+       JOIN characters c ON a.character_id = c.id 
+       WHERE a.status = 'pending' 
+       ORDER BY a.created_at ASC`
+    );
+    return result.rows;
+  },
+
+  async addVote(id, userId, voteType) {
+    const field = voteType === 'accept' ? 'accept_votes' : 'deny_votes';
+    const otherField = voteType === 'accept' ? 'deny_votes' : 'accept_votes';
+    
+    const result = await db.query(
+      `UPDATE guild_applications 
+       SET ${field} = array_append(array_remove(${field}, $2), $2),
+           ${otherField} = array_remove(${otherField}, $2),
+           updated_at = NOW()
+       WHERE id = $1 
+       RETURNING *`,
+      [id, userId]
+    );
+    return result.rows[0];
+  },
+
+  async removeVote(id, userId) {
+    const result = await db.query(
+      `UPDATE guild_applications 
+       SET accept_votes = array_remove(accept_votes, $2),
+           deny_votes = array_remove(deny_votes, $2),
+           updated_at = NOW()
+       WHERE id = $1 
+       RETURNING *`,
+      [id, userId]
+    );
+    return result.rows[0];
+  },
+
+  async updateStatus(id, status) {
+    const result = await db.query(
+      `UPDATE guild_applications 
+       SET status = $2, updated_at = NOW() 
+       WHERE id = $1 
+       RETURNING *`,
+      [id, status]
+    );
+    return result.rows[0];
+  },
+
+  async delete(id) {
+    await db.query(`DELETE FROM guild_applications WHERE id = $1`, [id]);
+  },
+
+  async deleteByMessageId(messageId) {
+    await db.query(`DELETE FROM guild_applications WHERE message_id = $1`, [messageId]);
+  }
+};
