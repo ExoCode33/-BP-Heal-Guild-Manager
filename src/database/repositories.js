@@ -206,15 +206,13 @@ export const ApplicationRepo = {
     const values = [];
     let i = 1;
 
-    if (data.messageId !== undefined) {
-      fields.push(`message_id = $${i}`);
-      values.push(data.messageId);
-      i++;
-    }
-    if (data.channelId !== undefined) {
-      fields.push(`channel_id = $${i}`);
-      values.push(data.channelId);
-      i++;
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined) {
+        const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        fields.push(`${dbKey} = $${i}`);
+        values.push(val);
+        i++;
+      }
     }
 
     if (fields.length === 0) return null;
