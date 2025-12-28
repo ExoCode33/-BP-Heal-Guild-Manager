@@ -391,7 +391,7 @@ class GoogleSheetsService {
         
         let userTimezone = '';
         try {
-          userTimezone = await db.getUserTimezone(userId) || '';
+          userTimezone = await TimezoneRepo.get(userId) || '';
         } catch (error) {
           // Silently continue
         }
@@ -407,7 +407,7 @@ class GoogleSheetsService {
           const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
           
           // ✅ NEW: Get Battle Imagines for main character
-          const mainBattleImagines = await db.getBattleImagines(mainChar.id);
+          const mainBattleImagines = await BattleImagineRepo.findByCharacter(mainChar.id);
           const mainBattleImaginesText = mainBattleImagines
             .map(img => `${img.imagine_name} ${img.tier}`)
             .join(', ');
@@ -476,7 +476,7 @@ class GoogleSheetsService {
           const altDiscordName = alt.discord_name || discordName;
           
           // ✅ NEW: Get Battle Imagines for alt
-          const altBattleImagines = await db.getBattleImagines(alt.id);
+          const altBattleImagines = await BattleImagineRepo.findByCharacter(alt.id);
           const altBattleImaginesText = altBattleImagines
             .map(img => `${img.imagine_name} ${img.tier}`)
             .join(', ');
