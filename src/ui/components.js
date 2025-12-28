@@ -172,7 +172,7 @@ export function battleImagineSelect(userId, imagine) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
+// ✅ FIXED: Changed from reg_guild_ to select_guild_
 export function guildSelect(userId) {
   const options = config.guilds.map(g => ({
     label: g.name,
@@ -182,7 +182,7 @@ export function guildSelect(userId) {
   }));
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
-      .setCustomId(`reg_guild_${userId}`)
+      .setCustomId(`select_guild_${userId}`)
       .setPlaceholder('🏰 Pick your guild')
       .addOptions(options)
   );
