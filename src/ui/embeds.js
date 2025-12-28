@@ -56,7 +56,7 @@ export async function profileEmbed(user, characters, interaction = null) {
 
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setDescription('## 🩷 **iDolls 💫**\n```ansi\n' + welcomeText + '\n```')
+      .setDescription('## **iDolls 💫**\n```ansi\n' + welcomeText + '\n```')
       .setTimestamp();
   }
 
