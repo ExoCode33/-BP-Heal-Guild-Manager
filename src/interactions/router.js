@@ -1,8 +1,11 @@
+// /app/src/interactions/router.js
+
 import { MessageFlags } from 'discord.js';
 import logger from '../services/logger.js';
 import state from '../services/state.js';
 import * as reg from './registration.js';
 import * as edit from './editing.js';
+import applicationService from '../services/applications.js';
 
 const ephemeralFlag = { flags: MessageFlags.Ephemeral };
 
@@ -23,6 +26,27 @@ export async function route(interaction) {
   const customId = interaction.customId;
   const userId = extractUserId(customId);
   const isAdminAction = customId.startsWith('admin_');
+
+  // Application handlers - FIRST, before ownership checks
+  if (customId.startsWith('app_vote_accept_')) {
+    const appId = parseInt(customId.split('_')[3]);
+    return applicationService.handleVote(interaction, appId, 'accept');
+  }
+  if (customId.startsWith('app_vote_deny_')) {
+    const appId = parseInt(customId.split('_')[3]);
+    return applicationService.handleVote(interaction, appId, 'deny');
+  }
+  if (customId.startsWith('app_override_accept_')) {
+    const appId = parseInt(customId.split('_')[3]);
+    return applicationService.handleOverride(interaction, appId, 'accept');
+  }
+  if (customId.startsWith('app_override_deny_')) {
+    const appId = parseInt(customId.split('_')[3]);
+    return applicationService.handleOverride(interaction, appId, 'deny');
+  }
+  if (customId.startsWith('app_override_') && customId.includes('cancel')) {
+    return interaction.update({ content: '❌ Override cancelled.', components: [] });
+  }
 
   // Check ownership - admins can bypass for admin_ prefixed actions
   if (!isOwner(interaction, userId) && !isAdminAction) {
