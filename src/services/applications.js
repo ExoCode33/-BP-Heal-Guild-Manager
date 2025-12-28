@@ -1,7 +1,7 @@
 // /app/src/services/applications.js
 
 import { ApplicationRepo, CharacterRepo } from '../database/repositories.js';
-import { addVotingFooter, createApplicationButtons } from '../ui/applications.js';
+import { addVotingFooter, createApplicationButtons, createOverrideButtons } from '../ui/applications.js';
 import { profileEmbed } from '../ui/embeds.js';
 import config from '../config/index.js';
 import logger from './logger.js';
@@ -27,13 +27,10 @@ class ApplicationService {
       const user = await this.client.users.fetch(userId);
       const characters = await CharacterRepo.findAllByUser(userId);
       
-      // ✅ FIX: Get the actual guild instead of fake interaction
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
-      // Create profile embed (same as /character command)
       const embed = await profileEmbed(user, characters, { guild });
       
-      // Add voting footer
       const applicationEmbed = addVotingFooter(embed, {
         id: 'pending',
         guild_name: guildName,
@@ -56,7 +53,6 @@ class ApplicationService {
         channelId: channel.id
       });
 
-      // Update with real application ID
       const finalEmbed = await profileEmbed(user, characters, { guild });
       const finalApplicationEmbed = addVotingFooter(finalEmbed, application);
       const finalButtons = createApplicationButtons(application.id);
@@ -106,7 +102,8 @@ class ApplicationService {
     }
   }
 
-  async handleOverride(interaction, applicationId, decision) {
+  // ✅ NEW: Show override confirmation menu
+  async showOverrideMenu(interaction, applicationId) {
     if (!interaction.member.permissions.has('Administrator') && 
         !interaction.member.roles.cache.has(config.logging.adminRoleId)) {
       return interaction.reply({ content: '❌ You need Administrator permission for overrides.', ephemeral: true });
@@ -122,16 +119,44 @@ class ApplicationService {
         return interaction.reply({ content: '❌ This application is already processed.', ephemeral: true });
       }
 
+      const buttons = createOverrideButtons(applicationId);
+      await interaction.reply({
+        content: '👑 **Admin Override**\n\nChoose an action:',
+        components: buttons,
+        ephemeral: true
+      });
+    } catch (error) {
+      console.error('[APP] Override menu error:', error);
+      await interaction.reply({ content: '❌ Error showing override menu.', ephemeral: true });
+    }
+  }
+
+  async handleOverride(interaction, applicationId, decision) {
+    if (!interaction.member.permissions.has('Administrator') && 
+        !interaction.member.roles.cache.has(config.logging.adminRoleId)) {
+      return interaction.reply({ content: '❌ You need Administrator permission for overrides.', ephemeral: true });
+    }
+
+    try {
+      const application = await ApplicationRepo.findById(applicationId);
+      if (!application) {
+        return interaction.update({ content: '❌ Application not found.', components: [] });
+      }
+
+      if (application.status !== 'pending') {
+        return interaction.update({ content: '❌ This application is already processed.', components: [] });
+      }
+
       if (decision === 'accept') {
         await this.approveApplication(application, interaction.user.id);
-        await interaction.reply({ content: '✅ Application approved via admin override.', ephemeral: true });
+        await interaction.update({ content: '✅ Application approved via admin override.', components: [] });
       } else {
         await this.denyApplication(application, interaction.user.id);
-        await interaction.reply({ content: '❌ Application denied via admin override.', ephemeral: true });
+        await interaction.update({ content: '❌ Application denied via admin override.', components: [] });
       }
     } catch (error) {
       console.error('[APP] Override error:', error);
-      await interaction.reply({ content: '❌ Error processing override.', ephemeral: true });
+      await interaction.update({ content: '❌ Error processing override.', components: [] });
     }
   }
 
@@ -200,7 +225,6 @@ class ApplicationService {
       const user = await this.client.users.fetch(application.user_id);
       const characters = await CharacterRepo.findAllByUser(application.user_id);
       
-      // ✅ FIX: Get the actual guild
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
       if (finalStatus) {
@@ -212,7 +236,6 @@ class ApplicationService {
             ? 'Approved with 2+ votes' 
             : 'Denied with 2+ votes';
 
-        // Use profile embed with status
         const embed = await profileEmbed(user, characters, { guild });
         embed.addFields(
           { name: '\u200b', value: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', inline: false },
@@ -242,7 +265,6 @@ class ApplicationService {
       const channel = await this.client.channels.fetch(config.channels.admin);
       const messages = await channel.messages.fetch({ limit: 100 });
       
-      // ✅ FIX: Get the actual guild
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
       for (const app of pending) {
@@ -256,34 +278,3 @@ class ApplicationService {
         }
 
         const user = await this.client.users.fetch(app.user_id);
-        const characters = await CharacterRepo.findAllByUser(app.user_id);
-        
-        const embed = await profileEmbed(user, characters, { guild });
-        const applicationEmbed = addVotingFooter(embed, app);
-        const buttons = createApplicationButtons(app.id);
-
-        const newMessage = await channel.send({
-          content: `<@&${config.roles.guild1}> **Pending Application**`,
-          embeds: [applicationEmbed],
-          components: buttons
-        });
-
-        await ApplicationRepo.create({
-          userId: app.user_id,
-          characterId: app.character_id,
-          guildName: app.guild_name,
-          messageId: newMessage.id,
-          channelId: channel.id
-        });
-
-        await ApplicationRepo.delete(app.id);
-      }
-
-      console.log(`[APP] Restored ${pending.length} pending applications`);
-    } catch (error) {
-      console.error('[APP] Restore error:', error);
-    }
-  }
-}
-
-export default new ApplicationService();
