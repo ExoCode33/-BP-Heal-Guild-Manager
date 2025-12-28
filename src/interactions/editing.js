@@ -339,17 +339,21 @@ export async function handleEditGuild(interaction, userId) {
             
             const embedMsg = new EmbedBuilder()
               .setColor('#EC4899')
-              .setTitle('🏰 Member Changed Guild to iDolls')
-              .setDescription(`**${member.user.username}** changed their guild from **${oldVal}** to **${guild}**.\n\nPlease assign the guild role: <@&${config.roles.guild1}>`)
+              .setTitle('🏰 New iDolls Member - Guild Role Needed')
+              .setDescription(`**${member.user.username}** needs the **iDolls** guild role!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
               .addFields(
-                { name: 'User', value: `<@${member.id}>`, inline: true },
-                { name: 'Old Guild', value: oldVal, inline: true },
-                { name: 'New Guild', value: guild, inline: true }
+                { name: '👤 Discord User', value: `<@${member.id}>`, inline: true },
+                { name: '🎮 IGN', value: s.char.ign, inline: true },
+                { name: '🎭 Class', value: `${s.char.class}\n${s.char.subclass}`, inline: true },
+                { name: '💪 Score', value: formatScore(s.char.ability_score), inline: true },
+                { name: '🏰 Previous Guild', value: oldVal, inline: true },
+                { name: '🏰 New Guild', value: guild, inline: true }
               )
+              .setFooter({ text: 'Please assign the iDolls guild role' })
               .setTimestamp();
 
             await adminChannel.send({ 
-              content: `<@&${config.roles.guild1}> role needed for <@${member.id}>`,
+              content: `<@&${config.roles.guild1}> **Action Required:** Assign guild role to <@${member.id}>`,
               embeds: [embedMsg] 
             });
             
