@@ -1,8 +1,11 @@
+// /app/src/index.js
+
 import { Client, GatewayIntentBits, Events, MessageFlags, REST, Routes } from 'discord.js';
 import config from './config/index.js';
 import db from './database/index.js';
 import logger from './services/logger.js';
 import sheets from './services/sheets.js';
+import applicationService from './services/applications.js';
 import { loadCommands, getCommandData } from './commands/index.js';
 import { route, routeSelectMenu, routeModal } from './interactions/router.js';
 import { handleLogSelect, handleLogChannelSelect, handleLogBatchSelect, handleLogCategoriesSelect, handleEphemeralSelect } from './commands/admin.js';
@@ -48,6 +51,11 @@ client.once(Events.ClientReady, async () => {
   await deployCommands();
   await db.initialize();
   await logger.init(client);
+  
+  // ✅ CRITICAL: Initialize application service
+  await applicationService.init(client);
+  console.log('✅ Application service initialized');
+  
   await sheets.init();
 
   logger.startup(client.user.tag, commands.size);
