@@ -201,6 +201,34 @@ export const ApplicationRepo = {
     return result.rows[0];
   },
 
+  async update(id, data) {
+    const fields = [];
+    const values = [];
+    let i = 1;
+
+    if (data.messageId !== undefined) {
+      fields.push(`message_id = $${i}`);
+      values.push(data.messageId);
+      i++;
+    }
+    if (data.channelId !== undefined) {
+      fields.push(`channel_id = $${i}`);
+      values.push(data.channelId);
+      i++;
+    }
+
+    if (fields.length === 0) return null;
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const result = await db.query(
+      `UPDATE guild_applications SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
+      values
+    );
+    return result.rows[0];
+  },
+
   async delete(id) {
     await db.query(`DELETE FROM guild_applications WHERE id = $1`, [id]);
   },
