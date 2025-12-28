@@ -1,4 +1,4 @@
-import { MessageFlags, EmbedBuilder } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import state from '../services/state.js';
 import logger from '../services/logger.js';
 import config from '../config/index.js';
@@ -302,7 +302,7 @@ export async function handleEditGuild(interaction, userId) {
   await CharacterRepo.update(s.charId, { guild });
   logger.edit(interaction.user.username, 'guild', oldVal, guild);
 
-  // Handle role changes and notifications for main character
+  // Handle role changes for main character ONLY
   const isMain = s.type === 'main';
   if (isMain) {
     try {
@@ -326,7 +326,8 @@ export async function handleEditGuild(interaction, userId) {
           console.log(`[EDIT] Removed Registered role from ${userId}`);
         }
       } else {
-        // Switching FROM Visitor to actual guild
+        // Switching FROM Visitor to actual guild (like iDolls)
+        // Only handle registered/visitor roles - NOT guild role
         if (config.roles.registered) {
           await member.roles.add(config.roles.registered);
           console.log(`[EDIT] Added Registered role to ${userId}`);
@@ -337,39 +338,11 @@ export async function handleEditGuild(interaction, userId) {
           console.log(`[EDIT] Removed Visitor role from ${userId}`);
         }
         
-        // ✅ ALWAYS notify admins when changing to iDolls
-        if (guild === 'iDolls' && config.roles.guild1 && config.channels.admin) {
-          try {
-            const adminChannel = await interaction.client.channels.fetch(config.channels.admin);
-            
-            const embedMsg = new EmbedBuilder()
-              .setColor('#EC4899')
-              .setTitle('🏰 New iDolls Member - Guild Role Needed')
-              .setDescription(`**${member.user.username}** needs the **iDolls** guild role!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-              .addFields(
-                { name: '👤 Discord User', value: `<@${member.id}>`, inline: true },
-                { name: '🎮 IGN', value: s.char.ign, inline: true },
-                { name: '🎭 Class', value: `${s.char.class}\n${s.char.subclass}`, inline: true },
-                { name: '💪 Score', value: formatScore(s.char.ability_score), inline: true },
-                { name: '🏰 Previous Guild', value: oldVal, inline: true },
-                { name: '🏰 New Guild', value: guild, inline: true }
-              )
-              .setFooter({ text: 'Please assign the iDolls guild role' })
-              .setTimestamp();
-
-            await adminChannel.send({ 
-              content: `<@&${config.roles.guild1}> **Action Required:** Assign guild role to <@${member.id}>`,
-              embeds: [embedMsg] 
-            });
-            
-            console.log(`[EDIT] Notified admins about guild change for ${member.user.username}`);
-          } catch (error) {
-            console.error('[EDIT] Admin notification error:', error.message);
-          }
-        }
+        // Guild role must be assigned manually or through application system
+        console.log(`[EDIT] Guild changed to ${guild} - guild role requires manual assignment`);
       }
     } catch (error) {
-      console.error('[EDIT] Role/notification error:', error.message);
+      console.error('[EDIT] Role error:', error.message);
     }
   }
 
