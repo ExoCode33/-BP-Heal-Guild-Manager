@@ -49,22 +49,23 @@ function centerText(text, width = 42) {
   return text.padStart((text.length + width) / 2).padEnd(width);
 }
 
-// ✅ UPDATED: Vibrant colors with pink lines and bright blue text
+// ✅ IMPROVED: Enhanced design with bright pink lines
 function createRegEmbed(step, total, title, description) {
   const descLines = description.split('\n').map(line => centerText(line));
   
   const ansiText = [
-    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
+    '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
     '',
-    ...descLines.map(line => `\u001b[1;34m${line}\u001b[0m`), // Bright blue instead of gray
+    ...descLines.map(line => `\u001b[1;34m${line}\u001b[0m`), // Bright blue text
     '',
-    `\u001b[1;36m${centerText('✨ Step ' + step + ' of ' + total)}\u001b[0m`, // Bright cyan
-    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
+    `\u001b[1;36m${centerText('✨ Step ' + step + ' of ' + total)}\u001b[0m`,
+    '',
+    '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
   ].join('\n');
 
   return new EmbedBuilder()
     .setColor('#EC4899')
-    .setTitle(title) // ✅ Title outside ANSI block so emojis render
+    .setTitle(title)
     .setDescription(`\`\`\`ansi\n${ansiText}\n\`\`\``)
     .setTimestamp();
 }
