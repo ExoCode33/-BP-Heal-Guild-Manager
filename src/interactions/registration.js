@@ -49,13 +49,11 @@ function centerText(text, width = 42) {
   return text.padStart((text.length + width) / 2).padEnd(width);
 }
 
+// ✅ UPDATED: Title now goes to .setTitle() instead of inside ANSI block
 function createRegEmbed(step, total, title, description) {
-  const titleLine = centerText(title);
   const descLines = description.split('\n').map(line => centerText(line));
   
   const ansiText = [
-    '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
-    `\u001b[1;34m${titleLine}\u001b[0m`,
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
     '',
     ...descLines.map(line => `\u001b[0;37m${line}\u001b[0m`),
@@ -66,6 +64,7 @@ function createRegEmbed(step, total, title, description) {
 
   return new EmbedBuilder()
     .setColor('#EC4899')
+    .setTitle(title) // ✅ Title outside ANSI block so emojis render
     .setDescription(`\`\`\`ansi\n${ansiText}\n\`\`\``)
     .setTimestamp();
 }
@@ -768,12 +767,14 @@ async function showBattleImagineSelection(interaction, userId) {
   }
   const stepNum = baseStep + currentImagineIndex;
   
+  // ✅ FIXED: Build title with custom emoji - will render properly now
   const titleEmoji = currentImagine.logo ? `<:bi:${currentImagine.logo}>` : '⚔️';
+  const title = `${titleEmoji} Battle Imagine - ${currentImagine.name}`;
   
   const embed = createRegEmbed(
     stepNum, 
     totalSteps, 
-    `${titleEmoji} Battle Imagine - ${currentImagine.name}`, 
+    title, // Title renders outside ANSI block, so custom emoji works!
     `Do you own ${currentImagine.name}?\nSelect the highest tier you own:`
   );
   
