@@ -9,7 +9,7 @@ export class VerificationSystem {
     const welcomeText = [
       '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
       '',
-      '\u001b[1;35m' + centerText('/\\\\_/\\\\     Welcome to iDolls     /\\\\_/\\\\') + '\u001b[0m',
+      '\u001b[1;35m' + centerText('/\\\\\\\\_/\\\\\\\\     Welcome to iDolls     /\\\\\\\\_/\\\\\\\\') + '\u001b[0m',
       '\u001b[1;35m' + centerText('( ^.^ )                         ( ^.^ )') + '\u001b[0m',
       '\u001b[1;35m' + centerText('> ♡ <                           > ♡ <') + '\u001b[0m',
       '',
