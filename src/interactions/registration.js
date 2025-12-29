@@ -99,18 +99,16 @@ function getTimezoneAbbr(timezoneLabel) {
 function getTotalSteps(characterType) {
   const baseSteps = {
     'main': 7,
-    'alt': 4,
     'subclass': 2
   };
   
   const battleImagineSteps = config.battleImagines.length;
   
-  if (characterType === 'subclass' || characterType === 'main_subclass' || characterType === 'alt_subclass') {
+  if (characterType === 'subclass' || characterType === 'main_subclass') {
     return baseSteps.subclass;
   }
   
-  const type = characterType === 'alt' ? 'alt' : 'main';
-  return baseSteps[type] + battleImagineSteps;
+  return baseSteps.main + battleImagineSteps;
 }
 
 function getCountryEmoji(countryName) {
@@ -299,79 +297,6 @@ export async function start(interaction, userId, characterType = 'main') {
   
   console.log('[REGISTRATION] Starting registration for user:', userId);
   console.log('[REGISTRATION] State:', JSON.stringify(currentState, null, 2));
-  
-  const existingTimezone = await TimezoneRepo.get(userId);
-  const isAlt = characterType === 'alt' || currentState.characterType === 'alt';
-  
-  console.log('[REGISTRATION] Is Alt:', isAlt, '| Existing timezone:', existingTimezone);
-  
-  if (isAlt && existingTimezone) {
-    console.log('[REGISTRATION] Skipping timezone for alt, going to class selection');
-    
-    let timezoneAbbr = '';
-    outer: for (const region of Object.keys(REGIONS)) {
-      for (const country of Object.keys(REGIONS[region])) {
-        for (const [label, tz] of Object.entries(REGIONS[region][country])) {
-          if (tz === existingTimezone) {
-            timezoneAbbr = getTimezoneAbbr(label);
-            break outer;
-          }
-        }
-      }
-    }
-    
-    state.set(userId, 'reg', {
-      ...currentState,
-      timezone: existingTimezone,
-      timezoneAbbr,
-      characterType: 'alt'
-    });
-    
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { 
-      timeZone: existingTimezone, 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-    
-    const totalSteps = getTotalSteps('alt');
-    const embed = createRegEmbed(1, totalSteps, '🎭 Which class speaks to you?', `Timezone: ${timezoneAbbr} • ${timeString}`);
-    
-    const classOptions = Object.keys(CLASSES).map(className => {
-      const iconId = getClassIconId(className);
-      const option = {
-        label: className,
-        value: className,
-        description: CLASSES[className].role,
-        emoji: iconId ? { id: iconId } : CLASSES[className].emoji
-      };
-      
-      return option;
-    });
-    
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`select_class_${userId}`)
-      .setPlaceholder('🎭 Pick your class')
-      .addOptions(classOptions);
-    
-    const backButton = new ButtonBuilder()
-      .setCustomId(`back_to_profile_${userId}`)
-      .setLabel('❌ Cancel')
-      .setStyle(ButtonStyle.Secondary);
-    
-    const row1 = new ActionRowBuilder().addComponents(selectMenu);
-    const row2 = new ActionRowBuilder().addComponents(backButton);
-    
-    if (interaction.replied || interaction.deferred) {
-      await interaction.editReply({ embeds: [embed], components: [row1, row2] });
-    } else {
-      await interaction.update({ embeds: [embed], components: [row1, row2] });
-    }
-    
-    clearActiveInteraction(userId);
-    return;
-  }
   
   state.set(userId, 'reg', { characterType });
   
@@ -579,18 +504,10 @@ export async function handleClass(interaction, userId) {
   const subclasses = CLASSES[className].subclasses;
   const classRole = CLASSES[className].role;
   
-  const isAlt = currentState.characterType === 'alt';
   const isSubclass = currentState.type === 'subclass';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
-  let stepNum;
-  if (isSubclass) {
-    stepNum = 1;
-  } else if (isAlt) {
-    stepNum = 2;
-  } else {
-    stepNum = 5;
-  }
+  const stepNum = isSubclass ? 1 : 5;
   
   const embed = createRegEmbed(stepNum, totalSteps, '✨ Subclass selection!', `Class: ${className}`);
 
@@ -638,18 +555,10 @@ export async function handleSubclass(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   state.set(userId, 'reg', { ...currentState, subclass: subclassName });
   
-  const isAlt = currentState.characterType === 'alt';
   const isSubclass = currentState.type === 'subclass';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
-  let stepNum;
-  if (isSubclass) {
-    stepNum = 2;
-  } else if (isAlt) {
-    stepNum = 3;
-  } else {
-    stepNum = 6;
-  }
+  const stepNum = isSubclass ? 2 : 6;
   
   const embed = createRegEmbed(stepNum, totalSteps, '⚔️ What is your ability score?', `Subclass: ${subclassName}`);
 
@@ -764,16 +673,9 @@ async function showBattleImagineSelection(interaction, userId) {
   }
   
   const currentImagine = config.battleImagines[currentImagineIndex];
-  const isAlt = currentState.characterType === 'alt';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
-  let baseStep;
-  if (isAlt) {
-    baseStep = 4;
-  } else {
-    baseStep = 7;
-  }
-  const stepNum = baseStep + currentImagineIndex;
+  const stepNum = 7 + currentImagineIndex;
   
   // Use standard emoji instead of custom emoji
   const title = `⚔️ Battle Imagine - ${currentImagine.name}`;
@@ -851,7 +753,6 @@ export async function handleBattleImagine(interaction, userId) {
 async function proceedToGuildSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   const scoreLabel = ABILITY_SCORES.find(s => s.value === currentState.abilityScore)?.label || currentState.abilityScore;
-  const isAlt = currentState.characterType === 'alt';
   const totalSteps = getTotalSteps(currentState.characterType || 'main');
   
   const stepNum = totalSteps - 1;
