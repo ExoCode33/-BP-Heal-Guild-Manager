@@ -1,5 +1,5 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import config from '../config/index.js';
+import db from '../database/index.js';
 
 export class VerificationSystem {
   static createVerificationEmbed() {
@@ -66,31 +66,71 @@ export class VerificationSystem {
         return message;
       }
     } catch (error) {
-      console.error('[VERIFICATION] ❌ Error sending/updating message:', error);
-      console.error('[VERIFICATION] Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code,
-        stack: error.stack?.split('\n').slice(0, 3)
-      });
+      console.error('[VERIFICATION] ❌ Error sending/updating message:', error.message);
       throw error;
     }
   }
 
-  static async setupVerificationChannel(client) {
-    const channelId = config.channels.verification;
-    
+  static async getVerificationChannelId(guildId) {
+    try {
+      // Try to get from database first
+      const result = await db.get(
+        'SELECT verification_channel_id FROM guild_settings WHERE guild_id = $1',
+        [guildId]
+      );
+      
+      if (result?.verification_channel_id) {
+        console.log('[VERIFICATION] Found channel ID in database:', result.verification_channel_id);
+        return result.verification_channel_id;
+      }
+      
+      // Fallback to environment variable if database is empty
+      const envChannelId = process.env.VERIFICATION_CHANNEL_ID;
+      if (envChannelId) {
+        console.log('[VERIFICATION] Using channel ID from environment:', envChannelId);
+        return envChannelId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[VERIFICATION] Error reading from database:', error.message);
+      // Fallback to environment variable on error
+      return process.env.VERIFICATION_CHANNEL_ID || null;
+    }
+  }
+
+  static async setVerificationChannelId(guildId, channelId) {
+    try {
+      await db.run(
+        `INSERT INTO guild_settings (guild_id, verification_channel_id, updated_at) 
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (guild_id) 
+         DO UPDATE SET verification_channel_id = $2, updated_at = NOW()`,
+        [guildId, channelId]
+      );
+      console.log('[VERIFICATION] Saved channel ID to database:', channelId);
+      return true;
+    } catch (error) {
+      console.error('[VERIFICATION] Error saving to database:', error.message);
+      return false;
+    }
+  }
+
+  static async setupVerificationChannel(client, guildId) {
     console.log('[VERIFICATION] ════════════════════════════════');
     console.log('[VERIFICATION] Starting verification setup...');
+    
+    const channelId = await this.getVerificationChannelId(guildId);
+    
     console.log('[VERIFICATION] Config check:', {
+      guildId: guildId,
       channelId: channelId || 'NOT SET',
-      hasConfig: !!config.channels,
-      hasVerification: !!config.channels?.verification
+      source: channelId ? 'database or env' : 'not configured'
     });
 
     if (!channelId) {
-      console.log('[VERIFICATION] ⚠️ No verification channel configured in .env');
-      console.log('[VERIFICATION] Add VERIFICATION_CHANNEL_ID to your .env file');
+      console.log('[VERIFICATION] ⚠️ No verification channel configured');
+      console.log('[VERIFICATION] Use /admin settings → Verification to set channel');
       console.log('[VERIFICATION] ════════════════════════════════');
       return;
     }
@@ -101,7 +141,6 @@ export class VerificationSystem {
       
       if (!channel) {
         console.error('[VERIFICATION] ❌ Channel not found with ID:', channelId);
-        console.error('[VERIFICATION] Please verify the channel ID is correct');
         console.log('[VERIFICATION] ════════════════════════════════');
         return;
       }
@@ -115,21 +154,16 @@ export class VerificationSystem {
 
       // Check permissions
       const permissions = channel.permissionsFor(client.user);
+      const hasPermissions = permissions?.has('SendMessages') && permissions?.has('EmbedLinks');
+      
       console.log('[VERIFICATION] Bot permissions:', {
-        viewChannel: permissions?.has('ViewChannel') || false,
         sendMessages: permissions?.has('SendMessages') || false,
         embedLinks: permissions?.has('EmbedLinks') || false,
         readMessageHistory: permissions?.has('ReadMessageHistory') || false
       });
 
-      if (!permissions?.has('SendMessages')) {
-        console.error('[VERIFICATION] ❌ Bot lacks SendMessages permission');
-        console.log('[VERIFICATION] ════════════════════════════════');
-        return;
-      }
-
-      if (!permissions?.has('EmbedLinks')) {
-        console.error('[VERIFICATION] ❌ Bot lacks EmbedLinks permission');
+      if (!hasPermissions) {
+        console.error('[VERIFICATION] ❌ Bot lacks required permissions');
         console.log('[VERIFICATION] ════════════════════════════════');
         return;
       }
@@ -144,13 +178,8 @@ export class VerificationSystem {
       console.log('[VERIFICATION] ════════════════════════════════');
     } catch (error) {
       console.error('[VERIFICATION] ════════════════════════════════');
-      console.error('[VERIFICATION] ❌ Setup failed with error:', error.message);
-      console.error('[VERIFICATION] Error type:', error.name);
-      if (error.code) {
-        console.error('[VERIFICATION] Discord error code:', error.code);
-      }
+      console.error('[VERIFICATION] ❌ Setup failed:', error.message);
       console.error('[VERIFICATION] ════════════════════════════════');
-      throw error;
     }
   }
 }
