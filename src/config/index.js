@@ -37,6 +37,19 @@ const loadBattleImagines = () => {
   return imagines;
 };
 
+const loadClassRoles = () => {
+  return {
+    'Beat Performer': process.env.CLASS_ROLE_BEAT_PERFORMER,
+    'Frost Mage': process.env.CLASS_ROLE_FROST_MAGE,
+    'Heavy Guardian': process.env.CLASS_ROLE_HEAVY_GUARDIAN,
+    'Marksman': process.env.CLASS_ROLE_MARKSMAN,
+    'Shield Knight': process.env.CLASS_ROLE_SHIELD_KNIGHT,
+    'Stormblade': process.env.CLASS_ROLE_STORMBLADE,
+    'Verdant Oracle': process.env.CLASS_ROLE_VERDANT_ORACLE,
+    'Wind Knight': process.env.CLASS_ROLE_WIND_KNIGHT
+  };
+};
+
 export default {
   discord: {
     clientId: process.env.CLIENT_ID,
@@ -61,17 +74,16 @@ export default {
   logging: {
     adminRoleId: process.env.ADMIN_ROLE_ID
   },
-  // ✅ NEW: Role configuration
   roles: {
     registered: process.env.REGISTERED_ROLE_ID,
     visitor: process.env.VISITOR_ROLE_ID,
     guild1: process.env.GUILD_1_ROLE_ID
   },
-  // ✅ NEW: Channel configuration
   channels: {
     admin: process.env.ADMIN_CHANNEL_ID
   },
   ephemeral: {
     defaults: ['character', 'admin']
-  }
+  },
+  classRoles: loadClassRoles()
 };
