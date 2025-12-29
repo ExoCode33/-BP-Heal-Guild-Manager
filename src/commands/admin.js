@@ -95,15 +95,14 @@ async function handleStats(interaction) {
   const chars = await CharacterRepo.findAll();
   const users = new Set(chars.map(c => c.user_id)).size;
   const mains = chars.filter(c => c.character_type === 'main').length;
-  const alts = chars.filter(c => c.character_type === 'alt').length;
-  const subs = chars.filter(c => c.character_type.includes('subclass')).length;
+  const subs = chars.filter(c => c.character_type === 'main_subclass').length;
   const classes = {};
   chars.filter(c => c.character_type === 'main').forEach(c => { classes[c.class] = (classes[c.class] || 0) + 1; });
   const topClasses = Object.entries(classes).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => `• ${name}: **${count}**`).join('\n') || '*No data*';
   const mem = process.memoryUsage();
   const uptime = process.uptime();
   const e = new EmbedBuilder().setColor('#EC4899').setTitle('📊 Bot Statistics').addFields(
-    { name: '👥 Characters', value: `Users: **${users}**\nMain: **${mains}**\nAlts: **${alts}**\nSubclasses: **${subs}**`, inline: true },
+    { name: '👥 Characters', value: `Users: **${users}**\nMain: **${mains}**\nSubclasses: **${subs}**`, inline: true },
     { name: '🏆 Top Classes', value: topClasses, inline: true },
     { name: '💻 System', value: `Memory: **${(mem.heapUsed / 1024 / 1024).toFixed(1)} MB**\nUptime: **${Math.floor(uptime / 86400)}d ${Math.floor((uptime % 86400) / 3600)}h ${Math.floor((uptime % 3600) / 60)}m**\nNode: **${process.version}**`, inline: false }
   ).setTimestamp();
