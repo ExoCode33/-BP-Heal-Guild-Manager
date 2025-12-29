@@ -49,16 +49,16 @@ function centerText(text, width = 42) {
   return text.padStart((text.length + width) / 2).padEnd(width);
 }
 
-// ✅ UPDATED: Title now goes to .setTitle() instead of inside ANSI block
+// ✅ UPDATED: Vibrant colors with pink lines and bright blue text
 function createRegEmbed(step, total, title, description) {
   const descLines = description.split('\n').map(line => centerText(line));
   
   const ansiText = [
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
     '',
-    ...descLines.map(line => `\u001b[0;37m${line}\u001b[0m`),
+    ...descLines.map(line => `\u001b[1;34m${line}\u001b[0m`), // Bright blue instead of gray
     '',
-    `\u001b[0;36m${centerText('✨ Step ' + step + ' of ' + total)}\u001b[0m`,
+    `\u001b[1;36m${centerText('✨ Step ' + step + ' of ' + total)}\u001b[0m`, // Bright cyan
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
   ].join('\n');
 
