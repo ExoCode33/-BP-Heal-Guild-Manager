@@ -62,6 +62,46 @@ client.once(Events.ClientReady, async () => {
 
   logger.startup(client.user.tag, commands.size);
 
+  // ✅ VALIDATE AND FIX ALL CLASS ROLES ON STARTUP
+  console.log('[STARTUP] Starting role validation...');
+  try {
+    const allChars = await CharacterRepo.findAll();
+    const userMap = new Map();
+    
+    // Group characters by user
+    allChars.forEach(char => {
+      if (!userMap.has(char.user_id)) {
+        userMap.set(char.user_id, []);
+      }
+      userMap.get(char.user_id).push(char);
+    });
+
+    let totalFixed = 0;
+    let totalChecked = 0;
+
+    // Validate each user's roles
+    for (const [userId, characters] of userMap.entries()) {
+      try {
+        totalChecked++;
+        const result = await classRoleService.syncUserClassRoles(userId, characters);
+        
+        if (result.success && (result.rolesAdded > 0 || result.rolesRemoved > 0)) {
+          totalFixed++;
+          console.log(`[STARTUP] Fixed roles for ${userId}: +${result.rolesAdded} -${result.rolesRemoved}`);
+        }
+      } catch (error) {
+        console.error(`[STARTUP] Failed to validate roles for ${userId}:`, error.message);
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    console.log(`[STARTUP] ✅ Role validation complete: ${totalChecked} users checked, ${totalFixed} users fixed`);
+  } catch (error) {
+    console.error('[STARTUP] Role validation error:', error);
+  }
+
   if (config.sync.sheetsInterval > 0) {
     setInterval(async () => {
       const chars = await CharacterRepo.findAll();
