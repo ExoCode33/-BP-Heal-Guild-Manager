@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { COLORS } from '../config/game.js';
 import { formatScore, formatTime, getRoleEmoji, getClassEmoji } from './utils.js';
-import { TimezoneRepo, BattleImagineRepo } from '../database/repositories.js';
+import { TimezoneRepo, BattleImagineRepo, ApplicationRepo } from '../database/repositories.js';
 
 export const embed = (title, description) => {
   return new EmbedBuilder()
@@ -70,6 +70,19 @@ export async function profileEmbed(user, characters, interaction = null) {
   const roleEmoji = getRoleEmoji(main.role);
   const classEmoji = getClassEmoji(interaction?.guild, main.class);
 
+  // ✅ Check for pending application
+  let guildDisplay = main.guild || 'None';
+  if (main.guild === 'iDolls') {
+    try {
+      const pendingApp = await ApplicationRepo.findAllByUserAndCharacter(user.id, main.id);
+      if (pendingApp && pendingApp.status === 'pending') {
+        guildDisplay = '⏳ Pending - iDolls';
+      }
+    } catch (error) {
+      console.error('[EMBED] Error checking pending application:', error);
+    }
+  }
+
   let mainSection = '```ansi\n';
   mainSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m ' + main.ign + '\n';
@@ -82,13 +95,13 @@ export async function profileEmbed(user, characters, interaction = null) {
     mainSection += '\u001b[1;34m⚔️ Battle Imagines:\u001b[0m ' + mainBI.map(b => b.imagine_name + ' ' + b.tier).join(', ') + '\n';
   }
 
-  mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m ' + (main.guild || 'None') + '\n';
+  mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m ' + guildDisplay + '\n'; // ✅ Use guildDisplay instead of main.guild
   mainSection += '\u001b[0;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '```';
 
   const e = new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
-    .setDescription('# __**iDolls 💫 • ' + displayName + '\'s Profile**__ ' + classEmoji + timeText + '\n' + mainSection)
+    .setDescription('# **iDolls 💫 • ' + displayName + '\'s Profile** ' + classEmoji + timeText + '\n' + mainSection)
     .setTimestamp();
 
   if (subs.length > 0) {
