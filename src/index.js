@@ -7,9 +7,9 @@ import logger from './services/logger.js';
 import sheets from './services/sheets.js';
 import applicationService from './services/applications.js';
 import classRoleService from './services/classRoles.js';
+import { VerificationSystem } from './services/verification.js';
 import { loadCommands, getCommandData } from './commands/index.js';
 import { route, routeSelectMenu, routeModal } from './interactions/router.js';
-import { handleLogSelect, handleLogChannelSelect, handleLogBatchSelect, handleLogCategoriesSelect, handleEphemeralSelect } from './commands/admin.js';
 import { CharacterRepo } from './database/repositories.js';
 import { syncAllNicknames } from './services/nickname.js';
 
@@ -100,6 +100,13 @@ client.once(Events.ClientReady, async () => {
     console.log(`[STARTUP] ✅ Role validation complete: ${totalChecked} users checked, ${totalFixed} users fixed`);
   } catch (error) {
     console.error('[STARTUP] Role validation error:', error);
+  }
+
+  // ✅ SETUP VERIFICATION CHANNEL
+  try {
+    await VerificationSystem.setupVerificationChannel(client);
+  } catch (error) {
+    console.error('[STARTUP] Verification setup error:', error);
   }
 
   if (config.sync.sheetsInterval > 0) {
