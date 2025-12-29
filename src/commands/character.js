@@ -21,7 +21,10 @@ export async function execute(interaction) {
 
   const chars = await CharacterRepo.findAllByUser(targetUser.id);
   const main = chars.find(c => c.character_type === 'main');
-  const isEph = await isEphemeral(interaction.guildId, 'character');
+  
+  // ✅ USE CORRECT EPHEMERAL TYPE
+  const ephemeralType = isOwn ? 'character_own' : 'character_view';
+  const isEph = await isEphemeral(interaction.guildId, ephemeralType);
   const ephemeralFlag = isEph ? { flags: MessageFlags.Ephemeral } : {};
 
   // Viewing someone else - no buttons, just view
