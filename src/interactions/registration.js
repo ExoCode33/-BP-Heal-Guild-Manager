@@ -53,6 +53,13 @@ function createRegEmbed(step, total, title, description) {
   const titleLine = centerText(title);
   const descLines = description.split('\n').map(line => centerText(line));
   
+  // Create cute progress bar
+  const progress = step / total;
+  const filledBars = Math.floor(progress * 10);
+  const emptyBars = 10 - filledBars;
+  const progressBar = '♥'.repeat(filledBars) + '♡'.repeat(emptyBars);
+  const progressText = `${progressBar} ${step}/${total}`;
+  
   const ansiText = [
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
     `\u001b[1;34m${titleLine}\u001b[0m`,
@@ -60,7 +67,7 @@ function createRegEmbed(step, total, title, description) {
     '',
     ...descLines.map(line => `\u001b[0;37m${line}\u001b[0m`),
     '',
-    `\u001b[0;36m${centerText('✨ Step ' + step + ' of ' + total)}\u001b[0m`,
+    `\u001b[1;35m${centerText(progressText)}\u001b[0m`,
     '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
   ].join('\n');
 
@@ -768,14 +775,13 @@ async function showBattleImagineSelection(interaction, userId) {
   }
   const stepNum = baseStep + currentImagineIndex;
   
-  // ✅ FIXED: Build title with custom emoji - will render properly now
-  const titleEmoji = currentImagine.logo ? `<:bi:${currentImagine.logo}>` : '⚔️';
-  const title = `${titleEmoji} Battle Imagine - ${currentImagine.name}`;
+  // Use standard emoji instead of custom emoji
+  const title = `⚔️ Battle Imagine - ${currentImagine.name}`;
   
   const embed = createRegEmbed(
     stepNum, 
     totalSteps, 
-    title, // Title renders outside ANSI block, so custom emoji works!
+    title,
     `Do you own ${currentImagine.name}?\nSelect the highest tier you own:`
   );
   
