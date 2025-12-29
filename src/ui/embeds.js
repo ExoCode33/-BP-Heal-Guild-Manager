@@ -69,16 +69,21 @@ export async function profileEmbed(user, characters, interaction = null) {
   const roleEmoji = getRoleEmoji(main.role);
   const classEmoji = getClassEmoji(interaction?.guild, main.class);
 
-  // ✅ Check for pending application
+  // ✅ FIX: Check application status before showing "Pending"
   let guildDisplay = main.guild || 'None';
   if (main.guild === 'iDolls') {
     try {
       const pendingApp = await ApplicationRepo.findAllByUserAndCharacter(user.id, main.id);
+      // ✅ ONLY show pending if status is actually "pending"
       if (pendingApp && pendingApp.status === 'pending') {
         guildDisplay = '⏳ Pending - iDolls';
+      } else {
+        // ✅ If approved/denied or no application, just show guild name
+        guildDisplay = 'iDolls';
       }
     } catch (error) {
       console.error('[EMBED] Error checking pending application:', error);
+      guildDisplay = 'iDolls'; // Fallback to just showing guild name
     }
   }
 
