@@ -50,7 +50,6 @@ export function confirmButtons(userId, action) {
   )];
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function regionSelect(userId) {
   const options = Object.keys(REGIONS).map(r => ({
     label: r,
@@ -66,11 +65,9 @@ export function regionSelect(userId) {
   );
 }
 
-// ✨ UPDATED: Added descriptions - Fixed emoji extraction
 export function countrySelect(userId, region) {
   const countries = Object.keys(REGIONS[region]);
   const options = countries.map(c => {
-    // Extract emoji safely - gets everything before the first space
     const emoji = c.split(' ')[0] || '🏳️';
     return {
       label: c,
@@ -87,7 +84,6 @@ export function countrySelect(userId, region) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function timezoneSelect(userId, region, country) {
   const timezones = REGIONS[region][country];
   const options = Object.entries(timezones).map(([label, value]) => ({
@@ -104,7 +100,6 @@ export function timezoneSelect(userId, region, country) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function classSelect(userId) {
   const options = Object.entries(CLASSES).map(([name, data]) => ({
     label: name,
@@ -120,7 +115,6 @@ export function classSelect(userId) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function subclassSelect(userId, className) {
   const data = CLASSES[className];
   const options = data.subclasses.map(s => ({
@@ -137,7 +131,6 @@ export function subclassSelect(userId, className) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function scoreSelect(userId) {
   const options = ABILITY_SCORES.map(s => ({
     label: s.label,
@@ -153,7 +146,6 @@ export function scoreSelect(userId) {
   );
 }
 
-// ✨ UPDATED: Added descriptions and emojis
 export function battleImagineSelect(userId, imagine) {
   const options = [
     { label: 'Skip / Don\'t own', value: 'skip', emoji: '⏭️', description: 'I don\'t have this imagine' },
@@ -172,7 +164,6 @@ export function battleImagineSelect(userId, imagine) {
   );
 }
 
-// ✅ FIXED: Changed from reg_guild_ to select_guild_
 export function guildSelect(userId) {
   const options = config.guilds.map(g => ({
     label: g.name,
@@ -218,8 +209,7 @@ export function addTypeSelect(userId, subCount) {
       .setCustomId(`add_type_${userId}`)
       .setPlaceholder('➕ What to add?')
       .addOptions([
-        { label: 'Alt Character', value: 'alt', description: 'Register a new alt character', emoji: '🎭' },
-        { label: `Subclass (${subCount}/3)`, value: 'subclass', description: 'Add subclass to existing character', emoji: '📊' }
+        { label: `Subclass (${subCount}/3)`, value: 'subclass', description: 'Add subclass to main character', emoji: '📊' }
       ])
   );
 }
@@ -242,15 +232,6 @@ export function editTypeSelect(userId, main, alts, subs) {
       value: 'subclass', 
       description: `Edit one of ${subs.length} subclass${subs.length > 1 ? 'es' : ''}`,
       emoji: '📊' 
-    });
-  }
-  
-  if (alts.length > 0) {
-    options.push({ 
-      label: 'Alt Character', 
-      value: 'alt', 
-      description: `Edit one of ${alts.length} alt${alts.length > 1 ? 's' : ''}`,
-      emoji: '🎭' 
     });
   }
   
@@ -283,16 +264,7 @@ export function removeTypeSelect(userId, main, alts, subs) {
     });
   }
   
-  if (alts.length > 0) {
-    options.push({ 
-      label: 'Alt Character', 
-      value: 'alt', 
-      description: `Remove one of ${alts.length} alt${alts.length > 1 ? 's' : ''}`,
-      emoji: '🎭' 
-    });
-  }
-  
-  if (main || alts.length > 0 || subs.length > 0) {
+  if (main || subs.length > 0) {
     options.push({ 
       label: '⚠️ Delete All Data', 
       value: 'all', 
@@ -305,22 +277,6 @@ export function removeTypeSelect(userId, main, alts, subs) {
     new StringSelectMenuBuilder()
       .setCustomId(`remove_type_${userId}`)
       .setPlaceholder('🗑️ What to remove?')
-      .addOptions(options)
-  );
-}
-
-export function altListSelect(userId, alts, action) {
-  const options = alts.map((alt, i) => ({
-    label: `Alt ${i + 1}: ${alt.ign}`,
-    value: String(alt.id),
-    description: `${alt.class} - ${alt.subclass}`,
-    emoji: '🎭'
-  }));
-  
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`${action}_alt_${userId}`)
-      .setPlaceholder(`Select alt`)
       .addOptions(options)
   );
 }
@@ -438,23 +394,4 @@ export function editModal(userId, field, currentValue = '') {
           .setMaxLength(50)
       )
     );
-}
-
-export function parentSelect(userId, main, alts) {
-  const options = [
-    { label: `Main: ${main.ign}`, value: `main_${main.id}`, description: `${main.class} - ${main.subclass}`, emoji: '⭐' },
-    ...alts.map(a => ({ 
-      label: `Alt: ${a.ign}`, 
-      value: `alt_${a.id}`, 
-      description: `${a.class} - ${a.subclass}`,
-      emoji: '🎭' 
-    }))
-  ];
-  
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`parent_${userId}`)
-      .setPlaceholder('📊 Which character is this subclass for?')
-      .addOptions(options)
-  );
 }
