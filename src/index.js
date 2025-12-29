@@ -105,7 +105,7 @@ client.once(Events.ClientReady, async () => {
 
   // ✅ SETUP VERIFICATION CHANNEL
   try {
-    await VerificationSystem.setupVerificationChannel(client);
+    await VerificationSystem.setupVerificationChannel(client, config.discord.guildId);
   } catch (error) {
     console.error('[STARTUP] Verification setup error:', error);
   }
