@@ -84,9 +84,9 @@ export async function profileEmbed(user, characters, interaction = null) {
   }
 
   let mainSection = '```ansi\n';
-  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
-  mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;35m' + main.ign + '\u001b[0m\n';
-  mainSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;35m' + main.uid + '\u001b[0m\n';
+  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+  mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + main.ign + '\u001b[0m\n';
+  mainSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + main.uid + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + main.class + ' - ' + main.subclass + '\u001b[0m\n';
   mainSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(main.ability_score) + '\u001b[0m\n';
 
@@ -96,7 +96,7 @@ export async function profileEmbed(user, characters, interaction = null) {
   }
 
   mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m \u001b[1;35m' + guildDisplay + '\u001b[0m\n'; // ✅ Use guildDisplay instead of main.guild
-  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '```';
 
   const e = new EmbedBuilder()
@@ -107,11 +107,11 @@ export async function profileEmbed(user, characters, interaction = null) {
   if (subs.length > 0) {
     let subSection = '```ansi\n';
     subs.forEach((sub, i) => {
-      subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+      subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
       subSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + sub.class + ' - ' + sub.subclass + '\u001b[0m\n';
       subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(sub.ability_score) + '\u001b[0m\n';
     });
-    subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+    subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     subSection += '```';
     e.addFields({ name: '📊 Subclass' + (subs.length > 1 ? 'es' : '') + ' (' + subs.length + ')', value: subSection, inline: false });
   }
@@ -119,8 +119,8 @@ export async function profileEmbed(user, characters, interaction = null) {
   if (alts.length > 0) {
     let altSection = '```ansi\n';
     for (const alt of alts) {
-      altSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
-      altSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;35m' + alt.ign + '\u001b[0m  \u001b[1;34m🆔 UID:\u001b[0m \u001b[1;35m' + alt.uid + '\u001b[0m\n';
+      altSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+      altSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + alt.ign + '\u001b[0m  \u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + alt.uid + '\u001b[0m\n';
       altSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + alt.class + ' - ' + alt.subclass + '\u001b[0m\n';
       altSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(alt.ability_score) + '\u001b[0m\n';
 
@@ -131,7 +131,7 @@ export async function profileEmbed(user, characters, interaction = null) {
 
       altSection += '\u001b[1;34m🏰 Guild:\u001b[0m \u001b[1;35m' + (alt.guild || 'None') + '\u001b[0m\n';
     }
-    altSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+    altSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     altSection += '```';
     e.addFields({ name: '🎭 Alts (' + alts.length + ')', value: altSection, inline: false });
   }
