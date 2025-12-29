@@ -18,7 +18,6 @@ async function returnToProfile(interaction, userId) {
   const chars = await CharacterRepo.findAllByUser(userId);
   const main = chars.find(c => c.character_type === 'main');
   
-  // Get the actual user object
   let user;
   try {
     user = await interaction.client.users.fetch(userId);
@@ -52,7 +51,6 @@ export async function handleAddType(interaction, userId) {
     }
 
     const main = await CharacterRepo.findMain(userId);
-    const alts = await CharacterRepo.findAlts(userId);
 
     if (!main) {
       return interaction.update({
@@ -61,34 +59,17 @@ export async function handleAddType(interaction, userId) {
       });
     }
 
-    if (alts.length === 0) {
-      state.set(userId, 'reg', { type: 'subclass', parentId: main.id, parentType: 'main', step: 'class' });
-      return reg.start(interaction, userId, 'subclass');
-    }
-
-    const e = embed('📊 Add Subclass', 'Which character is this subclass for?');
-    const row = ui.parentSelect(userId, main, alts);
-    const back = ui.backButton(`add_${userId}`);
-    return interaction.update({ embeds: [e], components: [row, back] });
+    state.set(userId, 'reg', { type: 'subclass', parentId: main.id, parentType: 'main', step: 'class' });
+    return reg.start(interaction, userId, 'subclass');
   }
-
-  state.set(userId, 'reg', { type: 'alt', step: 'class' });
-  return reg.start(interaction, userId, 'alt');
-}
-
-export async function handleParentSelect(interaction, userId) {
-  const [parentType, parentId] = interaction.values[0].split('_');
-  state.set(userId, 'reg', { type: 'subclass', parentId: parseInt(parentId), parentType, step: 'class' });
-  return reg.start(interaction, userId, 'subclass');
 }
 
 export async function showEditMenu(interaction, userId) {
   const chars = await CharacterRepo.findAllByUser(userId);
   const main = chars.find(c => c.character_type === 'main');
-  const alts = chars.filter(c => c.character_type === 'alt');
-  const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+  const subs = chars.filter(c => c.character_type === 'main_subclass');
 
-  if (!main && alts.length === 0 && subs.length === 0) {
+  if (!main && subs.length === 0) {
     return interaction.update({
       embeds: [errorEmbed('No characters to edit!')],
       components: [ui.backButton(`back_profile_${userId}`)]
@@ -96,7 +77,7 @@ export async function showEditMenu(interaction, userId) {
   }
 
   const e = embed('✏️ Edit Character', 'Which type of character do you want to edit?');
-  const row = ui.editTypeSelect(userId, main, alts, subs);
+  const row = ui.editTypeSelect(userId, main, [], subs);
   const back = ui.backButton(`back_profile_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
 }
@@ -114,7 +95,7 @@ export async function handleEditType(interaction, userId) {
 
   if (type === 'subclass') {
     const chars = await CharacterRepo.findAllByUser(userId);
-    const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+    const subs = chars.filter(c => c.character_type === 'main_subclass');
 
     if (subs.length === 1) {
       state.update(userId, 'edit', { charId: subs[0].id, char: subs[0] });
@@ -126,27 +107,6 @@ export async function handleEditType(interaction, userId) {
     const back = ui.backButton(`edit_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
   }
-
-  const alts = await CharacterRepo.findAlts(userId);
-
-  if (alts.length === 1) {
-    const bi = await BattleImagineRepo.findByCharacter(alts[0].id);
-    state.update(userId, 'edit', { charId: alts[0].id, char: alts[0] });
-    return showFieldSelect(interaction, userId, 'alt', alts[0], bi);
-  }
-
-  const e = embed('✏️ Edit Alt', 'Which alt do you want to edit?');
-  const row = ui.altListSelect(userId, alts, 'edit');
-  const back = ui.backButton(`edit_${userId}`);
-  return interaction.update({ embeds: [e], components: [row, back] });
-}
-
-export async function handleEditAltSelect(interaction, userId) {
-  const charId = parseInt(interaction.values[0]);
-  const char = await CharacterRepo.findById(charId);
-  const bi = await BattleImagineRepo.findByCharacter(charId);
-  state.update(userId, 'edit', { charId, char });
-  return showFieldSelect(interaction, userId, 'alt', char, bi);
 }
 
 export async function handleEditSubclassSelect(interaction, userId) {
@@ -303,21 +263,18 @@ export async function handleEditGuild(interaction, userId) {
   await CharacterRepo.update(s.charId, { guild });
   logger.edit(interaction.user.username, 'guild', oldVal, guild);
 
-  // Handle role changes for main character ONLY
   const isMain = s.type === 'main';
   if (isMain) {
     try {
       const guildObj = await interaction.client.guilds.fetch(config.discord.guildId);
       const member = await guildObj.members.fetch(userId);
       
-      // ✅ DELETE ANY EXISTING APPLICATION (approved, denied, or pending) when changing guilds
       if (oldVal === 'iDolls' || guild === 'iDolls') {
         const existingApp = await ApplicationRepo.findAllByUserAndCharacter(userId, s.charId);
         
         if (existingApp) {
           console.log(`[EDIT] Deleting existing application ID ${existingApp.id} (status: ${existingApp.status})`);
           
-          // Delete the Discord message if it exists
           if (existingApp.message_id && config.channels.admin) {
             try {
               const adminChannel = await interaction.client.channels.fetch(config.channels.admin);
@@ -335,7 +292,6 @@ export async function handleEditGuild(interaction, userId) {
       }
       
       if (guild === 'Visitor') {
-        // Remove guild role when switching TO Visitor
         if (config.roles.guild1 && member.roles.cache.has(config.roles.guild1)) {
           await member.roles.remove(config.roles.guild1);
           console.log(`[EDIT] Removed guild role from ${userId}`);
@@ -351,7 +307,6 @@ export async function handleEditGuild(interaction, userId) {
           console.log(`[EDIT] Removed Registered role from ${userId}`);
         }
       } else if (guild === 'iDolls' && config.roles.guild1) {
-        // Add roles
         if (config.roles.registered) {
           await member.roles.add(config.roles.registered);
           console.log(`[EDIT] Added Registered role to ${userId}`);
@@ -362,11 +317,9 @@ export async function handleEditGuild(interaction, userId) {
           console.log(`[EDIT] Removed Visitor role from ${userId}`);
         }
         
-        // Create NEW application with voting system
         await applicationService.createApplication(userId, s.charId, guild);
         console.log(`[EDIT] Created NEW application for ${userId} to join ${guild}`);
       } else {
-        // Other guilds (not iDolls, not Visitor)
         if (config.roles.registered) {
           await member.roles.add(config.roles.registered);
           console.log(`[EDIT] Added Registered role to ${userId}`);
@@ -405,7 +358,6 @@ export async function handleEditModal(interaction, userId, field) {
 
   state.clear(userId, 'edit');
 
-  // Get the actual user object
   let user;
   try {
     user = await interaction.client.users.fetch(userId);
@@ -426,11 +378,10 @@ export async function handleEditModal(interaction, userId, field) {
 export async function showRemoveMenu(interaction, userId) {
   const chars = await CharacterRepo.findAllByUser(userId);
   const main = chars.find(c => c.character_type === 'main');
-  const alts = chars.filter(c => c.character_type === 'alt');
-  const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+  const subs = chars.filter(c => c.character_type === 'main_subclass');
 
   const e = embed('🗑️ Remove Character', 'What would you like to remove?');
-  const row = ui.removeTypeSelect(userId, main, alts, subs);
+  const row = ui.removeTypeSelect(userId, main, [], subs);
   const back = ui.backButton(`back_profile_${userId}`);
   await interaction.update({ embeds: [e], components: [row, back] });
 }
@@ -441,7 +392,7 @@ export async function handleRemoveType(interaction, userId) {
 
   if (type === 'all') {
     const e = embed('⚠️ Delete All Data', 
-      '**This will permanently delete:**\n• Your main character\n• All alt characters\n• All subclasses\n\nAre you sure?');
+      '**This will permanently delete:**\n• Your main character\n• All subclasses\n\nAre you sure?');
     const buttons = ui.confirmButtons(userId, 'deleteall');
     return interaction.update({ embeds: [e], components: buttons });
   }
@@ -450,14 +401,14 @@ export async function handleRemoveType(interaction, userId) {
     const main = await CharacterRepo.findMain(userId);
     state.update(userId, 'remove', { charId: main.id, char: main });
     const e = embed('🗑️ Remove Main Character', 
-      `**Are you sure you want to remove your main character?**\n\n🎮 **${main.ign}**\n🎭 ${main.class} • ${main.subclass}\n\n⚠️ Your alts and subclasses will NOT be deleted.`);
+      `**Are you sure you want to remove your main character?**\n\n🎮 **${main.ign}**\n🎭 ${main.class} • ${main.subclass}\n\n⚠️ Your subclasses will NOT be deleted.`);
     const buttons = ui.confirmButtons(userId, 'delete');
     return interaction.update({ embeds: [e], components: buttons });
   }
 
   if (type === 'subclass') {
     const chars = await CharacterRepo.findAllByUser(userId);
-    const subs = chars.filter(c => c.character_type === 'main_subclass' || c.character_type === 'alt_subclass');
+    const subs = chars.filter(c => c.character_type === 'main_subclass');
 
     if (subs.length === 1) {
       state.update(userId, 'remove', { charId: subs[0].id, char: subs[0] });
@@ -472,32 +423,6 @@ export async function handleRemoveType(interaction, userId) {
     const back = ui.backButton(`remove_${userId}`);
     return interaction.update({ embeds: [e], components: [row, back] });
   }
-
-  const alts = await CharacterRepo.findAlts(userId);
-
-  if (alts.length === 1) {
-    state.update(userId, 'remove', { charId: alts[0].id, char: alts[0] });
-    const e = embed('🗑️ Remove Alt', 
-      `**Are you sure you want to remove this alt?**\n\n🎮 **${alts[0].ign}**\n🎭 ${alts[0].class} • ${alts[0].subclass}`);
-    const buttons = ui.confirmButtons(userId, 'delete');
-    return interaction.update({ embeds: [e], components: buttons });
-  }
-
-  const e = embed('🗑️ Remove Alt', 'Which alt do you want to remove?');
-  const row = ui.altListSelect(userId, alts, 'remove');
-  const back = ui.backButton(`remove_${userId}`);
-  return interaction.update({ embeds: [e], components: [row, back] });
-}
-
-export async function handleRemoveAltSelect(interaction, userId) {
-  const charId = parseInt(interaction.values[0]);
-  const char = await CharacterRepo.findById(charId);
-  state.update(userId, 'remove', { charId, char });
-
-  const e = embed('🗑️ Remove Alt', 
-    `**Are you sure you want to remove this alt?**\n\n🎮 **${char.ign}**\n🎭 ${char.class} • ${char.subclass}`);
-  const buttons = ui.confirmButtons(userId, 'delete');
-  await interaction.update({ embeds: [e], components: buttons });
 }
 
 export async function handleRemoveSubclassSelect(interaction, userId) {
