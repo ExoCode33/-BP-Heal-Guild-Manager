@@ -311,13 +311,13 @@ export async function handleEditGuild(interaction, userId) {
           console.log(`[EDIT] Added Visitor role to ${userId}`);
         }
         
-        if (config.roles.registered && member.roles.cache.has(config.roles.registered)) {
-          await member.roles.remove(config.roles.registered);
+        if (config.roles.verified && member.roles.cache.has(config.roles.verified)) {
+          await member.roles.remove(config.roles.verified);
           console.log(`[EDIT] Removed Registered role from ${userId}`);
         }
       } else if (guild === 'iDolls' && config.roles.guild1) {
-        if (config.roles.registered) {
-          await member.roles.add(config.roles.registered);
+        if (config.roles.verified) {
+          await member.roles.add(config.roles.verified);
           console.log(`[EDIT] Added Registered role to ${userId}`);
         }
         
@@ -329,8 +329,8 @@ export async function handleEditGuild(interaction, userId) {
         await applicationService.createApplication(userId, s.charId, guild);
         console.log(`[EDIT] Created NEW application for ${userId} to join ${guild}`);
       } else {
-        if (config.roles.registered) {
-          await member.roles.add(config.roles.registered);
+        if (config.roles.verified) {
+          await member.roles.add(config.roles.verified);
           console.log(`[EDIT] Added Registered role to ${userId}`);
         }
         
@@ -471,8 +471,8 @@ export async function confirmDelete(interaction, userId) {
       }
 
       // Remove registered role
-      if (config.roles.registered && member.roles.cache.has(config.roles.registered)) {
-        await member.roles.remove(config.roles.registered);
+      if (config.roles.verified && member.roles.cache.has(config.roles.verified)) {
+        await member.roles.remove(config.roles.verified);
         console.log(`[DELETE] Removed Registered role from ${userId}`);
       }
 
@@ -528,8 +528,8 @@ export async function confirmDeleteAll(interaction, userId) {
     }
 
     // Remove registered role
-    if (config.roles.registered && member.roles.cache.has(config.roles.registered)) {
-      await member.roles.remove(config.roles.registered);
+    if (config.roles.verified && member.roles.cache.has(config.roles.verified)) {
+      await member.roles.remove(config.roles.verified);
       console.log(`[DELETE ALL] Removed Registered role from ${userId}`);
     }
 
