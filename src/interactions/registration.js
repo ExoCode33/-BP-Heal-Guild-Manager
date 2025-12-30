@@ -653,7 +653,7 @@ export async function handleScore(interaction, userId) {
       await classRoleService.addClassRole(userId, currentState.class);
 
       const characters = await CharacterRepo.findAllByUser(userId);
-      const main = characters.find(c => c.characterType === 'main');
+      const main = characters.find(c => c.character_type === 'main');
       
       const embed = await profileEmbed(interaction.user, characters, interaction);
       const buttons = ui.profileButtons(userId, !!main);
@@ -940,7 +940,7 @@ export async function handleIGN(interaction, userId) {
     state.clear(userId, 'reg');
 
     const characters = await CharacterRepo.findAllByUser(userId);
-    const main = characters.find(c => c.characterType === 'main');
+    const main = characters.find(c => c.character_type === 'main');
 
     const embed = await profileEmbed(interaction.user, characters, interaction);
     const buttons = ui.profileButtons(userId, !!main);
@@ -965,11 +965,11 @@ export async function handleIGN(interaction, userId) {
 export async function handleDelete(interaction, userId, characterId) {
   try {
     const allChars = await CharacterRepo.findAllByUser(userId);
-    const mainChars = allChars.filter(c => c.characterType === 'main');
+    const mainChars = allChars.filter(c => c.character_type === 'main');
     
     const charToDelete = allChars.find(c => c.id === characterId);
     
-    if (charToDelete && charToDelete.characterType === 'main' && mainChars.length === 1) {
+    if (charToDelete && charToDelete.character_type === 'main' && mainChars.length === 1) {
       await removeRoles(interaction.client, userId);
     }
     
