@@ -366,9 +366,3 @@ export class LoggingRepo {
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// BACKWARDS COMPATIBILITY ALIASES
-// ═══════════════════════════════════════════════════════════════════
-
-export const EphemeralRepo = EphemeralSettingsRepo;
