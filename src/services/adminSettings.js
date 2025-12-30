@@ -1,4 +1,4 @@
-import { EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, MessageFlags } from 'discord.js';
+import { EmbedBuilder, StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType } from 'discord.js';
 import logger from './logger.js';
 import { COLORS } from '../config/game.js';
 
@@ -64,9 +64,9 @@ export async function showSettingsMenu(interaction) {
     components: [row1]
   };
 
-  // For slash commands, use reply with ephemeral
+  // For slash commands, use reply
   if (interaction.isChatInputCommand()) {
-    return interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+    return interaction.reply({ ...payload, ephemeral: true });
   }
   
   // For button/select menu interactions, use update
@@ -75,7 +75,7 @@ export async function showSettingsMenu(interaction) {
   }
   
   // Fallback
-  return interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+  return interaction.reply({ ...payload, ephemeral: true });
 }
 
 export async function showChannelsMenu(interaction) {
@@ -311,10 +311,12 @@ export async function handleSettingsBackButton(interaction) {
 }
 
 export async function handleLoggingMenuSelect(interaction) {
+  // Kept for compatibility
   return handleSettingsMenuSelect(interaction);
 }
 
 export async function handleLoggingBackButton(interaction) {
+  // Kept for compatibility
   return showSettingsMenu(interaction);
 }
 
