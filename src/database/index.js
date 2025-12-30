@@ -54,34 +54,7 @@ async function initialize() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS guild_settings (
       guild_id VARCHAR(20) PRIMARY KEY,
-      verification_channel_id TEXT,
-      general_log_channel_id TEXT,
-      application_log_channel_id TEXT,
-      log_settings JSONB DEFAULT '{
-        "character_registration": true,
-        "character_updates": true,
-        "character_deletion": true,
-        "verification": true,
-        "timezone_changes": true,
-        "battle_imagine_changes": true,
-        "guild_applications": true,
-        "application_votes": true,
-        "admin_overrides": true,
-        "settings_changes": true,
-        "role_changes": true
-      }'::jsonb,
-      log_grouping JSONB DEFAULT '{
-        "character_registration": false,
-        "character_updates": true,
-        "character_deletion": false,
-        "verification": true,
-        "timezone_changes": true,
-        "battle_imagine_changes": true,
-        "settings_changes": false,
-        "role_changes": false,
-        "grouping_window_minutes": 10
-      }'::jsonb,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      verification_channel_id VARCHAR(20),
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
