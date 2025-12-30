@@ -71,10 +71,10 @@ client.once(Events.ClientReady, async () => {
     
     // Group characters by user
     allChars.forEach(char => {
-      if (!userMap.has(char.user_id)) {
-        userMap.set(char.user_id, []);
+      if (!userMap.has(char.userId)) {
+        userMap.set(char.userId, []);
       }
-      userMap.get(char.user_id).push(char);
+      userMap.get(char.userId).push(char);
     });
 
     let totalFixed = 0;
@@ -120,7 +120,7 @@ client.once(Events.ClientReady, async () => {
   if (config.sync.nicknameEnabled && config.sync.nicknameInterval > 0) {
     setInterval(async () => {
       const chars = await CharacterRepo.findAll();
-      const mains = chars.filter(c => c.character_type === 'main');
+      const mains = chars.filter(c => c.characterType === 'main');
       syncAllNicknames(client, config.discord.guildId, mains);
     }, config.sync.nicknameInterval);
   }
