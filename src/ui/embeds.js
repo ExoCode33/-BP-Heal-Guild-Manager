@@ -40,24 +40,25 @@ export async function profileEmbed(user, characters, interaction = null) {
   const timeText = tz ? `\n🌍 ${formatTime(tz)}` : '';
 
   if (!main) {
-    const centerText = (text, width = 42) => text.padStart((text.length + width) / 2).padEnd(width);
+    const centerText = (text, width = 37) => text.padStart((text.length + width) / 2).padEnd(width);
     
-    const welcomeLine = `♡₊˚ Welcome ${displayName} ˚₊♡`;
+    const welcomeLine = `Welcome ${displayName}`;
     const noCharLine = 'No character yet? No worries~';
-    const tapLine = '• Tap the button below';
-    const setupLine = '• We\'ll set you up in no time!';
+    const tapLine = 'Tap the button below';
+    const setupLine = 'We\'ll set you up in no time!';
     
     const welcomeText = [
-      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
+      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
       '',
-      '\u001b[1;34m' + centerText(welcomeLine) + '\u001b[0m',
+      '\u001b[1;35m' + centerText('≽^•⩊•^≼') + '\u001b[0m',
+      '',
+      '\u001b[1;36m' + centerText(welcomeLine) + '\u001b[0m',
       '',
       '\u001b[1;34m' + centerText(noCharLine) + '\u001b[0m',
-      '',
       '\u001b[1;34m' + centerText(tapLine) + '\u001b[0m',
       '\u001b[1;34m' + centerText(setupLine) + '\u001b[0m',
       '',
-      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
+      '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
     ].join('\n');
 
     return new EmbedBuilder()
