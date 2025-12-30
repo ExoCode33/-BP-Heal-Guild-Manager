@@ -70,26 +70,23 @@ export async function profileEmbed(user, characters, interaction = null) {
   const roleEmoji = getRoleEmoji(main.role);
   const classEmoji = getClassEmoji(interaction?.guild, main.class);
 
-  // ✅ FIX: Check application status before showing "Pending"
   let guildDisplay = main.guild || 'None';
   if (main.guild === 'iDolls') {
     try {
       const pendingApp = await ApplicationRepo.findAllByUserAndCharacter(user.id, main.id);
-      // ✅ ONLY show pending if status is actually "pending"
       if (pendingApp && pendingApp.status === 'pending') {
         guildDisplay = '⏳ Pending - iDolls';
       } else {
-        // ✅ If approved/denied or no application, just show guild name
         guildDisplay = 'iDolls';
       }
     } catch (error) {
       console.error('[EMBED] Error checking pending application:', error);
-      guildDisplay = 'iDolls'; // Fallback to just showing guild name
+      guildDisplay = 'iDolls';
     }
   }
 
   let mainSection = '```ansi\n';
-  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + main.ign + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + main.uid + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + main.class + ' - ' + main.subclass + '\u001b[0m\n';
@@ -101,7 +98,7 @@ export async function profileEmbed(user, characters, interaction = null) {
   }
 
   mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m \u001b[1;35m' + guildDisplay + '\u001b[0m\n';
-  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+  mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '```';
 
   const e = new EmbedBuilder()
@@ -112,11 +109,11 @@ export async function profileEmbed(user, characters, interaction = null) {
   if (subs.length > 0) {
     let subSection = '```ansi\n';
     subs.forEach((sub, i) => {
-      subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+      subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
       subSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + sub.class + ' - ' + sub.subclass + '\u001b[0m\n';
       subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(sub.ability_score) + '\u001b[0m\n';
     });
-    subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
+    subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     subSection += '```';
     e.addFields({ name: '📊 Subclass' + (subs.length > 1 ? 'es' : '') + ' (' + subs.length + ')', value: subSection, inline: false });
   }
