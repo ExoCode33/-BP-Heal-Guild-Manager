@@ -76,8 +76,13 @@ export default {
   },
   roles: {
     registered: process.env.REGISTERED_ROLE_ID,
+    verified: process.env.VERIFIED_ROLE_ID,
     visitor: process.env.VISITOR_ROLE_ID,
-    guild1: process.env.GUILD_1_ROLE_ID
+    guild1: process.env.GUILD_1_ROLE_ID,
+    guild2: process.env.GUILD_2_ROLE_ID,
+    guild3: process.env.GUILD_3_ROLE_ID,
+    guild4: process.env.GUILD_4_ROLE_ID,
+    guild5: process.env.GUILD_5_ROLE_ID
   },
   channels: {
     admin: process.env.ADMIN_CHANNEL_ID
@@ -87,3 +92,21 @@ export default {
   },
   classRoles: loadClassRoles()
 };
+```
+
+---
+
+## ✅ **Deployment:**
+
+1. Replace `/src/commands/admin.js`
+2. Replace `/src/commands/index.js`
+3. Replace `/src/config/index.js`
+4. **Restart bot**
+5. Commands auto-register
+
+---
+
+## 🎯 **Usage:**
+```
+/admin guild-assign user:@JohnDoe guild:iDolls
+/admin guild-remove user:@JohnDoe
