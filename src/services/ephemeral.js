@@ -14,7 +14,17 @@ export async function isEphemeral(guildId, type) {
 
   // ✅ COMPREHENSIVE EPHEMERAL MAPPING
   
-  // Character viewing
+  // Edit character (managing own profile with buttons)
+  if (type === 'edit_character') {
+    return settings.includes('edit_character');
+  }
+  
+  // View character (viewing profiles without buttons)
+  if (type === 'view_character') {
+    return settings.includes('view_character');
+  }
+  
+  // Character viewing (legacy)
   if (type === 'character_own' || type === 'character') {
     return settings.includes('character_own');
   }
