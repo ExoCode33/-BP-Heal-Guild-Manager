@@ -157,7 +157,6 @@ client.once(Events.ClientReady, async () => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // Slash commands
     if (interaction.isChatInputCommand()) {
       const cmd = commands.get(interaction.commandName);
       if (cmd) {
@@ -167,25 +166,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // Buttons
     if (interaction.isButton()) {
       return route(interaction);
     }
 
-    // All select menus (String, Channel, Role, User, Mentionable)
-    if (interaction.isAnySelectMenu()) {
+    if (interaction.isStringSelectMenu()) {
       return routeSelectMenu(interaction);
     }
 
-    // Modals
     if (interaction.isModalSubmit()) {
       return routeModal(interaction);
-    }
-
-    // Autocomplete (if needed in future)
-    if (interaction.isAutocomplete()) {
-      // Handle autocomplete here if needed
-      return;
     }
   } catch (e) {
     logger.error('Interaction', `Failed: ${interaction.customId || interaction.commandName}`, e);
