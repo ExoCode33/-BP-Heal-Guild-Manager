@@ -254,6 +254,34 @@ async function assignRoles(client, userId, guildName, characterData = null) {
   }
 }
 
+// ✅ NEW: Assign roles for pending application (Visitor + Verified)
+async function assignPendingRoles(client, userId) {
+  if (!config.discord?.guildId) {
+    console.log('[REGISTRATION] Guild ID not configured');
+    return;
+  }
+
+  try {
+    const guild = await client.guilds.fetch(config.discord.guildId);
+    const member = await guild.members.fetch(userId);
+
+    // Add Visitor role
+    if (config.roles.visitor) {
+      await member.roles.add(config.roles.visitor);
+      console.log(`[REGISTRATION] Added Visitor role to ${userId} (pending)`);
+    }
+
+    // Add Verified role
+    if (config.roles.verified) {
+      await member.roles.add(config.roles.verified);
+      console.log(`[REGISTRATION] Added Verified role to ${userId} (pending)`);
+    }
+
+  } catch (error) {
+    console.error('[REGISTRATION] Pending role assignment error:', error.message);
+  }
+}
+
 async function removeRoles(client, userId) {
   if (!config.roles?.registered || !config.discord?.guildId) {
     console.log('[REGISTRATION] Role removal not configured');
@@ -931,7 +959,10 @@ export async function handleIGN(interaction, userId) {
     // ✅ ADD CLASS ROLE
     await classRoleService.addClassRole(userId, currentState.class);
 
+    // ✅ FIXED: Assign roles based on guild selection
     if (currentState.guild === 'iDolls' && config.roles.guild1) {
+      // Pending application: Give Visitor + Verified roles
+      await assignPendingRoles(interaction.client, userId);
       await applicationService.createApplication(userId, character.id, currentState.guild);
     } else {
       await assignRoles(interaction.client, userId, currentState.guild, character);
