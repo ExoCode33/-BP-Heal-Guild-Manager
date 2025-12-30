@@ -74,6 +74,8 @@ export async function route(interaction) {
   if (customId === 'verification_register') {
     lockInteraction(interaction.user.id, interaction.id);
     try {
+      // Defer with ephemeral so only user sees the registration
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       return await reg.start(interaction, interaction.user.id, 'main');
     } finally {
       unlockInteraction(interaction.user.id);
