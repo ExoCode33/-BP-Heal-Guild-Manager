@@ -20,7 +20,35 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub => sub.setName('nicknames').setDescription('Sync all member nicknames'))
   .addSubcommand(sub => sub.setName('stats').setDescription('View bot statistics'))
   .addSubcommand(sub => sub.setName('delete').setDescription('Delete a user\'s data').addUserOption(opt => opt.setName('user').setDescription('User to delete').setRequired(true)))
-  .addSubcommand(sub => sub.setName('character').setDescription('View/edit another user\'s character').addUserOption(opt => opt.setName('user').setDescription('User to manage').setRequired(true)));
+  .addSubcommand(sub => sub.setName('character').setDescription('View/edit another user\'s character').addUserOption(opt => opt.setName('user').setDescription('User to manage').setRequired(true)))
+  .addSubcommand(sub => sub
+    .setName('guild-assign')
+    .setDescription('Assign a user to a guild')
+    .addUserOption(opt => opt
+      .setName('user')
+      .setDescription('User to assign')
+      .setRequired(true))
+    .addStringOption(opt => {
+      const option = opt
+        .setName('guild')
+        .setDescription('Guild to assign them to')
+        .setRequired(true);
+      
+      if (config.guilds && Array.isArray(config.guilds)) {
+        config.guilds.forEach(guild => {
+          option.addChoices({ name: guild.name, value: guild.name });
+        });
+      }
+      
+      return option;
+    }))
+  .addSubcommand(sub => sub
+    .setName('guild-remove')
+    .setDescription('Remove a user from their current guild')
+    .addUserOption(opt => opt
+      .setName('user')
+      .setDescription('User to remove from guild')
+      .setRequired(true)));
 
 function embed(title, description) {
   return new EmbedBuilder().setColor('#EC4899').setDescription(`# ${title}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${description}`).setTimestamp();
@@ -108,7 +136,6 @@ async function showVerificationStatus(interaction) {
 
   const rows = [];
   
-  // Channel selection dropdown
   rows.push(new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`admin_verification_channel_${interaction.user.id}`)
@@ -132,7 +159,6 @@ async function showVerificationStatus(interaction) {
       ])
   ));
 
-  // Back button
   rows.push(new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`admin_settings_back_${interaction.user.id}`)
@@ -227,25 +253,18 @@ async function showLoggingSettings(interaction) {
 async function showEphemeralSettings(interaction) {
   const current = await EphemeralRepo.get(interaction.guildId);
   
-  // ═══════════════════════════════════════════════════════════
-  // CLEAN EPHEMERAL OPTIONS - ORGANIZED BY TYPE
-  // ═══════════════════════════════════════════════════════════
-  
   const options = [
-    // COMMANDS
     { label: '💬 COMMANDS', value: 'header_commands', description: '────────────────────', emoji: '─', default: false },
     { label: '/edit-character', value: 'edit_character', description: 'Manage your profile with buttons', emoji: '✏️' },
     { label: '/view-character', value: 'view_character', description: 'View character profiles', emoji: '👁️' },
     { label: '/admin', value: 'admin', description: 'Admin command responses', emoji: '⚙️' },
     
-    // FLOWS
     { label: '🔄 FLOWS', value: 'header_flows', description: '────────────────────', emoji: '─', default: false },
     { label: 'Registration', value: 'registration', description: 'New character registration', emoji: '📝' },
     { label: 'Edit Actions', value: 'edit_actions', description: 'Editing character info', emoji: '🔧' },
     { label: 'Add Character', value: 'add_character', description: 'Adding subclasses', emoji: '➕' },
     { label: 'Delete Character', value: 'delete_character', description: 'Character deletion', emoji: '🗑️' },
     
-    // MESSAGES
     { label: '💬 MESSAGES', value: 'header_messages', description: '────────────────────', emoji: '─', default: false },
     { label: 'Error Messages', value: 'errors', description: 'Error/validation messages', emoji: '❌' }
   ].map(opt => ({ 
@@ -254,16 +273,13 @@ async function showEphemeralSettings(interaction) {
   }));
   
   const categoryNames = {
-    // Commands
     'edit_character': '✏️ /edit-character',
     'view_character': '👁️ /view-character',
     'admin': '⚙️ /admin',
-    // Flows
     'registration': '📝 Registration',
     'edit_actions': '🔧 Edit Actions',
     'add_character': '➕ Add Character',
     'delete_character': '🗑️ Delete Character',
-    // Messages
     'errors': '❌ Errors'
   };
   
@@ -362,6 +378,162 @@ async function showStatistics(interaction) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// GUILD MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleGuildAssign(interaction) {
+  const isEph = await isEphemeral(interaction.guildId, 'admin');
+  const targetUser = interaction.options.getUser('user');
+  const guildName = interaction.options.getString('guild');
+  
+  try {
+    const mainChar = await CharacterRepo.findMain(targetUser.id);
+    
+    if (!mainChar) {
+      return interaction.reply({
+        embeds: [embed('❌ Error', `**${targetUser.username}** has no registered character.`)],
+        ephemeral: isEph
+      });
+    }
+    
+    await CharacterRepo.update(mainChar.id, { guild: guildName });
+    await updateGuildRoles(interaction.client, targetUser.id, guildName);
+    
+    logger.info('Guild Assigned', `${targetUser.username} → ${guildName}`);
+    
+    return interaction.reply({
+      embeds: [embed(
+        '✅ Guild Assigned',
+        `**${targetUser.username}** has been assigned to **${guildName}**!\n\n` +
+        `• Character: ${mainChar.ign}\n` +
+        `• UID: ${mainChar.uid}\n` +
+        `• New Guild: ${guildName}`
+      )],
+      ephemeral: isEph
+    });
+    
+  } catch (error) {
+    logger.error('Guild Assign', error.message);
+    return interaction.reply({
+      embeds: [embed('❌ Error', `Failed to assign guild: ${error.message}`)],
+      ephemeral: isEph
+    });
+  }
+}
+
+async function handleGuildRemove(interaction) {
+  const isEph = await isEphemeral(interaction.guildId, 'admin');
+  const targetUser = interaction.options.getUser('user');
+  
+  try {
+    const mainChar = await CharacterRepo.findMain(targetUser.id);
+    
+    if (!mainChar) {
+      return interaction.reply({
+        embeds: [embed('❌ Error', `**${targetUser.username}** has no registered character.`)],
+        ephemeral: isEph
+      });
+    }
+    
+    const previousGuild = mainChar.guild;
+    
+    await CharacterRepo.update(mainChar.id, { guild: 'Visitor' });
+    await removeGuildRoles(interaction.client, targetUser.id);
+    
+    logger.info('Guild Removed', `${targetUser.username} from ${previousGuild}`);
+    
+    return interaction.reply({
+      embeds: [embed(
+        '✅ Guild Removed',
+        `**${targetUser.username}** has been removed from **${previousGuild}**!\n\n` +
+        `• Character: ${mainChar.ign}\n` +
+        `• UID: ${mainChar.uid}\n` +
+        `• Status: Visitor`
+      )],
+      ephemeral: isEph
+    });
+    
+  } catch (error) {
+    logger.error('Guild Remove', error.message);
+    return interaction.reply({
+      embeds: [embed('❌ Error', `Failed to remove guild: ${error.message}`)],
+      ephemeral: isEph
+    });
+  }
+}
+
+async function updateGuildRoles(client, userId, guildName) {
+  if (!config.discord?.guildId) {
+    console.log('[GUILD-MANAGE] Guild ID not configured');
+    return;
+  }
+
+  try {
+    const guild = await client.guilds.fetch(config.discord.guildId);
+    const member = await guild.members.fetch(userId);
+
+    for (let i = 1; i <= 5; i++) {
+      const roleId = config.roles[`guild${i}`];
+      if (roleId && member.roles.cache.has(roleId)) {
+        await member.roles.remove(roleId);
+        console.log(`[GUILD-MANAGE] Removed guild${i} role from ${userId}`);
+      }
+    }
+    
+    if (config.roles.visitor && member.roles.cache.has(config.roles.visitor)) {
+      await member.roles.remove(config.roles.visitor);
+      console.log(`[GUILD-MANAGE] Removed Visitor role from ${userId}`);
+    }
+
+    const guildConfig = config.guilds.find(g => g.name === guildName);
+    
+    if (guildConfig && guildConfig.roleId) {
+      await member.roles.add(guildConfig.roleId);
+      console.log(`[GUILD-MANAGE] Added ${guildName} role to ${userId}`);
+    } else if (guildName === 'Visitor' && config.roles.visitor) {
+      await member.roles.add(config.roles.visitor);
+      console.log(`[GUILD-MANAGE] Added Visitor role to ${userId}`);
+    }
+
+    if (config.roles.verified && !member.roles.cache.has(config.roles.verified)) {
+      await member.roles.add(config.roles.verified);
+      console.log(`[GUILD-MANAGE] Added Verified role to ${userId}`);
+    }
+
+  } catch (error) {
+    console.error('[GUILD-MANAGE] Role update error:', error.message);
+  }
+}
+
+async function removeGuildRoles(client, userId) {
+  if (!config.discord?.guildId) {
+    console.log('[GUILD-MANAGE] Guild ID not configured');
+    return;
+  }
+
+  try {
+    const guild = await client.guilds.fetch(config.discord.guildId);
+    const member = await guild.members.fetch(userId);
+
+    for (let i = 1; i <= 5; i++) {
+      const roleId = config.roles[`guild${i}`];
+      if (roleId && member.roles.cache.has(roleId)) {
+        await member.roles.remove(roleId);
+        console.log(`[GUILD-MANAGE] Removed guild${i} role from ${userId}`);
+      }
+    }
+
+    if (config.roles.visitor && !member.roles.cache.has(config.roles.visitor)) {
+      await member.roles.add(config.roles.visitor);
+      console.log(`[GUILD-MANAGE] Added Visitor role to ${userId}`);
+    }
+
+  } catch (error) {
+    console.error('[GUILD-MANAGE] Role removal error:', error.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // COMMAND HANDLERS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -445,6 +617,8 @@ export async function execute(interaction) {
       case 'stats': return await showStatistics(interaction);
       case 'delete': return await handleDelete(interaction);
       case 'character': return await handleCharacter(interaction);
+      case 'guild-assign': return await handleGuildAssign(interaction);
+      case 'guild-remove': return await handleGuildRemove(interaction);
     }
   } catch (e) {
     logger.error('Admin', `${sub} failed`, e);
@@ -478,17 +652,13 @@ export async function handleVerificationChannelSelect(interaction) {
   const channelId = interaction.values[0];
   
   if (channelId === 'none') {
-    // Disable verification
     await VerificationSystem.setVerificationChannelId(interaction.guildId, null);
     await interaction.reply({ 
       embeds: [embed('✅ Verification Disabled', 'The verification system has been disabled.')], 
       ephemeral: true 
     });
   } else {
-    // Set verification channel
     await VerificationSystem.setVerificationChannelId(interaction.guildId, channelId);
-    
-    // Setup the channel immediately
     await VerificationSystem.setupVerificationChannel(interaction.client, interaction.guildId);
     
     await interaction.reply({ 
@@ -540,21 +710,17 @@ export async function handleLogCategoriesSelect(interaction) {
 }
 
 export async function handleEphemeralSelect(interaction) {
-  // Filter out header values (they're just visual separators)
   const selected = interaction.values.filter(v => !v.startsWith('header_'));
   await EphemeralRepo.set(interaction.guildId, selected);
   
   const categoryNames = {
-    // Commands
     'edit_character': '✏️ /edit-character',
     'view_character': '👁️ /view-character',
     'admin': '⚙️ /admin',
-    // Flows
     'registration': '📝 Registration',
     'edit_actions': '🔧 Edit Actions',
     'add_character': '➕ Add Character',
     'delete_character': '🗑️ Delete Character',
-    // Messages
     'errors': '❌ Errors'
   };
   
@@ -568,7 +734,6 @@ export async function handleEphemeralSelect(interaction) {
   });
 }
 
-// Legacy compatibility
 export async function handleLogSelect(interaction) { 
   return handleLogCategoriesSelect(interaction); 
 }
