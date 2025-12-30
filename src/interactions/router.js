@@ -1,7 +1,7 @@
+import { MessageFlags, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { showSettingsMenu, handleSettingsMenuSelect, handleLoggingMenuSelect, handleLoggingBackButton, handleSettingsBackButton } from '../services/adminSettings.js';
 import { EphemeralSettingsRepo, LoggingRepo } from '../database/repositories.js';
-import { Logger } from '../services/logger.js';
-import { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import logger, { Logger } from '../services/logger.js';
 import { COLORS } from '../config/game.js';
 import * as reg from './registration.js';
 import * as edit from './editing.js';
@@ -19,15 +19,15 @@ const errorEmbed = (description) =>
 
 export async function route(interaction) {
   const customId = interaction.customId;
-  console.log(`[ROUTER] Button: ${customId}`);
+  logger.button(customId, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
-  // VERIFICATION BUTTONS (WITH BP LINK FIX)
+  // VERIFICATION BUTTONS
   // ═══════════════════════════════════════════════════════════════════
 
   if (customId === 'verification_register') {
     const userId = interaction.user.id;
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     return reg.start(interaction, userId, 'main');
   }
 
@@ -40,8 +40,9 @@ export async function route(interaction) {
       if (config.roles.visitor) {
         await member.roles.add(config.roles.visitor);
       }
+
+      logger.verification(`Visitor joined: ${interaction.user.username}`);
       
-      // ✅ FIXED: Show welcome message with BP link
       const welcomeEmbed = new EmbedBuilder()
         .setTitle('👋 Welcome to the Server!')
         .setDescription(
@@ -55,13 +56,13 @@ export async function route(interaction) {
       
       return interaction.reply({
         embeds: [welcomeEmbed],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     } catch (error) {
-      console.error('[VERIFICATION] Error:', error);
+      logger.error('Verification', 'Non-player error', error);
       return interaction.reply({
         embeds: [errorEmbed('Something went wrong. Please contact an admin.')],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
   }
@@ -158,12 +159,12 @@ export async function route(interaction) {
     return edit.showAddMenu(interaction, userId);
   }
 
-  if (customId.startsWith('edit_')) {
+  if (customId.startsWith('edit_') && !customId.includes('type') && !customId.includes('field') && !customId.includes('class') && !customId.includes('bi')) {
     const userId = customId.split('_')[1];
     return edit.showEditMenu(interaction, userId);
   }
 
-  if (customId.startsWith('remove_')) {
+  if (customId.startsWith('remove_') && !customId.includes('type') && !customId.includes('subclass')) {
     const userId = customId.split('_')[1];
     return edit.showRemoveMenu(interaction, userId);
   }
@@ -254,7 +255,31 @@ export async function route(interaction) {
     return interaction.update({ content: '❌ Override cancelled.', components: [] });
   }
 
-  console.log(`[ROUTER] ⚠️ Unhandled button: ${customId}`);
+  // ═══════════════════════════════════════════════════════════════════
+  // ADMIN CHARACTER MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════
+
+  if (customId.startsWith('admin_reg_start_')) {
+    const userId = customId.split('_')[3];
+    return reg.start(interaction, userId, 'main');
+  }
+
+  if (customId.startsWith('admin_add_')) {
+    const userId = customId.split('_')[2];
+    return edit.showAddMenu(interaction, userId);
+  }
+
+  if (customId.startsWith('admin_edit_')) {
+    const userId = customId.split('_')[2];
+    return edit.showEditMenu(interaction, userId);
+  }
+
+  if (customId.startsWith('admin_remove_')) {
+    const userId = customId.split('_')[2];
+    return edit.showRemoveMenu(interaction, userId);
+  }
+
+  logger.warn('Router', `Unhandled button: ${customId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -263,7 +288,8 @@ export async function route(interaction) {
 
 export async function routeSelectMenu(interaction) {
   const customId = interaction.customId;
-  console.log(`[ROUTER] Select: ${customId}`);
+  const value = interaction.values[0];
+  logger.select(customId, value, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
   // REGISTRATION SELECTS
@@ -353,8 +379,32 @@ export async function routeSelectMenu(interaction) {
     return edit.handleEditBattleImagineTier(interaction, userId);
   }
 
+  // Edit class selection
+  if (customId.startsWith('reg_class_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
+    const userId = customId.split('_')[2];
+    return edit.handleEditClass(interaction, userId);
+  }
+
+  // Edit subclass selection
+  if (customId.startsWith('reg_subclass_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
+    const userId = customId.split('_')[2];
+    return edit.handleEditSubclass(interaction, userId);
+  }
+
+  // Edit score selection
+  if (customId.startsWith('reg_score_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
+    const userId = customId.split('_')[2];
+    return edit.handleEditScore(interaction, userId);
+  }
+
+  // Edit guild selection
+  if (customId.startsWith('select_guild_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
+    const userId = customId.split('_')[2];
+    return edit.handleEditGuild(interaction, userId);
+  }
+
   // ═══════════════════════════════════════════════════════════════════
-  // ADMIN SETTINGS (PERSISTENT NAVIGATION)
+  // ADMIN SETTINGS
   // ═══════════════════════════════════════════════════════════════════
 
   if (customId.startsWith('admin_settings_menu_')) {
@@ -371,6 +421,7 @@ export async function routeSelectMenu(interaction) {
   if (customId === 'toggle_ephemeral_command') {
     const selected = interaction.values;
     await EphemeralSettingsRepo.updateSettings(interaction.guildId, selected);
+    logger.info('Settings', `Ephemeral settings updated by ${interaction.user.username}`);
     return interaction.update({
       embeds: [successEmbed(`Ephemeral settings updated! ${selected.length} command(s) will reply privately.`)],
       components: []
@@ -380,6 +431,7 @@ export async function routeSelectMenu(interaction) {
   if (customId === 'set_verification_channel') {
     const channelId = interaction.values[0];
     await LoggingRepo.setVerificationChannel(interaction.guildId, channelId);
+    logger.info('Settings', `Verification channel set to <#${channelId}>`);
     return interaction.update({
       embeds: [successEmbed(`Verification channel set to <#${channelId}>`)],
       components: []
@@ -407,9 +459,11 @@ export async function routeSelectMenu(interaction) {
       value: `<#${channelId}>`
     });
     
+    logger.info('Settings', `General log channel set to <#${channelId}>`);
+    
     return interaction.reply({
       embeds: [successEmbed(`General log channel set to <#${channelId}>`)],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -423,9 +477,11 @@ export async function routeSelectMenu(interaction) {
       value: `<#${channelId}>`
     });
     
+    logger.info('Settings', `Application log channel set to <#${channelId}>`);
+    
     return interaction.reply({
       embeds: [successEmbed(`Application log channel set to <#${channelId}>`)],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -440,9 +496,11 @@ export async function routeSelectMenu(interaction) {
       value: status
     });
     
+    logger.info('Settings', `${eventType} logging ${status}`);
+    
     return interaction.reply({
       embeds: [successEmbed(`Event logging ${status}`)],
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -469,14 +527,14 @@ export async function routeSelectMenu(interaction) {
 
     await Logger.toggleGroupingSetting(interaction.guildId, value);
     const config = await Logger.getSettings(interaction.guildId);
-    const status = config.grouping[value] ? 'enabled' : 'disabled';
+    const status = config.grouping?.[value] ? 'enabled' : 'disabled';
     return interaction.update({
       embeds: [successEmbed(`Grouping ${status} for this event`)],
       components: []
     });
   }
 
-  console.log(`[ROUTER] ⚠️ Unhandled select: ${customId}`);
+  logger.warn('Router', `Unhandled select: ${customId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -485,7 +543,7 @@ export async function routeSelectMenu(interaction) {
 
 export async function routeModal(interaction) {
   const customId = interaction.customId;
-  console.log(`[ROUTER] Modal: ${customId}`);
+  logger.modal(customId, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
   // REGISTRATION MODALS
@@ -518,20 +576,21 @@ export async function routeModal(interaction) {
     const minutes = parseInt(interaction.fields.getTextInputValue('minutes'));
     
     if (isNaN(minutes) || minutes < 1 || minutes > 60) {
-      return interaction.update({
+      return interaction.reply({
         embeds: [errorEmbed('Please enter a valid number between 1 and 60.')],
-        components: []
+        flags: MessageFlags.Ephemeral
       });
     }
 
     await Logger.setGroupingWindow(interaction.guildId, minutes);
-    return interaction.update({
+    logger.info('Settings', `Grouping window set to ${minutes} minutes`);
+    return interaction.reply({
       embeds: [successEmbed(`Grouping window set to ${minutes} minutes`)],
-      components: []
+      flags: MessageFlags.Ephemeral
     });
   }
 
-  console.log(`[ROUTER] ⚠️ Unhandled modal: ${customId}`);
+  logger.warn('Router', `Unhandled modal: ${customId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -545,13 +604,14 @@ async function handleEnableAll(interaction) {
     config.settings[key] = true;
   }
   
-  await import('../database/index.js').then(pool => pool.default.query(
+  const pool = (await import('../database/index.js')).default;
+  await pool.query(
     `INSERT INTO guild_settings (guild_id, log_settings) 
      VALUES ($1, $2) 
      ON CONFLICT (guild_id) 
      DO UPDATE SET log_settings = $2`,
     [interaction.guildId, JSON.stringify(config.settings)]
-  ));
+  );
   
   await Logger.logSettingsChange(interaction.guildId, {
     adminId: interaction.user.id,
@@ -559,9 +619,11 @@ async function handleEnableAll(interaction) {
     value: 'enabled'
   });
   
+  logger.info('Settings', 'All event logging enabled');
+  
   return interaction.reply({
     embeds: [successEmbed('All event logging enabled')],
-    ephemeral: true
+    flags: MessageFlags.Ephemeral
   });
 }
 
@@ -572,13 +634,14 @@ async function handleDisableAll(interaction) {
     config.settings[key] = false;
   }
   
-  await import('../database/index.js').then(pool => pool.default.query(
+  const pool = (await import('../database/index.js')).default;
+  await pool.query(
     `INSERT INTO guild_settings (guild_id, log_settings) 
      VALUES ($1, $2) 
      ON CONFLICT (guild_id) 
      DO UPDATE SET log_settings = $2`,
     [interaction.guildId, JSON.stringify(config.settings)]
-  ));
+  );
   
   await Logger.logSettingsChange(interaction.guildId, {
     adminId: interaction.user.id,
@@ -586,8 +649,10 @@ async function handleDisableAll(interaction) {
     value: 'disabled'
   });
   
+  logger.info('Settings', 'All event logging disabled');
+  
   return interaction.reply({
     embeds: [successEmbed('All event logging disabled')],
-    ephemeral: true
+    flags: MessageFlags.Ephemeral
   });
 }
