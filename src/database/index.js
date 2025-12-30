@@ -27,13 +27,19 @@ async function initialize() {
     )
   `);
 
-  // Applications table
+  // ✅ Applications table - WITH ALL REQUIRED COLUMNS
   await pool.query(`
     CREATE TABLE IF NOT EXISTS applications (
       id SERIAL PRIMARY KEY,
       user_id VARCHAR(20) NOT NULL,
-      status VARCHAR(20) NOT NULL,
-      character_data JSONB NOT NULL,
+      character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
+      guild_name VARCHAR(100),
+      message_id VARCHAR(20),
+      channel_id VARCHAR(20),
+      status VARCHAR(20) DEFAULT 'pending',
+      character_data JSONB,
+      accept_votes TEXT[] DEFAULT '{}',
+      deny_votes TEXT[] DEFAULT '{}',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
