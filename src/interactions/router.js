@@ -1,6 +1,30 @@
 import { MessageFlags, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { COLORS } from '../config/game.js';
-import consoleLogger from '../services/consoleLogger.js';
+
+// Use dynamic imports to avoid circular dependencies
+let logger, Logger, reg, edit, applicationService, EphemeralSettingsRepo, LoggingRepo;
+
+async function loadDependencies() {
+  if (!logger) {
+    const loggerModule = await import('../services/logger.js');
+    logger = loggerModule.default;
+    Logger = loggerModule.Logger;
+  }
+  if (!reg) reg = await import('./registration.js');
+  if (!edit) edit = await import('./editing.js');
+  if (!applicationService) {
+    const appModule = await import('../services/applications.js');
+    applicationService = appModule.default;
+  }
+  if (!EphemeralSettingsRepo) {
+    const repos = await import('../database/repositories.js');
+    EphemeralSettingsRepo = repos.EphemeralSettingsRepo;
+    LoggingRepo = repos.LoggingRepo;
+  }
+}
+
+// Initialize on first call
+const init = loadDependencies();
 
 const successEmbed = (description) => 
   new EmbedBuilder().setDescription(`✅ ${description}`).setColor(COLORS.SUCCESS);
@@ -13,8 +37,9 @@ const errorEmbed = (description) =>
 // ═══════════════════════════════════════════════════════════════════
 
 export async function route(interaction) {
+  await init;
   const customId = interaction.customId;
-  consoleLogger.button(customId, interaction.user.username);
+  logger.button(customId, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
   // VERIFICATION BUTTONS
@@ -23,7 +48,6 @@ export async function route(interaction) {
   if (customId === 'verification_register') {
     const userId = interaction.user.id;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const reg = await import('./registration.js');
     return reg.start(interaction, userId, 'main');
   }
 
@@ -37,7 +61,7 @@ export async function route(interaction) {
         await member.roles.add(config.roles.visitor);
       }
 
-      consoleLogger.verification(`Visitor joined: ${interaction.user.username}`);
+      logger.verification(`Visitor joined: ${interaction.user.username}`);
       
       const welcomeEmbed = new EmbedBuilder()
         .setTitle('👋 Welcome to the Server!')
@@ -55,7 +79,7 @@ export async function route(interaction) {
         flags: MessageFlags.Ephemeral
       });
     } catch (error) {
-      consoleLogger.error('Verification', 'Non-player error', error);
+      logger.error('Verification', 'Non-player error', error);
       return interaction.reply({
         embeds: [errorEmbed('Something went wrong. Please contact an admin.')],
         flags: MessageFlags.Ephemeral
@@ -92,12 +116,10 @@ export async function route(interaction) {
   }
 
   if (customId.startsWith('admin_enable_all_')) {
-    const { handleEnableAll } = await import('../services/adminSettings.js');
     return handleEnableAll(interaction);
   }
 
   if (customId.startsWith('admin_disable_all_')) {
-    const { handleDisableAll } = await import('../services/adminSettings.js');
     return handleDisableAll(interaction);
   }
 
@@ -107,55 +129,46 @@ export async function route(interaction) {
 
   if (customId.startsWith('reg_start_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.start(interaction, userId, 'main');
   }
 
   if (customId.startsWith('reg_subclass_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.start(interaction, userId, 'subclass');
   }
 
   if (customId.startsWith('retry_ign_uid_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.retryIGN(interaction, userId);
   }
 
   if (customId.startsWith('back_to_region_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.backToRegion(interaction, userId);
   }
 
   if (customId.startsWith('back_to_country_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.backToCountry(interaction, userId);
   }
 
   if (customId.startsWith('back_to_timezone_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.backToTimezone(interaction, userId);
   }
 
   if (customId.startsWith('back_to_class_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.backToClass(interaction, userId);
   }
 
   if (customId.startsWith('back_to_subclass_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.backToSubclass(interaction, userId);
   }
 
   if (customId.startsWith('back_to_battle_imagine_')) {
     const userId = customId.split('_')[4];
-    const reg = await import('./registration.js');
     return reg.backToBattleImagine(interaction, userId);
   }
 
@@ -165,19 +178,16 @@ export async function route(interaction) {
 
   if (customId.startsWith('add_')) {
     const userId = customId.split('_')[1];
-    const edit = await import('./editing.js');
     return edit.showAddMenu(interaction, userId);
   }
 
   if (customId.startsWith('edit_') && !customId.includes('type') && !customId.includes('field') && !customId.includes('class') && !customId.includes('bi')) {
     const userId = customId.split('_')[1];
-    const edit = await import('./editing.js');
     return edit.showEditMenu(interaction, userId);
   }
 
   if (customId.startsWith('remove_') && !customId.includes('type') && !customId.includes('subclass')) {
     const userId = customId.split('_')[1];
-    const edit = await import('./editing.js');
     return edit.showRemoveMenu(interaction, userId);
   }
 
@@ -187,37 +197,31 @@ export async function route(interaction) {
 
   if (customId.startsWith('edit_type_back_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.backToEditType(interaction, userId);
   }
 
   if (customId.startsWith('edit_field_back_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.backToFieldSelect(interaction, userId);
   }
 
   if (customId.startsWith('edit_class_back_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.backToClassSelect(interaction, userId);
   }
 
   if (customId.startsWith('edit_bi_back_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.backToBattleImagineList(interaction, userId);
   }
 
   if (customId.startsWith('back_profile_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.backToProfile(interaction, userId);
   }
 
   if (customId.startsWith('back_to_profile_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.backToProfile(interaction, userId);
   }
 
@@ -227,19 +231,16 @@ export async function route(interaction) {
 
   if (customId.startsWith('confirm_delete_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.confirmDelete(interaction, userId);
   }
 
   if (customId.startsWith('confirm_deleteall_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.confirmDeleteAll(interaction, userId);
   }
 
   if (customId.startsWith('cancel_delete_') || customId.startsWith('cancel_deleteall_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.cancelAction(interaction, userId);
   }
 
@@ -249,31 +250,26 @@ export async function route(interaction) {
 
   if (customId.startsWith('app_vote_accept_')) {
     const applicationId = parseInt(customId.split('_')[3]);
-    const applicationService = (await import('../services/applications.js')).default;
     return applicationService.handleVote(interaction, applicationId, 'accept');
   }
 
   if (customId.startsWith('app_vote_deny_')) {
     const applicationId = parseInt(customId.split('_')[3]);
-    const applicationService = (await import('../services/applications.js')).default;
     return applicationService.handleVote(interaction, applicationId, 'deny');
   }
 
   if (customId.startsWith('app_override_accept_')) {
     const applicationId = parseInt(customId.split('_')[3]);
-    const applicationService = (await import('../services/applications.js')).default;
     return applicationService.handleOverride(interaction, applicationId, 'accept');
   }
 
   if (customId.startsWith('app_override_deny_')) {
     const applicationId = parseInt(customId.split('_')[3]);
-    const applicationService = (await import('../services/applications.js')).default;
     return applicationService.handleOverride(interaction, applicationId, 'deny');
   }
 
   if (customId.startsWith('app_override_') && !customId.includes('accept') && !customId.includes('deny') && !customId.includes('cancel')) {
     const applicationId = parseInt(customId.split('_')[2]);
-    const applicationService = (await import('../services/applications.js')).default;
     return applicationService.showOverrideMenu(interaction, applicationId);
   }
 
@@ -287,29 +283,25 @@ export async function route(interaction) {
 
   if (customId.startsWith('admin_reg_start_')) {
     const userId = customId.split('_')[3];
-    const reg = await import('./registration.js');
     return reg.start(interaction, userId, 'main');
   }
 
   if (customId.startsWith('admin_add_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.showAddMenu(interaction, userId);
   }
 
   if (customId.startsWith('admin_edit_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.showEditMenu(interaction, userId);
   }
 
   if (customId.startsWith('admin_remove_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.showRemoveMenu(interaction, userId);
   }
 
-  consoleLogger.warn('Router', `Unhandled button: ${customId}`);
+  logger.warn('Router', `Unhandled button: ${customId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -317,9 +309,10 @@ export async function route(interaction) {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function routeSelectMenu(interaction) {
+  await init;
   const customId = interaction.customId;
   const value = interaction.values[0];
-  consoleLogger.select(customId, value, interaction.user.username);
+  logger.select(customId, value, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
   // REGISTRATION SELECTS
@@ -327,49 +320,41 @@ export async function routeSelectMenu(interaction) {
 
   if (customId.startsWith('select_region_') || customId.startsWith('reg_region_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleRegion(interaction, userId);
   }
 
   if (customId.startsWith('select_country_') || customId.startsWith('reg_country_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleCountry(interaction, userId);
   }
 
   if (customId.startsWith('select_timezone_') || customId.startsWith('reg_timezone_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleTimezone(interaction, userId);
   }
 
   if (customId.startsWith('select_class_') || customId.startsWith('reg_class_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleClass(interaction, userId);
   }
 
   if (customId.startsWith('select_subclass_') || customId.startsWith('reg_subclass_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleSubclass(interaction, userId);
   }
 
   if (customId.startsWith('select_ability_score_') || customId.startsWith('reg_score_')) {
     const userId = customId.split('_')[3] || customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleScore(interaction, userId);
   }
 
   if (customId.startsWith('select_battle_imagine_') || customId.startsWith('reg_bi_')) {
     const userId = customId.split('_')[3] || customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleBattleImagine(interaction, userId);
   }
 
   if (customId.startsWith('select_guild_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleGuild(interaction, userId);
   }
 
@@ -379,77 +364,65 @@ export async function routeSelectMenu(interaction) {
 
   if (customId.startsWith('add_type_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleAddType(interaction, userId);
   }
 
   if (customId.startsWith('edit_type_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditType(interaction, userId);
   }
 
   if (customId.startsWith('remove_type_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleRemoveType(interaction, userId);
   }
 
   if (customId.startsWith('edit_subclass_') && !customId.includes('field')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditSubclassSelect(interaction, userId);
   }
 
   if (customId.startsWith('remove_subclass_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleRemoveSubclassSelect(interaction, userId);
   }
 
   if (customId.startsWith('edit_field_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleFieldSelect(interaction, userId);
   }
 
   if (customId.startsWith('edit_bi_select_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.handleEditBattleImagineSelect(interaction, userId);
   }
 
   if (customId.startsWith('edit_bi_tier_')) {
     const userId = customId.split('_')[3];
-    const edit = await import('./editing.js');
     return edit.handleEditBattleImagineTier(interaction, userId);
   }
 
   // Edit class selection
   if (customId.startsWith('reg_class_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditClass(interaction, userId);
   }
 
   // Edit subclass selection
   if (customId.startsWith('reg_subclass_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditSubclass(interaction, userId);
   }
 
   // Edit score selection
   if (customId.startsWith('reg_score_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditScore(interaction, userId);
   }
 
   // Edit guild selection
   if (customId.startsWith('select_guild_') && interaction.message?.embeds?.[0]?.description?.includes('Edit')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditGuild(interaction, userId);
   }
 
@@ -470,10 +443,9 @@ export async function routeSelectMenu(interaction) {
   }
 
   if (customId === 'toggle_ephemeral_command') {
-    const { EphemeralSettingsRepo } = await import('../database/repositories.js');
     const selected = interaction.values;
     await EphemeralSettingsRepo.updateSettings(interaction.guildId, selected);
-    consoleLogger.info('Settings', `Ephemeral settings updated by ${interaction.user.username}`);
+    logger.info('Settings', `Ephemeral settings updated by ${interaction.user.username}`);
     return interaction.update({
       embeds: [successEmbed(`Ephemeral settings updated! ${selected.length} command(s) will reply privately.`)],
       components: []
@@ -481,10 +453,9 @@ export async function routeSelectMenu(interaction) {
   }
 
   if (customId === 'set_verification_channel') {
-    const { LoggingRepo } = await import('../database/repositories.js');
     const channelId = interaction.values[0];
     await LoggingRepo.setVerificationChannel(interaction.guildId, channelId);
-    consoleLogger.info('Settings', `Verification channel set to <#${channelId}>`);
+    logger.info('Settings', `Verification channel set to <#${channelId}>`);
     return interaction.update({
       embeds: [successEmbed(`Verification channel set to <#${channelId}>`)],
       components: []
@@ -557,8 +528,8 @@ export async function routeSelectMenu(interaction) {
       return interaction.showModal(modal);
     }
 
-    await consoleLogger.toggleGroupingSetting(interaction.guildId, value);
-    const config = await consoleLogger.getSettings(interaction.guildId);
+    await Logger.toggleGroupingSetting(interaction.guildId, value);
+    const config = await Logger.getSettings(interaction.guildId);
     const status = config.grouping?.[value] ? 'enabled' : 'disabled';
     return interaction.update({
       embeds: [successEmbed(`Grouping ${status} for this event`)],
@@ -566,7 +537,7 @@ export async function routeSelectMenu(interaction) {
     });
   }
 
-  consoleLogger.warn('Router', `Unhandled select: ${customId}`);
+  logger.warn('Router', `Unhandled select: ${customId}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -574,8 +545,9 @@ export async function routeSelectMenu(interaction) {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function routeModal(interaction) {
+  await init;
   const customId = interaction.customId;
-  consoleLogger.modal(customId, interaction.user.username);
+  logger.modal(customId, interaction.user.username);
 
   // ═══════════════════════════════════════════════════════════════════
   // REGISTRATION MODALS
@@ -583,7 +555,6 @@ export async function routeModal(interaction) {
 
   if (customId.startsWith('ign_modal_') || customId.startsWith('reg_ign_')) {
     const userId = customId.split('_')[2];
-    const reg = await import('./registration.js');
     return reg.handleIGN(interaction, userId);
   }
 
@@ -593,13 +564,11 @@ export async function routeModal(interaction) {
 
   if (customId.startsWith('edit_ign_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditModal(interaction, userId, 'ign');
   }
 
   if (customId.startsWith('edit_uid_')) {
     const userId = customId.split('_')[2];
-    const edit = await import('./editing.js');
     return edit.handleEditModal(interaction, userId, 'uid');
   }
 
@@ -617,13 +586,27 @@ export async function routeModal(interaction) {
       });
     }
 
-    await consoleLogger.setGroupingWindow(interaction.guildId, minutes);
-    consoleLogger.info('Settings', `Grouping window set to ${minutes} minutes`);
+    await Logger.setGroupingWindow(interaction.guildId, minutes);
+    logger.info('Settings', `Grouping window set to ${minutes} minutes`);
     return interaction.reply({
       embeds: [successEmbed(`Grouping window set to ${minutes} minutes`)],
       flags: MessageFlags.Ephemeral
     });
   }
 
-  consoleLogger.warn('Router', `Unhandled modal: ${customId}`);
+  logger.warn('Router', `Unhandled modal: ${customId}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ADMIN BUTTON HANDLERS
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleEnableAll(interaction) {
+  const { handleEnableAll: adminEnableAll } = await import('../services/adminSettings.js');
+  return adminEnableAll(interaction);
+}
+
+async function handleDisableAll(interaction) {
+  const { handleDisableAll: adminDisableAll } = await import('../services/adminSettings.js');
+  return adminDisableAll(interaction);
 }
