@@ -205,28 +205,6 @@ class UnifiedLogger {
 
     return embed;
   }
-
-  // Convenience methods for your existing code
-  info(message) {
-    console.log(`[INFO] ${message}`);
-  }
-
-  error(message, error) {
-    console.error(`[ERROR] ${message}`, error);
-  }
-
-  warn(message) {
-    console.warn(`[WARN] ${message}`);
-  }
-
-  debug(message) {
-    console.debug(`[DEBUG] ${message}`);
-  }
 }
 
-// Create single instance
-const logger = new UnifiedLogger();
-
-// Export BOTH ways to support all existing code
-export const Logger = logger;  // Named export
-export default logger;         // Default export for your existing code
+export const Logger = new UnifiedLogger();
