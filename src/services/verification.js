@@ -9,15 +9,17 @@ export class VerificationSystem {
     const welcomeText = [
       '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m',
       '',
-      '\u001b[1;34m' + centerText('≽^•⩊•^≼') + '\u001b[0m',
+      '\u001b[1;35m' + centerText('≽^•⩊•^≼') + '\u001b[0m',
       '',
       '\u001b[1;36m' + centerText('💫 For BP Players') + '\u001b[0m',
-      '\u001b[0;37m' + centerText('Register your character &') + '\u001b[0m',
-      '\u001b[0;37m' + centerText('unlock the full server! ♡') + '\u001b[0m',
+      '',
+      '\u001b[1;34m' + centerText('Register your character &') + '\u001b[0m',
+      '\u001b[1;34m' + centerText('unlock the full server! ♡') + '\u001b[0m',
       '',
       '\u001b[1;36m' + centerText('🌸 Just Vibing?') + '\u001b[0m',
-      '\u001b[0;37m' + centerText('Get basic access to chat!') + '\u001b[0m',
-      '\u001b[0;37m' + centerText('No character needed ^_^') + '\u001b[0m',
+      '',
+      '\u001b[1;34m' + centerText('Get basic access to chat!') + '\u001b[0m',
+      '\u001b[1;34m' + centerText('No character needed ^_^') + '\u001b[0m',
       '',
       '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
     ].join('\n');
@@ -29,7 +31,6 @@ export class VerificationSystem {
       .setFooter({ text: 'iDolls • Registration' })
       .setTimestamp();
 
-    // ✅ Image at the BOTTOM (full-width)
     const bannerUrl = process.env.VERIFICATION_BANNER_URL;
     if (bannerUrl) {
       embed.setImage(bannerUrl);
