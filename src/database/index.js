@@ -6,7 +6,7 @@ const pool = new Pool({
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
-export async function initialize() {
+async function initialize() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS characters (
       id SERIAL PRIMARY KEY,
@@ -62,4 +62,8 @@ export async function initialize() {
   console.log('[DATABASE] ✅ Tables initialized');
 }
 
+// Add initialize method to pool object
+pool.initialize = initialize;
+
+// Export pool with initialize method attached
 export default pool;
