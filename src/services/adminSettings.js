@@ -202,22 +202,17 @@ export async function showEphemeralSettings(interaction) {
   const current = await EphemeralRepo.get(interaction.guildId);
   
   const options = [
-    { label: '💬 COMMANDS', value: 'header_commands', description: '────────────────────' },
-    { label: '/edit-character', value: 'edit_character', description: 'Manage your profile with buttons', emoji: '✏️' },
-    { label: '/view-character', value: 'view_character', description: 'View character profiles', emoji: '👁' },
-    { label: '/admin', value: 'admin', description: 'Admin command responses', emoji: '⚙️' },
-    
-    { label: '🔄 FLOWS', value: 'header_flows', description: '────────────────────' },
-    { label: 'Registration', value: 'registration', description: 'New character registration', emoji: '📝' },
-    { label: 'Edit Actions', value: 'edit_actions', description: 'Editing character info', emoji: '🔧' },
-    { label: 'Add Character', value: 'add_character', description: 'Adding subclasses', emoji: '➕' },
-    { label: 'Delete Character', value: 'delete_character', description: 'Character deletion', emoji: '🗑️' },
-    
-    { label: '💬 MESSAGES', value: 'header_messages', description: '────────────────────' },
-    { label: 'Error Messages', value: 'errors', description: 'Error/validation messages', emoji: '❌' }
+    { label: '/edit-character', value: 'edit_character', description: '💬 COMMAND - Manage your profile', emoji: '✏️' },
+    { label: '/view-character', value: 'view_character', description: '💬 COMMAND - View character profiles', emoji: '👁' },
+    { label: '/admin', value: 'admin', description: '💬 COMMAND - Admin responses', emoji: '⚙️' },
+    { label: 'Registration', value: 'registration', description: '🔄 FLOW - New character registration', emoji: '📝' },
+    { label: 'Edit Actions', value: 'edit_actions', description: '🔄 FLOW - Editing character info', emoji: '🔧' },
+    { label: 'Add Character', value: 'add_character', description: '🔄 FLOW - Adding subclasses', emoji: '➕' },
+    { label: 'Delete Character', value: 'delete_character', description: '🔄 FLOW - Character deletion', emoji: '🗑️' },
+    { label: 'Error Messages', value: 'errors', description: '💬 MESSAGE - Error/validation messages', emoji: '❌' }
   ].map(opt => ({ 
     ...opt, 
-    default: opt.value.startsWith('header_') ? false : current.includes(opt.value) 
+    default: current.includes(opt.value) 
   }));
   
   const categoryNames = {
@@ -350,7 +345,7 @@ export async function handleLogCategoriesSelect(interaction) {
 }
 
 export async function handleEphemeralSelect(interaction) {
-  const selected = interaction.values.filter(v => !v.startsWith('header_'));
+  const selected = interaction.values;
   await EphemeralRepo.set(interaction.guildId, selected);
   
   const categoryNames = {
