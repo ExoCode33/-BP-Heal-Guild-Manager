@@ -1,250 +1,82 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { isEphemeral } from './ephemeral.js';
-import { LogSettingsRepo, EphemeralRepo } from '../database/repositories.js';
-import { VerificationSystem } from './verification.js';
-import { BotLogger } from './botLogger.js';
-import { LOG_CATEGORIES, LOG_GROUPS, DEFAULT_ENABLED, BATCH_INTERVALS } from '../config/logCategories.js';
-import logger from './logger.js';
+import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType } from 'discord.js';
+import { COLORS } from '../config/game.js';
+import { EphemeralSettingsRepo, LoggingRepo } from '../database/repositories.js';
+import { Logger } from './logger.js';
 
-function embed(title, description) {
-  return new EmbedBuilder().setColor('#EC4899').setDescription(`# ${title}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${description}`).setTimestamp();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN SETTINGS MENU
-// ═══════════════════════════════════════════════════════════════════
+const embed = (title, description, color = COLORS.PRIMARY) => 
+  new EmbedBuilder().setTitle(title).setDescription(description).setColor(color);
 
 export async function showSettingsMenu(interaction) {
-  const isEph = await isEphemeral(interaction.guildId, 'admin');
-  
-  const description = 
-    '**Choose a category to configure:**\n\n' +
-    '🔔 **Logging** - Discord logging configuration\n' +
-    '🆕 **New Logging** - Advanced event logging system\n' +
-    '👁 **Ephemeral** - Privacy settings for responses\n' +
-    '✅ **Verification** - Registration channel status';
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`admin_settings_menu_${interaction.user.id}`)
+    .setPlaceholder('Choose a setting to configure')
+    .addOptions([
+      {
+        label: 'Ephemeral Commands',
+        description: 'Configure which commands reply privately',
+        value: 'ephemeral',
+        emoji: '🔒'
+      },
+      {
+        label: 'Verification Channel',
+        description: 'Set channel for verification notifications',
+        value: 'verification',
+        emoji: '✅'
+      },
+      {
+        label: 'Logging System',
+        description: 'Configure activity logging',
+        value: 'logging',
+        emoji: '📋'
+      }
+    ]);
 
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_settings_menu_${interaction.user.id}`)
-      .setPlaceholder('Select a settings category')
-      .addOptions([
-        {
-          label: 'Logging Settings',
-          value: 'logs',
-          description: 'Configure Discord logging',
-          emoji: '🔔'
-        },
-        {
-          label: 'New Logging System',
-          value: 'new_logging',
-          description: 'Advanced event logging',
-          emoji: '🆕'
-        },
-        {
-          label: 'Ephemeral Settings',
-          value: 'ephemeral',
-          description: 'Configure message privacy',
-          emoji: '👁'
-        },
-        {
-          label: 'Verification Status',
-          value: 'verification',
-          description: 'View registration channel',
-          emoji: '✅'
-        }
-      ])
-  );
+  const row = new ActionRowBuilder().addComponents(menu);
 
-  await interaction.reply({ 
-    embeds: [embed('⚙️ Admin Settings', description)], 
-    components: [row], 
-    flags: isEph ? MessageFlags.Ephemeral : undefined
+  await interaction.reply({
+    embeds: [embed('⚙️ Admin Settings', 'Select a setting category to configure:')],
+    components: [row],
+    ephemeral: true
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// VERIFICATION STATUS
-// ═══════════════════════════════════════════════════════════════════
+export async function handleSettingsMenuSelect(interaction) {
+  const value = interaction.values[0];
 
-export async function showVerificationStatus(interaction) {
-  const channelId = await VerificationSystem.getVerificationChannelId(interaction.guildId);
-  
-  let statusText = '';
-  
-  if (channelId) {
-    statusText += `**📺 Verification Channel:** <#${channelId}>\n`;
-    statusText += `**Status:** ✅ Configured\n\n`;
-    statusText += '**How it works:**\n';
-    statusText += '1. Bot posts persistent registration embed in this channel\n';
-    statusText += '2. Users click button to register (ephemeral registration flow)\n';
-    statusText += '3. After approval, users get Verified + Guild + Class roles\n';
-    statusText += '4. Users gain full server access\n\n';
-    statusText += '**To change:** Use the dropdown below to select a new channel.';
-  } else {
-    statusText += `**📺 Verification Channel:** ❌ Not configured\n\n`;
-    statusText += '**Setup:**\n';
-    statusText += '1. Select a channel from the dropdown below\n';
-    statusText += '2. Bot will automatically post the registration embed\n';
-    statusText += '3. Users can then click the button to register\n\n';
-    statusText += '**Note:** The channel will be saved to the database.';
+  if (value === 'ephemeral') {
+    await showEphemeralSettings(interaction);
+  } else if (value === 'verification') {
+    await showVerificationSettings(interaction);
+  } else if (value === 'logging') {
+    await showLoggingMenu(interaction);
   }
-
-  const rows = [];
-  
-  rows.push(new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_verification_channel_${interaction.user.id}`)
-      .setPlaceholder('📺 Select verification channel')
-      .addOptions([
-        { 
-          label: 'Disable verification system', 
-          value: 'none', 
-          description: 'Remove verification embed', 
-          emoji: '🔇' 
-        },
-        ...interaction.guild.channels.cache
-          .filter(ch => ch.type === ChannelType.GuildText)
-          .map(ch => ({ 
-            label: `#${ch.name}`, 
-            value: ch.id, 
-            description: ch.parent?.name || 'No category',
-            emoji: '📺'
-          }))
-          .slice(0, 24)
-      ])
-  ));
-
-  rows.push(new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`admin_settings_back_${interaction.user.id}`)
-      .setLabel('← Back to Settings')
-      .setStyle(ButtonStyle.Secondary)
-  ));
-
-  await interaction.update({ 
-    embeds: [embed('✅ Verification Settings', statusText)], 
-    components: rows 
-  });
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// OLD LOGGING SETTINGS
+// EPHEMERAL SETTINGS
 // ═══════════════════════════════════════════════════════════════════
 
-export async function showLoggingSettings(interaction) {
-  const current = await LogSettingsRepo.get(interaction.guildId);
-  const enabled = current?.enabled_categories || DEFAULT_ENABLED;
-  const channelId = current?.log_channel_id;
-  const batchInterval = current?.batch_interval || 0;
-
-  let statusText = channelId ? `**📺 Log Channel:** <#${channelId}>\n` : `**📺 Log Channel:** *Not configured*\n`;
-  const batchLabel = BATCH_INTERVALS.find(b => b.value === String(batchInterval))?.label || 'Instant';
-  statusText += `**⏱️ Batch Mode:** ${batchLabel}\n\n`;
+async function showEphemeralSettings(interaction) {
+  const currentSettings = await EphemeralSettingsRepo.getSettings(interaction.guildId);
   
-  for (const [group, categories] of Object.entries(LOG_GROUPS)) {
-    const groupEnabled = categories.filter(c => enabled.includes(c));
-    const icon = groupEnabled.length === categories.length ? '✅' : groupEnabled.length > 0 ? '🔶' : '❌';
-    statusText += `${icon} **${group}:** ${groupEnabled.length}/${categories.length}\n`;
-  }
+  const allCommands = [
+    'register', 'view-character', 'edit-character', 'delete-character',
+    'verify', 'set-timezone', 'battle-imagine', 'apply-guild'
+  ];
 
-  const rows = [];
-  
-  rows.push(new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_logs_channel_${interaction.user.id}`)
-      .setPlaceholder('📺 Select log channel')
-      .addOptions([
-        { label: 'Disable logging', value: 'none', description: 'Turn off Discord logging', emoji: '🔇' },
-        ...interaction.guild.channels.cache
-          .filter(ch => ch.type === ChannelType.GuildText)
-          .map(ch => ({ label: `#${ch.name}`, value: ch.id, description: ch.parent?.name || 'No category' }))
-          .slice(0, 24)
-      ])
-  ));
-  
-  rows.push(new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_logs_batch_${interaction.user.id}`)
-      .setPlaceholder('⏱️ Select batch interval')
-      .addOptions(BATCH_INTERVALS.map(b => ({ 
-        label: b.label, 
-        value: b.value, 
-        default: String(batchInterval) === b.value 
-      })))
-  ));
-  
-  rows.push(new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_logs_categories_${interaction.user.id}`)
-      .setPlaceholder('📋 Select log categories')
-      .setMinValues(0)
-      .setMaxValues(Object.keys(LOG_CATEGORIES).length)
-      .addOptions(Object.entries(LOG_CATEGORIES).map(([key, cat]) => ({ 
-        label: cat.name, 
-        value: key, 
-        description: `[${cat.group}] ${cat.description.slice(0, 40)}`, 
-        emoji: cat.emoji, 
-        default: enabled.includes(key) 
-      })))
-  ));
+  const options = allCommands.map(cmd => ({
+    label: `/${cmd}`,
+    value: cmd,
+    default: currentSettings.includes(cmd),
+    emoji: currentSettings.includes(cmd) ? '✅' : '❌'
+  }));
 
-  rows.push(new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`admin_settings_back_${interaction.user.id}`)
-      .setLabel('← Back to Settings')
-      .setStyle(ButtonStyle.Secondary)
-  ));
-
-  await interaction.update({ 
-    embeds: [embed('🔔 Logging Settings', statusText)], 
-    components: rows 
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// NEW LOGGING SYSTEM
-// ═══════════════════════════════════════════════════════════════════
-
-export async function showNewLoggingMenu(interaction) {
-  const description = 
-    '**New Logging System:**\n\n' +
-    '📋 **General Logs** - Character changes, verifications\n' +
-    '📨 **Application Logs** - Guild apps, votes, overrides\n' +
-    '⚙️ **What to Log** - Toggle individual events\n' +
-    '🔄 **Log Grouping** - Batch events together';
-
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_new_logging_menu_${interaction.user.id}`)
-      .setPlaceholder('Select logging option')
-      .addOptions([
-        {
-          label: '📋 General Logs',
-          value: 'general_logs',
-          description: 'Set channel for general activity logs',
-          emoji: '📋'
-        },
-        {
-          label: '📨 Application Logs',
-          value: 'application_logs',
-          description: 'Set channel for application/vote logs',
-          emoji: '📨'
-        },
-        {
-          label: '⚙️ What to Log',
-          value: 'log_events',
-          description: 'Choose which events to log',
-          emoji: '⚙️'
-        },
-        {
-          label: '🔄 Log Grouping',
-          value: 'log_grouping',
-          description: 'Configure event grouping',
-          emoji: '🔄'
-        }
-      ])
-  );
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('toggle_ephemeral_command')
+    .setPlaceholder('Select commands to toggle')
+    .setMinValues(0)
+    .setMaxValues(allCommands.length)
+    .addOptions(options);
 
   const backButton = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -253,317 +85,269 @@ export async function showNewLoggingMenu(interaction) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  await interaction.update({ 
-    embeds: [embed('🔔 New Logging System', description)], 
-    components: [row, backButton] 
+  await interaction.update({
+    embeds: [embed(
+      '🔒 Ephemeral Command Settings',
+      'Commands marked with ✅ will reply privately (only visible to the user).\n\n' +
+      'Select commands below to toggle their ephemeral status:'
+    )],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
   });
 }
 
-export async function handleNewLoggingMenuSelect(interaction) {
-  const value = interaction.values[0];
-
-  if (value === 'general_logs') {
-    const modal = new ModalBuilder()
-      .setCustomId('admin_general_logs')
-      .setTitle('General Log Channel');
-
-    const channelInput = new TextInputBuilder()
-      .setCustomId('channel_id')
-      .setLabel('Channel ID for General Logs')
-      .setPlaceholder('Right-click channel → Copy ID')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(channelInput));
-    await interaction.showModal(modal);
-    return;
-  }
-
-  if (value === 'application_logs') {
-    const modal = new ModalBuilder()
-      .setCustomId('admin_application_logs')
-      .setTitle('Application Log Channel');
-
-    const channelInput = new TextInputBuilder()
-      .setCustomId('channel_id')
-      .setLabel('Channel ID for Application Logs')
-      .setPlaceholder('Applications, votes, admin overrides')
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(channelInput));
-    await interaction.showModal(modal);
-    return;
-  }
-
-  if (value === 'log_events') {
-    const config = await BotLogger.getLogSettings(interaction.guildId);
-    
-    const statusText = 
-      `**Character Registration:** ${config.settings.character_registration ? '✅' : '❌'}\n` +
-      `**Character Updates:** ${config.settings.character_updates ? '✅' : '❌'}\n` +
-      `**Character Deletion:** ${config.settings.character_deletion ? '✅' : '❌'}\n` +
-      `**Verification:** ${config.settings.verification ? '✅' : '❌'}\n` +
-      `**Timezone Changes:** ${config.settings.timezone_changes ? '✅' : '❌'}\n` +
-      `**Battle Imagine Changes:** ${config.settings.battle_imagine_changes ? '✅' : '❌'}\n` +
-      `**Guild Applications:** ${config.settings.guild_applications ? '✅' : '❌'}\n` +
-      `**Application Votes:** ${config.settings.application_votes ? '✅' : '❌'}\n` +
-      `**Admin Overrides:** ${config.settings.admin_overrides ? '✅' : '❌'}\n` +
-      `**Settings Changes:** ${config.settings.settings_changes ? '✅' : '❌'}\n` +
-      `**Role Changes:** ${config.settings.role_changes ? '✅' : '❌'}`;
-
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId('toggle_log_event')
-      .setPlaceholder('Toggle an event...')
-      .addOptions([
-        { label: 'Character Registration', value: 'character_registration' },
-        { label: 'Character Updates', value: 'character_updates' },
-        { label: 'Character Deletion', value: 'character_deletion' },
-        { label: 'Verification', value: 'verification' },
-        { label: 'Timezone Changes', value: 'timezone_changes' },
-        { label: 'Battle Imagine Changes', value: 'battle_imagine_changes' },
-        { label: 'Guild Applications', value: 'guild_applications' },
-        { label: 'Application Votes', value: 'application_votes' },
-        { label: 'Admin Overrides', value: 'admin_overrides' },
-        { label: 'Settings Changes', value: 'settings_changes' },
-        { label: 'Role Changes', value: 'role_changes' }
-      ]);
-
-    const backButton = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`admin_new_logging_back_${interaction.user.id}`)
-        .setLabel('← Back')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-    await interaction.update({ 
-      embeds: [embed('⚙️ Event Logging Settings', statusText)], 
-      components: [new ActionRowBuilder().addComponents(menu), backButton] 
-    });
-    return;
-  }
-
-  if (value === 'log_grouping') {
-    const config = await BotLogger.getLogSettings(interaction.guildId);
-    
-    const statusText = 
-      `**Grouping Window:** ${config.grouping.grouping_window_minutes} minutes\n\n` +
-      'Events marked ✅ will be grouped:\n\n' +
-      `**Character Registration:** ${config.grouping.character_registration ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Character Updates:** ${config.grouping.character_updates ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Character Deletion:** ${config.grouping.character_deletion ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Verification:** ${config.grouping.verification ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Timezone Changes:** ${config.grouping.timezone_changes ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Battle Imagine Changes:** ${config.grouping.battle_imagine_changes ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Settings Changes:** ${config.grouping.settings_changes ? '✅ Grouped' : '❌ Instant'}\n` +
-      `**Role Changes:** ${config.grouping.role_changes ? '✅ Grouped' : '❌ Instant'}`;
-
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId('toggle_log_grouping')
-      .setPlaceholder('Toggle grouping or change window...')
-      .addOptions([
-        { label: '⏱️ Change Time Window', value: 'change_window', description: `Currently ${config.grouping.grouping_window_minutes} min`, emoji: '⏱️' },
-        { label: 'Character Registration', value: 'character_registration' },
-        { label: 'Character Updates', value: 'character_updates' },
-        { label: 'Character Deletion', value: 'character_deletion' },
-        { label: 'Verification', value: 'verification' },
-        { label: 'Timezone Changes', value: 'timezone_changes' },
-        { label: 'Battle Imagine Changes', value: 'battle_imagine_changes' },
-        { label: 'Settings Changes', value: 'settings_changes' },
-        { label: 'Role Changes', value: 'role_changes' }
-      ]);
-
-    const backButton = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`admin_new_logging_back_${interaction.user.id}`)
-        .setLabel('← Back')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-    await interaction.update({ 
-      embeds: [embed('🔄 Log Grouping Settings', statusText)], 
-      components: [new ActionRowBuilder().addComponents(menu), backButton] 
-    });
-    return;
-  }
-}
-
-export async function handleNewLoggingBackButton(interaction) {
-  await showNewLoggingMenu(interaction);
-}
-
 // ═══════════════════════════════════════════════════════════════════
-// EPHEMERAL SETTINGS
+// VERIFICATION SETTINGS
 // ═══════════════════════════════════════════════════════════════════
 
-export async function showEphemeralSettings(interaction) {
-  const current = await EphemeralRepo.get(interaction.guildId);
+async function showVerificationSettings(interaction) {
+  const currentChannel = await LoggingRepo.getVerificationChannel(interaction.guildId);
   
-  const options = [
-    { label: '/edit-character', value: 'edit_character', description: '💬 COMMAND - Manage your profile', emoji: '✏️' },
-    { label: '/view-character', value: 'view_character', description: '💬 COMMAND - View character profiles', emoji: '👁' },
-    { label: '/admin', value: 'admin', description: '💬 COMMAND - Admin responses', emoji: '⚙️' },
-    { label: 'Registration', value: 'registration', description: '🔄 FLOW - New character registration', emoji: '📝' },
-    { label: 'Edit Actions', value: 'edit_actions', description: '🔄 FLOW - Editing character info', emoji: '🔧' },
-    { label: 'Add Character', value: 'add_character', description: '🔄 FLOW - Adding subclasses', emoji: '➕' },
-    { label: 'Delete Character', value: 'delete_character', description: '🔄 FLOW - Character deletion', emoji: '🗑️' },
-    { label: 'Error Messages', value: 'errors', description: '💬 MESSAGE - Error/validation messages', emoji: '❌' }
-  ].map(opt => ({ 
-    ...opt, 
-    default: current.includes(opt.value) 
-  }));
-  
-  const categoryNames = {
-    'edit_character': '✏️ /edit-character',
-    'view_character': '👁 /view-character',
-    'admin': '⚙️ /admin',
-    'registration': '📝 Registration',
-    'edit_actions': '🔧 Edit Actions',
-    'add_character': '➕ Add Character',
-    'delete_character': '🗑️ Delete Character',
-    'errors': '❌ Errors'
-  };
-  
-  const currentList = current.length > 0 
-    ? current.map(c => categoryNames[c] || c).join('\n') 
-    : '*None (all public)*';
-  
-  const description = 
-    `**Currently Private:**\n${currentList}\n\n` +
-    '✅ Selected = Private (only you see)\n' +
-    '❌ Not Selected = Public (everyone sees)\n\n' +
-    '**💡 Recommended Settings:**\n' +
-    '• ✏️ /edit-character - Private ✅\n' +
-    '• 👁 /view-character - Public ❌\n' +
-    '• 📝 Registration - Private ✅\n' +
-    '• 🔧 Edit Actions - Private ✅\n' +
-    '• ❌ Errors - Private ✅';
-  
-  const rows = [];
-  
-  rows.push(new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`admin_ephemeral_${interaction.user.id}`)
-      .setPlaceholder('Select ephemeral responses (private messages)')
-      .setMinValues(0)
-      .setMaxValues(options.length)
-      .addOptions(options)
-  ));
+  const description = currentChannel 
+    ? `**Current Channel:** <#${currentChannel}>\n\nSelect a new channel for verification notifications:`
+    : '**Not configured**\n\nSelect a channel for verification notifications:';
 
-  rows.push(new ActionRowBuilder().addComponents(
+  const channels = interaction.guild.channels.cache
+    .filter(ch => ch.type === ChannelType.GuildText)
+    .map(ch => ({ 
+      label: `#${ch.name}`, 
+      value: ch.id,
+      description: ch.parent?.name || 'No category',
+      default: ch.id === currentChannel
+    }))
+    .slice(0, 25);
+
+  if (channels.length === 0) {
+    return interaction.update({
+      embeds: [embed('❌ No Channels', 'No text channels found in this server.')],
+      components: []
+    });
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('set_verification_channel')
+    .setPlaceholder('✅ Select verification channel')
+    .addOptions(channels);
+
+  const backButton = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`admin_settings_back_${interaction.user.id}`)
       .setLabel('← Back to Settings')
       .setStyle(ButtonStyle.Secondary)
-  ));
-  
-  await interaction.update({ 
-    embeds: [embed('👁 Ephemeral Settings', description)], 
-    components: rows 
+  );
+
+  await interaction.update({
+    embeds: [embed('✅ Verification Channel', description)],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SELECT MENU HANDLERS
+// LOGGING SYSTEM
 // ═══════════════════════════════════════════════════════════════════
 
-export async function handleSettingsMenuSelect(interaction) {
-  const selected = interaction.values[0];
+async function showLoggingMenu(interaction) {
+  const config = await Logger.getSettings(interaction.guildId);
   
-  switch (selected) {
-    case 'logs': return await showLoggingSettings(interaction);
-    case 'new_logging': return await showNewLoggingMenu(interaction);
-    case 'ephemeral': return await showEphemeralSettings(interaction);
-    case 'verification': return await showVerificationStatus(interaction);
+  const generalStatus = config.generalChannelId 
+    ? `<#${config.generalChannelId}>` 
+    : '❌ Not set';
+  
+  const applicationStatus = config.applicationChannelId 
+    ? `<#${config.applicationChannelId}>` 
+    : '❌ Not set';
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`logging_menu_${interaction.user.id}`)
+    .setPlaceholder('Choose a logging setting')
+    .addOptions([
+      {
+        label: 'General Log Channel',
+        description: `Currently: ${config.generalChannelId ? 'Set' : 'Not set'}`,
+        value: 'general_channel',
+        emoji: '📋'
+      },
+      {
+        label: 'Application Log Channel',
+        description: `Currently: ${config.applicationChannelId ? 'Set' : 'Not set'}`,
+        value: 'application_channel',
+        emoji: '📨'
+      },
+      {
+        label: 'Event Settings',
+        description: 'Toggle which events to log',
+        value: 'event_settings',
+        emoji: '⚙️'
+      },
+      {
+        label: 'Grouping Settings',
+        description: 'Configure log grouping',
+        value: 'grouping_settings',
+        emoji: '🔄'
+      }
+    ]);
+
+  const backButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`admin_settings_back_${interaction.user.id}`)
+      .setLabel('← Back to Settings')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.update({
+    embeds: [embed(
+      '📋 Logging System',
+      `**General Logs:** ${generalStatus}\n` +
+      `**Application Logs:** ${applicationStatus}\n\n` +
+      'Select an option below to configure:'
+    )],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
+  });
+}
+
+export async function handleLoggingMenuSelect(interaction) {
+  const value = interaction.values[0];
+
+  if (value === 'general_channel') {
+    await showChannelSelector(interaction, 'general');
+  } else if (value === 'application_channel') {
+    await showChannelSelector(interaction, 'application');
+  } else if (value === 'event_settings') {
+    await showEventSettings(interaction);
+  } else if (value === 'grouping_settings') {
+    await showGroupingSettings(interaction);
   }
+}
+
+async function showChannelSelector(interaction, type) {
+  const config = await Logger.getSettings(interaction.guildId);
+  const currentChannel = type === 'general' ? config.generalChannelId : config.applicationChannelId;
+  
+  const title = type === 'general' ? '📋 General Log Channel' : '📨 Application Log Channel';
+  const description = currentChannel 
+    ? `**Current:** <#${currentChannel}>\n\nSelect a new channel:`
+    : '**Not configured**\n\nSelect a channel:';
+
+  const channels = interaction.guild.channels.cache
+    .filter(ch => ch.type === ChannelType.GuildText)
+    .map(ch => ({ 
+      label: `#${ch.name}`, 
+      value: ch.id,
+      description: ch.parent?.name || 'No category',
+      default: ch.id === currentChannel
+    }))
+    .slice(0, 25);
+
+  if (channels.length === 0) {
+    return interaction.update({
+      embeds: [embed('❌ No Channels', 'No text channels found.')],
+      components: []
+    });
+  }
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`set_${type}_log_channel`)
+    .setPlaceholder(`Select ${type} log channel`)
+    .addOptions(channels);
+
+  const backButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`logging_back_${interaction.user.id}`)
+      .setLabel('← Back to Logging')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.update({
+    embeds: [embed(title, description)],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
+  });
+}
+
+async function showEventSettings(interaction) {
+  const config = await Logger.getSettings(interaction.guildId);
+  
+  const statusText = Object.entries(config.settings)
+    .map(([key, enabled]) => {
+      const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      return `${enabled ? '✅' : '❌'} **${label}**`;
+    })
+    .join('\n');
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('toggle_log_event')
+    .setPlaceholder('Select events to toggle')
+    .addOptions([
+      { label: 'Character Registration', value: 'character_registration' },
+      { label: 'Character Updates', value: 'character_updates' },
+      { label: 'Character Deletion', value: 'character_deletion' },
+      { label: 'Verification', value: 'verification' },
+      { label: 'Timezone Changes', value: 'timezone_changes' },
+      { label: 'Battle Imagine Changes', value: 'battle_imagine_changes' },
+      { label: 'Guild Applications', value: 'guild_applications' },
+      { label: 'Application Votes', value: 'application_votes' },
+      { label: 'Admin Overrides', value: 'admin_overrides' },
+      { label: 'Settings Changes', value: 'settings_changes' },
+      { label: 'Role Changes', value: 'role_changes' }
+    ]);
+
+  const backButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`logging_back_${interaction.user.id}`)
+      .setLabel('← Back to Logging')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.update({
+    embeds: [embed('⚙️ Event Logging Settings', statusText)],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
+  });
+}
+
+async function showGroupingSettings(interaction) {
+  const config = await Logger.getSettings(interaction.guildId);
+  
+  const statusText = 
+    `**Grouping Window:** ${config.grouping.grouping_window_minutes} minutes\n\n` +
+    'Events marked ✅ will be grouped:\n\n' +
+    Object.entries(config.grouping)
+      .filter(([key]) => key !== 'grouping_window_minutes')
+      .map(([key, enabled]) => {
+        const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return `${enabled ? '✅' : '❌'} **${label}**`;
+      })
+      .join('\n');
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId('toggle_log_grouping')
+    .setPlaceholder('Toggle grouping or change window')
+    .addOptions([
+      { label: '⏱️ Change Time Window', value: 'change_window', emoji: '⏱️' },
+      { label: 'Character Registration', value: 'character_registration' },
+      { label: 'Character Updates', value: 'character_updates' },
+      { label: 'Character Deletion', value: 'character_deletion' },
+      { label: 'Verification', value: 'verification' },
+      { label: 'Timezone Changes', value: 'timezone_changes' },
+      { label: 'Battle Imagine Changes', value: 'battle_imagine_changes' },
+      { label: 'Settings Changes', value: 'settings_changes' },
+      { label: 'Role Changes', value: 'role_changes' }
+    ]);
+
+  const backButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`logging_back_${interaction.user.id}`)
+      .setLabel('← Back to Logging')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await interaction.update({
+    embeds: [embed('🔄 Log Grouping Settings', statusText)],
+    components: [new ActionRowBuilder().addComponents(menu), backButton]
+  });
+}
+
+export async function handleLoggingBackButton(interaction) {
+  await showLoggingMenu(interaction);
 }
 
 export async function handleSettingsBackButton(interaction) {
   await showSettingsMenu(interaction);
-}
-
-export async function handleVerificationChannelSelect(interaction) {
-  const channelId = interaction.values[0];
-  
-  if (channelId === 'none') {
-    await VerificationSystem.setVerificationChannelId(interaction.guildId, null);
-    await interaction.reply({ 
-      embeds: [embed('✅ Verification Disabled', 'The verification system has been disabled.')], 
-      flags: MessageFlags.Ephemeral
-    });
-  } else {
-    await VerificationSystem.setVerificationChannelId(interaction.guildId, channelId);
-    await VerificationSystem.setupVerificationChannel(interaction.client, interaction.guildId);
-    
-    await interaction.reply({ 
-      embeds: [embed('✅ Verification Enabled', `**Verification Channel:** <#${channelId}>\n\nThe registration embed has been posted!`)], 
-      flags: MessageFlags.Ephemeral
-    });
-  }
-}
-
-export async function handleLogChannelSelect(interaction) {
-  const channelId = interaction.values[0];
-  await LogSettingsRepo.upsert(interaction.guildId, { 
-    channelId: channelId === 'none' ? null : channelId 
-  });
-  await logger.reloadSettings();
-  await interaction.reply({ 
-    embeds: [embed('✅ Channel Updated', channelId === 'none' ? '**Log Channel:** Disabled' : `**Log Channel:** <#${channelId}>`)], 
-    flags: MessageFlags.Ephemeral
-  });
-}
-
-export async function handleLogBatchSelect(interaction) {
-  const interval = parseInt(interaction.values[0]);
-  await LogSettingsRepo.upsert(interaction.guildId, { batchInterval: interval });
-  await logger.reloadSettings();
-  const label = BATCH_INTERVALS.find(b => b.value === String(interval))?.label || 'Unknown';
-  await interaction.reply({ 
-    embeds: [embed('✅ Batch Mode Updated', `**Batch Interval:** ${label}`)], 
-    flags: MessageFlags.Ephemeral
-  });
-}
-
-export async function handleLogCategoriesSelect(interaction) {
-  const selected = interaction.values;
-  await LogSettingsRepo.upsert(interaction.guildId, { enabledCategories: selected });
-  await logger.reloadSettings();
-  
-  let statusText = '';
-  for (const [group, categories] of Object.entries(LOG_GROUPS)) {
-    const groupEnabled = categories.filter(c => selected.includes(c));
-    const icon = groupEnabled.length === categories.length ? '✅' : groupEnabled.length > 0 ? '🔶' : '❌';
-    statusText += `${icon} **${group}:** ${groupEnabled.length}/${categories.length}\n`;
-  }
-  
-  await interaction.reply({ 
-    embeds: [embed('✅ Categories Updated', `${statusText}\n**Total:** ${selected.length}/${Object.keys(LOG_CATEGORIES).length}`)], 
-    flags: MessageFlags.Ephemeral
-  });
-}
-
-export async function handleEphemeralSelect(interaction) {
-  const selected = interaction.values;
-  await EphemeralRepo.set(interaction.guildId, selected);
-  
-  const categoryNames = {
-    'edit_character': '✏️ /edit-character',
-    'view_character': '👁 /view-character',
-    'admin': '⚙️ /admin',
-    'registration': '📝 Registration',
-    'edit_actions': '🔧 Edit Actions',
-    'add_character': '➕ Add Character',
-    'delete_character': '🗑️ Delete Character',
-    'errors': '❌ Errors'
-  };
-  
-  const currentList = selected.length > 0 
-    ? selected.map(c => categoryNames[c] || c).join('\n') 
-    : '*None (all public)*';
-  
-  await interaction.update({ 
-    embeds: [embed('✅ Saved', `**Private:**\n${currentList}`)], 
-    components: [] 
-  });
 }
