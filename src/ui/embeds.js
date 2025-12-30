@@ -25,8 +25,8 @@ export const successEmbed = (message) => {
 };
 
 export async function profileEmbed(user, characters, interaction = null) {
-  const main = characters.find(c => c.characterType === 'main');
-  const subs = characters.filter(c => c.characterType === 'main_subclass');
+  const main = characters.find(c => c.character_type === 'main');
+  const subs = characters.filter(c => c.character_type === 'main_subclass');
 
   let displayName = user.username;
   if (interaction?.guild) {
@@ -68,7 +68,7 @@ export async function profileEmbed(user, characters, interaction = null) {
   }
 
   const roleEmoji = getRoleEmoji(main.role);
-  const classEmoji = getClassEmoji(interaction?.guild, main.className);
+  const classEmoji = getClassEmoji(interaction?.guild, main.class);
 
   let guildDisplay = main.guild || 'None';
   if (main.guild === 'iDolls') {
@@ -89,12 +89,12 @@ export async function profileEmbed(user, characters, interaction = null) {
   mainSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
   mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + main.ign + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + main.uid + '\u001b[0m\n';
-  mainSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + main.className + ' - ' + main.subclass + '\u001b[0m\n';
-  mainSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(main.abilityScore) + '\u001b[0m\n';
+  mainSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + main.class + ' - ' + main.subclass + '\u001b[0m\n';
+  mainSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(main.ability_score) + '\u001b[0m\n';
 
   const mainBI = await BattleImagineRepo.findByCharacter(main.id);
   if (mainBI.length > 0) {
-    mainSection += '\u001b[1;34m⚔️ Battle Imagines:\u001b[0m \u001b[1;37m' + mainBI.map(b => b.imagineName + ' ' + b.tier).join(', ') + '\u001b[0m\n';
+    mainSection += '\u001b[1;34m⚔️ Battle Imagines:\u001b[0m \u001b[1;37m' + mainBI.map(b => b.imagine_name + ' ' + b.tier).join(', ') + '\u001b[0m\n';
   }
 
   mainSection += '\u001b[1;34m🏰 Guild:\u001b[0m \u001b[1;35m' + guildDisplay + '\u001b[0m\n';
@@ -110,8 +110,8 @@ export async function profileEmbed(user, characters, interaction = null) {
     let subSection = '```ansi\n';
     subs.forEach((sub, i) => {
       subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
-      subSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + sub.className + ' - ' + sub.subclass + '\u001b[0m\n';
-      subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(sub.abilityScore) + '\u001b[0m\n';
+      subSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + sub.class + ' - ' + sub.subclass + '\u001b[0m\n';
+      subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(sub.ability_score) + '\u001b[0m\n';
     });
     subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     subSection += '```';
