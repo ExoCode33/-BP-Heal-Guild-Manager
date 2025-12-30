@@ -7,7 +7,6 @@ const pool = new Pool({
 });
 
 async function initialize() {
-  // Characters table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS characters (
       id SERIAL PRIMARY KEY,
@@ -16,18 +15,13 @@ async function initialize() {
       ign VARCHAR(100) NOT NULL,
       uid VARCHAR(20) NOT NULL,
       class VARCHAR(50) NOT NULL,
-      subclass VARCHAR(50),
-      ability_score VARCHAR(20),
       guild VARCHAR(100),
       rank VARCHAR(50),
-      parent_character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
-      role VARCHAR(20),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Applications table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS applications (
       id SERIAL PRIMARY KEY,
@@ -39,54 +33,24 @@ async function initialize() {
     )
   `);
 
-  // Guild applications table
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS guild_applications (
-      id SERIAL PRIMARY KEY,
-      user_id VARCHAR(20) NOT NULL,
-      character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
-      guild_name VARCHAR(100) NOT NULL,
-      message_id VARCHAR(20),
-      channel_id VARCHAR(20),
-      status VARCHAR(20) DEFAULT 'pending',
-      accept_votes TEXT[] DEFAULT '{}',
-      deny_votes TEXT[] DEFAULT '{}',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CREATE TABLE IF NOT EXISTS log_settings (
+      guild_id VARCHAR(20) PRIMARY KEY,
+      log_channel_id VARCHAR(20),
+      enabled_categories TEXT[],
+      batch_interval INTEGER DEFAULT 0,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // User timezones table
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_timezones (
-      user_id VARCHAR(20) PRIMARY KEY,
-      timezone VARCHAR(100) NOT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  // Battle imagines table
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS battle_imagines (
-      id SERIAL PRIMARY KEY,
-      character_id INTEGER REFERENCES characters(id) ON DELETE CASCADE,
-      imagine_name VARCHAR(100) NOT NULL,
-      tier VARCHAR(10) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(character_id, imagine_name)
-    )
-  `);
-
-  // Ephemeral settings table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ephemeral_settings (
       guild_id VARCHAR(20) PRIMARY KEY,
-      ephemeral_commands TEXT[] DEFAULT '{}',
+      enabled_categories TEXT[],
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Guild settings table with unified logging
   await pool.query(`
     CREATE TABLE IF NOT EXISTS guild_settings (
       guild_id VARCHAR(20) PRIMARY KEY,
@@ -122,9 +86,11 @@ async function initialize() {
     )
   `);
 
-  console.log('[DATABASE] ✅ All tables initialized');
+  console.log('[DATABASE] ✅ Tables initialized');
 }
 
+// Add initialize method to pool object
 pool.initialize = initialize;
 
+// Export pool with initialize method attached
 export default pool;
