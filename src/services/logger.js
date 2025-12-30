@@ -1,5 +1,6 @@
 import { LogSettingsRepo } from '../database/repositories.js';
 import { LOG_CATEGORIES, DEFAULT_ENABLED } from '../config/logCategories.js';
+import config from '../config/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSOLE ANSI COLORS
@@ -241,6 +242,17 @@ function buildStartupLog(botTag, commandCount) {
   return msg;
 }
 
+function buildShutdownLog(reason) {
+  let msg = '```ansi\n';
+  msg += `${d.red}${DISCORD_LINE}${d.reset}\n`;
+  msg += `${d.red}${d.bold}🔴 BOT SHUTDOWN${d.reset}\n`;
+  msg += `${d.white}Reason     ${d.reset}${d.yellow}${reason}${d.reset}\n`;
+  msg += `${d.white}Time       ${d.reset}${d.gray}${shortTime()}${d.reset}\n`;
+  msg += `${d.red}${DISCORD_LINE}${d.reset}\n`;
+  msg += '```';
+  return msg;
+}
+
 function buildCommandLog(user, command) {
   let msg = '```ansi\n';
   msg += `${d.blue}${DISCORD_LINE}${d.reset}\n`;
@@ -398,60 +410,125 @@ class Logger {
     this.batchInterval = 0;
     this.batchQueue = [];
     this.batchTimer = null;
+    this.initialized = false;
+    this.initRetries = 0;
+    this.maxInitRetries = 5;
   }
 
   async init(client) {
     this.client = client;
-    const guild = client.guilds.cache.first();
-    if (guild) {
-      this.guildId = guild.id;
+    
+    // Use guild ID from config instead of cache (more reliable)
+    this.guildId = config.discord.guildId;
+    
+    if (!this.guildId) {
+      // Fallback to first guild in cache
+      const guild = client.guilds.cache.first();
+      if (guild) {
+        this.guildId = guild.id;
+      }
+    }
+    
+    if (this.guildId) {
+      console.log(`[LOGGER] Initializing for guild: ${this.guildId}`);
       await this.reloadSettings();
+      this.initialized = true;
+    } else {
+      console.warn('[LOGGER] ⚠️ No guild ID available - Discord logging disabled');
     }
   }
 
   async reloadSettings() {
-    if (!this.guildId) return;
+    if (!this.guildId) {
+      console.warn('[LOGGER] Cannot reload settings - no guild ID');
+      return;
+    }
     
     try {
+      console.log(`[LOGGER] Loading settings for guild: ${this.guildId}`);
       const settings = await LogSettingsRepo.get(this.guildId);
       
-      if (settings?.enabled_categories) {
-        this.enabledCategories = new Set(settings.enabled_categories);
+      if (settings) {
+        console.log('[LOGGER] Settings found:', {
+          channelId: settings.log_channel_id || 'NOT SET',
+          categories: settings.enabled_categories?.length || 0,
+          batchInterval: settings.batch_interval || 0
+        });
+      } else {
+        console.log('[LOGGER] No settings found in database - using defaults');
       }
       
+      // Set enabled categories
+      if (settings?.enabled_categories && Array.isArray(settings.enabled_categories)) {
+        this.enabledCategories = new Set(settings.enabled_categories);
+      } else {
+        this.enabledCategories = new Set(DEFAULT_ENABLED);
+      }
+      
+      // Set up log channel
       if (settings?.log_channel_id && this.client) {
         try {
+          console.log(`[LOGGER] Fetching channel: ${settings.log_channel_id}`);
           this.channel = await this.client.channels.fetch(settings.log_channel_id);
-          consoleSuccess('Log channel connected', this.channel.name);
+          
+          if (this.channel) {
+            console.log(`[LOGGER] ✅ Connected to log channel: #${this.channel.name}`);
+          } else {
+            console.warn('[LOGGER] ⚠️ Channel fetch returned null');
+            this.channel = null;
+          }
         } catch (e) {
+          console.error(`[LOGGER] ❌ Failed to fetch channel ${settings.log_channel_id}:`, e.message);
           this.channel = null;
         }
       } else {
+        console.log('[LOGGER] No log channel configured');
         this.channel = null;
       }
       
+      // Set up batch timer
       const newInterval = settings?.batch_interval || 0;
       if (newInterval !== this.batchInterval) {
         this.batchInterval = newInterval;
         this.setupBatchTimer();
       }
+      
+      console.log('[LOGGER] Settings reloaded successfully');
+      console.log(`[LOGGER] - Enabled categories: ${this.enabledCategories.size}`);
+      console.log(`[LOGGER] - Log channel: ${this.channel ? '#' + this.channel.name : 'NOT SET'}`);
+      console.log(`[LOGGER] - Batch interval: ${this.batchInterval} minutes`);
+      
     } catch (e) {
-      consoleError('Settings', { message: e.message });
+      console.error('[LOGGER] Error reloading settings:', e.message);
+      consoleError('Logger Settings', { message: e.message });
     }
   }
 
   setupBatchTimer() {
-    if (this.batchTimer) clearInterval(this.batchTimer);
-    this.batchTimer = null;
+    if (this.batchTimer) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
     
     if (this.batchInterval > 0) {
-      this.batchTimer = setInterval(() => this.flushBatch(), this.batchInterval * 60 * 1000);
-      consoleInfo('Batch mode enabled', `${this.batchInterval} minute interval`);
+      const intervalMs = this.batchInterval * 60 * 1000;
+      this.batchTimer = setInterval(() => this.flushBatch(), intervalMs);
+      console.log(`[LOGGER] Batch mode enabled: ${this.batchInterval} minute intervals`);
+    } else {
+      console.log('[LOGGER] Batch mode disabled - sending logs immediately');
     }
   }
 
   async flushBatch() {
-    if (this.batchQueue.length === 0 || !this.channel) return;
+    if (this.batchQueue.length === 0) {
+      return;
+    }
+    
+    if (!this.channel) {
+      console.warn('[LOGGER] Cannot flush batch - no channel configured');
+      this.batchQueue = [];
+      return;
+    }
     
     const events = [...this.batchQueue];
     this.batchQueue = [];
@@ -460,8 +537,9 @@ class Logger {
     
     try {
       await this.channel.send(buildBatchLog(events));
+      console.log(`[LOGGER] ✅ Flushed ${events.length} events to Discord`);
     } catch (e) {
-      consoleError('Batch', { message: e.message });
+      console.error('[LOGGER] ❌ Failed to send batch:', e.message);
     }
   }
 
@@ -470,17 +548,48 @@ class Logger {
   }
 
   async send(category, content) {
-    if (!this.channel || !this.isEnabled(category)) return;
+    // Check if category is enabled
+    if (!this.isEnabled(category)) {
+      return;
+    }
+    
+    // Check if channel is available
+    if (!this.channel) {
+      // Try to reload settings if not initialized
+      if (!this.initialized && this.initRetries < this.maxInitRetries) {
+        this.initRetries++;
+        console.log(`[LOGGER] Channel not ready, attempting reload (${this.initRetries}/${this.maxInitRetries})`);
+        await this.reloadSettings();
+      }
+      
+      if (!this.channel) {
+        return;
+      }
+    }
+    
     try {
       await this.channel.send(content);
     } catch (e) {
-      consoleError('Discord', { message: e.message });
+      console.error('[LOGGER] Failed to send to Discord:', e.message);
+      
+      // If channel became invalid, clear it
+      if (e.code === 10003 || e.code === 50001) {
+        console.warn('[LOGGER] Channel became invalid - clearing');
+        this.channel = null;
+      }
     }
   }
 
   queue(category, data) {
-    if (!this.channel || !this.isEnabled(category)) return false;
+    if (!this.isEnabled(category)) {
+      return false;
+    }
     
+    if (!this.channel) {
+      return false;
+    }
+    
+    // Immediate categories - never batch these
     const immediate = ['startup', 'shutdown', 'errors'];
     if (this.batchInterval === 0 || immediate.includes(category)) {
       return false;
@@ -501,6 +610,10 @@ class Logger {
 
   shutdown(reason) {
     consoleShutdown(reason);
+    // Try to send shutdown log synchronously if possible
+    if (this.channel && this.isEnabled('shutdown')) {
+      this.channel.send(buildShutdownLog(reason)).catch(() => {});
+    }
   }
 
   command(name, user, subcommand = null) {
@@ -582,7 +695,9 @@ class Logger {
   }
 
   debug(message, data = null) {
-    if (process.env.DEBUG) consoleInfo(message, data ? JSON.stringify(data) : '');
+    if (process.env.DEBUG) {
+      consoleInfo(message, data ? JSON.stringify(data) : '');
+    }
   }
 }
 
