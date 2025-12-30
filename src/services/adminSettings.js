@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType, MessageFlags } from 'discord.js';
 import { isEphemeral } from './ephemeral.js';
 import { LogSettingsRepo, EphemeralRepo } from '../database/repositories.js';
 import { VerificationSystem } from './verification.js';
@@ -51,7 +51,7 @@ export async function showSettingsMenu(interaction) {
   await interaction.reply({ 
     embeds: [embed('⚙️ Admin Settings', description)], 
     components: [row], 
-    ephemeral: isEph 
+    flags: isEph ? MessageFlags.Ephemeral : undefined
   });
 }
 
@@ -202,18 +202,18 @@ export async function showEphemeralSettings(interaction) {
   const current = await EphemeralRepo.get(interaction.guildId);
   
   const options = [
-    { label: '💬 COMMANDS', value: 'header_commands', description: '────────────────────', emoji: '─', default: false },
+    { label: '💬 COMMANDS', value: 'header_commands', description: '────────────────────' },
     { label: '/edit-character', value: 'edit_character', description: 'Manage your profile with buttons', emoji: '✏️' },
     { label: '/view-character', value: 'view_character', description: 'View character profiles', emoji: '👁' },
     { label: '/admin', value: 'admin', description: 'Admin command responses', emoji: '⚙️' },
     
-    { label: '🔄 FLOWS', value: 'header_flows', description: '────────────────────', emoji: '─', default: false },
+    { label: '🔄 FLOWS', value: 'header_flows', description: '────────────────────' },
     { label: 'Registration', value: 'registration', description: 'New character registration', emoji: '📝' },
     { label: 'Edit Actions', value: 'edit_actions', description: 'Editing character info', emoji: '🔧' },
     { label: 'Add Character', value: 'add_character', description: 'Adding subclasses', emoji: '➕' },
     { label: 'Delete Character', value: 'delete_character', description: 'Character deletion', emoji: '🗑️' },
     
-    { label: '💬 MESSAGES', value: 'header_messages', description: '────────────────────', emoji: '─', default: false },
+    { label: '💬 MESSAGES', value: 'header_messages', description: '────────────────────' },
     { label: 'Error Messages', value: 'errors', description: 'Error/validation messages', emoji: '❌' }
   ].map(opt => ({ 
     ...opt, 
@@ -295,7 +295,7 @@ export async function handleVerificationChannelSelect(interaction) {
     await VerificationSystem.setVerificationChannelId(interaction.guildId, null);
     await interaction.reply({ 
       embeds: [embed('✅ Verification Disabled', 'The verification system has been disabled.')], 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral
     });
   } else {
     await VerificationSystem.setVerificationChannelId(interaction.guildId, channelId);
@@ -303,7 +303,7 @@ export async function handleVerificationChannelSelect(interaction) {
     
     await interaction.reply({ 
       embeds: [embed('✅ Verification Enabled', `**Verification Channel:** <#${channelId}>\n\nThe registration embed has been posted!`)], 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral
     });
   }
 }
@@ -316,7 +316,7 @@ export async function handleLogChannelSelect(interaction) {
   await logger.reloadSettings();
   await interaction.reply({ 
     embeds: [embed('✅ Channel Updated', channelId === 'none' ? '**Log Channel:** Disabled' : `**Log Channel:** <#${channelId}>`)], 
-    ephemeral: true 
+    flags: MessageFlags.Ephemeral
   });
 }
 
@@ -327,7 +327,7 @@ export async function handleLogBatchSelect(interaction) {
   const label = BATCH_INTERVALS.find(b => b.value === String(interval))?.label || 'Unknown';
   await interaction.reply({ 
     embeds: [embed('✅ Batch Mode Updated', `**Batch Interval:** ${label}`)], 
-    ephemeral: true 
+    flags: MessageFlags.Ephemeral
   });
 }
 
@@ -345,7 +345,7 @@ export async function handleLogCategoriesSelect(interaction) {
   
   await interaction.reply({ 
     embeds: [embed('✅ Categories Updated', `${statusText}\n**Total:** ${selected.length}/${Object.keys(LOG_CATEGORIES).length}`)], 
-    ephemeral: true 
+    flags: MessageFlags.Ephemeral
   });
 }
 
