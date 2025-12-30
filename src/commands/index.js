@@ -1,16 +1,15 @@
-import { Collection } from 'discord.js';
-import * as character from './character.js';
+// Commands index - exports all command modules
+
 import * as admin from './admin.js';
+import * as editCharacter from './editCharacter.js';
+import * as viewCharacter from './viewCharacter.js';
 
-export function loadCommands() {
-  const commands = new Collection();
+// Add other commands here as needed
+// import * as otherCommand from './otherCommand.js';
 
-  commands.set(character.data.name, character);
-  commands.set(admin.data.name, admin);
-
-  return commands;
-}
-
-export function getCommandData() {
-  return [character.data.toJSON(), admin.data.toJSON()];
-}
+export default {
+  admin,
+  editCharacter,
+  viewCharacter
+  // Add other commands to export here
+};
