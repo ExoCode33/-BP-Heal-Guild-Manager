@@ -52,11 +52,11 @@ export async function profileEmbed(user, characters, interaction = null) {
       '',
       '\u001b[1;35m' + centerText('≽^•⩊•^≼') + '\u001b[0m',
       '',
-      '\u001b[1;36m' + centerText(welcomeLine) + '\u001b[0m',
+      '\u001b[1;34m' + centerText(welcomeLine) + '\u001b[0m',
       '',
-      '\u001b[1;34m' + centerText(noCharLine) + '\u001b[0m',
-      '\u001b[1;34m' + centerText(tapLine) + '\u001b[0m',
-      '\u001b[1;34m' + centerText(setupLine) + '\u001b[0m',
+      '\u001b[1;37m' + centerText(noCharLine) + '\u001b[0m',
+      '\u001b[1;37m' + centerText(tapLine) + '\u001b[0m',
+      '\u001b[1;37m' + centerText(setupLine) + '\u001b[0m',
       '',
       '\u001b[35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m'
     ].join('\n');
