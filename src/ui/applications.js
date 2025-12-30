@@ -2,8 +2,8 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 // This function adds vote count footer to existing profile embed
 export function addVotingFooter(profileEmbed, application) {
-  const acceptVotes = application.accept_votes || [];
-  const denyVotes = application.deny_votes || [];
+  const acceptVotes = application.acceptVotes || [];
+  const denyVotes = application.denyVotes || [];
   
   const acceptList = acceptVotes.length > 0 
     ? acceptVotes.map(id => `<@${id}>`).join(', ')
@@ -16,7 +16,7 @@ export function addVotingFooter(profileEmbed, application) {
   // Add voting fields to the profile embed
   profileEmbed.addFields(
     { name: '\u200b', value: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', inline: false },
-    { name: '🏰 Guild Application', value: `Applied to: **${application.guild_name}**`, inline: false },
+    { name: '🏰 Guild Application', value: `Applied to: **${application.guildName}**`, inline: false },
     { name: `✅ Accept Votes (${acceptVotes.length}/2)`, value: acceptList, inline: true },
     { name: `❌ Deny Votes (${denyVotes.length}/2)`, value: denyList, inline: true }
   );
