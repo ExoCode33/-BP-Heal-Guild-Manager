@@ -914,7 +914,6 @@ export async function handleIGN(interaction, userId) {
     
     const row = new ActionRowBuilder().addComponents(retryButton);
     
-    // ✅ FIXED: Use update() instead of reply()
     await interaction.update({ 
       embeds: [errorEmbed], 
       components: [row]
@@ -965,13 +964,24 @@ export async function handleIGN(interaction, userId) {
       await assignPendingRoles(interaction.client, userId);
       await applicationService.createApplication(userId, character.id, currentState.guild);
       
-      // ✅ FIXED: Update the existing message instead of creating a new one
+      // ✅ CUTE PINK EMBED for pending application
+      const successEmbed = new EmbedBuilder()
+        .setColor('#EC4899')
+        .setDescription(
+          '💕 **Registration Complete!** ≽^•⩊•^≼\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+          '✨ **Application to iDolls submitted!**\n\n' +
+          '📋 Talent Manager will validate soon\n' +
+          '💙 You have Verified server access\n\n' +
+          'Chat and explore in the meantime~\n\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+          'Welcome! 💖'
+        )
+        .setTimestamp();
+      
       await interaction.update({
-        content: '✅ **Registration Complete!**\n\n' +
-                 '📋 Your application to **iDolls** has been submitted to the admin team.\n' +
-                 '⏳ You\'ll be notified once it\'s reviewed!\n\n' +
-                 '💙 In the meantime, you have access to the server as a Verified member.',
-        embeds: [],
+        content: '',
+        embeds: [successEmbed],
         components: []
       });
       
@@ -991,7 +1001,6 @@ export async function handleIGN(interaction, userId) {
     const embed = await profileEmbed(interaction.user, characters, interaction);
     const buttons = ui.profileButtons(userId, !!main);
 
-    // ✅ FIXED: Use update() instead of reply()
     await interaction.update({ 
       embeds: [embed], 
       components: buttons
@@ -1003,7 +1012,6 @@ export async function handleIGN(interaction, userId) {
     console.error('[REGISTRATION ERROR]', error);
     logger.error('Registration', `Registration error: ${error.message}`, error);
     
-    // ✅ FIXED: Use update() instead of reply()
     await interaction.update({
       content: '❌ Something went wrong. Please try again!',
       embeds: [],
