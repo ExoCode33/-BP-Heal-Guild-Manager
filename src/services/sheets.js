@@ -4,6 +4,209 @@ import { TIMEZONE_ABBR, CLASSES } from '../config/game.js';
 import { TimezoneRepo, BattleImagineRepo } from '../database/repositories.js';
 import logger from './logger.js';
 
+// ═══════════════════════════════════════════════════════════════════
+// ✅ TIMEZONE FIX - DYNAMIC HELPERS (DST-AWARE)
+// These functions automatically handle Daylight Saving Time
+// ═══════════════════════════════════════════════════════════════════
+
+// Regional abbreviation mappings for better UX (prefers "EST" over "GMT-5")
+const REGIONAL_ABBR_MAP = {
+  'America/New_York': { winter: 'EST', summer: 'EDT' },
+  'America/Chicago': { winter: 'CST', summer: 'CDT' },
+  'America/Denver': { winter: 'MST', summer: 'MDT' },
+  'America/Los_Angeles': { winter: 'PST', summer: 'PDT' },
+  'America/Phoenix': { winter: 'MST', summer: 'MST' },
+  'America/Anchorage': { winter: 'AKST', summer: 'AKDT' },
+  'Pacific/Honolulu': { winter: 'HST', summer: 'HST' },
+  'America/Toronto': { winter: 'EST', summer: 'EDT' },
+  'America/Vancouver': { winter: 'PST', summer: 'PDT' },
+  'America/Halifax': { winter: 'AST', summer: 'ADT' },
+  'America/Winnipeg': { winter: 'CST', summer: 'CDT' },
+  'America/Edmonton': { winter: 'MST', summer: 'MDT' },
+  'America/Mexico_City': { winter: 'CST', summer: 'CDT' },
+  'America/Chihuahua': { winter: 'MST', summer: 'MDT' },
+  'America/Tijuana': { winter: 'PST', summer: 'PDT' },
+  'Europe/London': { winter: 'GMT', summer: 'BST' },
+  'Europe/Paris': { winter: 'CET', summer: 'CEST' },
+  'Europe/Berlin': { winter: 'CET', summer: 'CEST' },
+  'Europe/Rome': { winter: 'CET', summer: 'CEST' },
+  'Europe/Madrid': { winter: 'CET', summer: 'CEST' },
+  'Europe/Amsterdam': { winter: 'CET', summer: 'CEST' },
+  'Europe/Brussels': { winter: 'CET', summer: 'CEST' },
+  'Europe/Vienna': { winter: 'CET', summer: 'CEST' },
+  'Europe/Stockholm': { winter: 'CET', summer: 'CEST' },
+  'Europe/Warsaw': { winter: 'CET', summer: 'CEST' },
+  'Europe/Athens': { winter: 'EET', summer: 'EEST' },
+  'Europe/Istanbul': { winter: 'TRT', summer: 'TRT' },
+  'Europe/Moscow': { winter: 'MSK', summer: 'MSK' },
+  'Asia/Tokyo': { winter: 'JST', summer: 'JST' },
+  'Asia/Seoul': { winter: 'KST', summer: 'KST' },
+  'Asia/Shanghai': { winter: 'CST', summer: 'CST' },
+  'Asia/Hong_Kong': { winter: 'HKT', summer: 'HKT' },
+  'Asia/Taipei': { winter: 'CST', summer: 'CST' },
+  'Asia/Singapore': { winter: 'SGT', summer: 'SGT' },
+  'Asia/Bangkok': { winter: 'ICT', summer: 'ICT' },
+  'Asia/Ho_Chi_Minh': { winter: 'ICT', summer: 'ICT' },
+  'Asia/Manila': { winter: 'PST', summer: 'PST' },
+  'Asia/Jakarta': { winter: 'WIB', summer: 'WIB' },
+  'Asia/Makassar': { winter: 'WITA', summer: 'WITA' },
+  'Asia/Kolkata': { winter: 'IST', summer: 'IST' },
+  'Asia/Dubai': { winter: 'GST', summer: 'GST' },
+  'Asia/Riyadh': { winter: 'AST', summer: 'AST' },
+  'Australia/Sydney': { winter: 'AEST', summer: 'AEDT' },
+  'Australia/Melbourne': { winter: 'AEST', summer: 'AEDT' },
+  'Australia/Brisbane': { winter: 'AEST', summer: 'AEST' },
+  'Australia/Adelaide': { winter: 'ACST', summer: 'ACDT' },
+  'Australia/Perth': { winter: 'AWST', summer: 'AWST' },
+  'Australia/Darwin': { winter: 'ACST', summer: 'ACST' },
+  'Pacific/Auckland': { winter: 'NZST', summer: 'NZDT' },
+  'Pacific/Fiji': { winter: 'FJT', summer: 'FJT' },
+  'Africa/Johannesburg': { winter: 'SAST', summer: 'SAST' },
+  'Africa/Cairo': { winter: 'EET', summer: 'EEST' },
+  'Africa/Lagos': { winter: 'WAT', summer: 'WAT' },
+  'Africa/Nairobi': { winter: 'EAT', summer: 'EAT' },
+  'Africa/Casablanca': { winter: 'WET', summer: 'WEST' },
+  'America/Sao_Paulo': { winter: 'BRT', summer: 'BRST' },
+  'America/Manaus': { winter: 'AMT', summer: 'AMT' },
+  'America/Buenos_Aires': { winter: 'ART', summer: 'ART' },
+  'America/Santiago': { winter: 'CLT', summer: 'CLST' },
+  'America/Bogota': { winter: 'COT', summer: 'COT' },
+  'America/Lima': { winter: 'PET', summer: 'PET' }
+};
+
+/**
+ * Get offset for a specific date in a timezone
+ */
+function getOffsetAtDate(timezone, date) {
+  try {
+    const utcFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    const tzFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    const utcParts = Object.fromEntries(
+      utcFormatter.formatToParts(date)
+        .filter(p => p.type !== 'literal')
+        .map(p => [p.type, parseInt(p.value)])
+    );
+    
+    const tzParts = Object.fromEntries(
+      tzFormatter.formatToParts(date)
+        .filter(p => p.type !== 'literal')
+        .map(p => [p.type, parseInt(p.value)])
+    );
+    
+    const utcTime = Date.UTC(utcParts.year, utcParts.month - 1, utcParts.day, utcParts.hour, utcParts.minute);
+    const tzTime = Date.UTC(tzParts.year, tzParts.month - 1, tzParts.day, tzParts.hour, tzParts.minute);
+    
+    return (tzTime - utcTime) / (1000 * 60 * 60);
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
+ * Detect if a timezone is currently observing DST
+ */
+function isCurrentlyDST(timezone) {
+  try {
+    const now = new Date();
+    const jan = new Date(now.getFullYear(), 0, 1);
+    const jul = new Date(now.getFullYear(), 6, 1);
+    
+    const janOffset = getOffsetAtDate(timezone, jan);
+    const julOffset = getOffsetAtDate(timezone, jul);
+    const nowOffset = getOffsetAtDate(timezone, now);
+    
+    const maxOffset = Math.max(janOffset, julOffset);
+    return nowOffset === maxOffset;
+  } catch (error) {
+    const month = new Date().getMonth() + 1;
+    return month >= 3 && month <= 10;
+  }
+}
+
+/**
+ * ✅ FIXED: Get current timezone abbreviation including DST
+ * Example: America/New_York returns "EST" in winter, "EDT" in summer
+ */
+function getCurrentTimezoneAbbr(timezone) {
+  try {
+    const regionalMap = REGIONAL_ABBR_MAP[timezone];
+    if (regionalMap) {
+      const isDST = isCurrentlyDST(timezone);
+      return isDST ? regionalMap.summer : regionalMap.winter;
+    }
+    
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    
+    if (tzPart && tzPart.value) {
+      return tzPart.value;
+    }
+    
+    return TIMEZONE_ABBR[timezone] || timezone;
+  } catch (error) {
+    console.error(`[TIMEZONE] Error getting abbreviation for ${timezone}:`, error.message);
+    return TIMEZONE_ABBR[timezone] || timezone;
+  }
+}
+
+/**
+ * ✅ FIXED: Get current UTC offset for a timezone in hours (handles DST automatically)
+ * Example: America/New_York returns -5 in winter (EST), -4 in summer (EDT)
+ */
+function getCurrentTimezoneOffset(timezone) {
+  try {
+    const now = new Date();
+    return getOffsetAtDate(timezone, now);
+  } catch (error) {
+    console.error(`[TIMEZONE] Error calculating offset for ${timezone}:`, error.message);
+    const abbr = TIMEZONE_ABBR[timezone];
+    if (abbr) {
+      const staticOffsets = {
+        'PST': -8, 'PDT': -7, 'MST': -7, 'MDT': -6,
+        'CST': -6, 'CDT': -5, 'EST': -5, 'EDT': -4,
+        'AST': -4, 'ADT': -3, 'NST': -3.5, 'NDT': -2.5,
+        'AKST': -9, 'AKDT': -8, 'HST': -10,
+        'UTC': 0, 'GMT': 0, 'WET': 0, 'WEST': 1,
+        'CET': 1, 'CEST': 2, 'EET': 2, 'EEST': 3,
+        'TRT': 3, 'MSK': 3, 'GST': 4, 'IST': 5.5,
+        'ICT': 7, 'WIB': 7, 'SGT': 8, 'HKT': 8,
+        'PHT': 8, 'MYT': 8, 'JST': 9, 'KST': 9,
+        'AEST': 10, 'AEDT': 11, 'AWST': 8, 'NZDT': 13, 'NZST': 12
+      };
+      return staticOffsets[abbr] || 0;
+    }
+    return 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// END TIMEZONE FIX
+// ═══════════════════════════════════════════════════════════════════
+
 class GoogleSheetsService {
   constructor() {
     this.auth = null;
@@ -68,91 +271,14 @@ class GoogleSheetsService {
     }
   }
 
-  // ✅ NEW: Timezone abbreviation mapping
+  // ✅ FIXED: Dynamic timezone abbreviation (DST-aware)
   getTimezoneAbbreviation(timezone) {
-    const abbreviations = {
-      'America/New_York': 'EST',
-      'America/Chicago': 'CST',
-      'America/Denver': 'MST',
-      'America/Los_Angeles': 'PST',
-      'America/Phoenix': 'MST',
-      'America/Anchorage': 'AKST',
-      'Pacific/Honolulu': 'HST',
-      'America/Toronto': 'EST',
-      'America/Vancouver': 'PST',
-      'America/Halifax': 'AST',
-      'America/St_Johns': 'NST',
-      'America/Edmonton': 'MST',
-      'America/Winnipeg': 'CST',
-      'Europe/London': 'GMT',
-      'Europe/Paris': 'CET',
-      'Europe/Berlin': 'CET',
-      'Europe/Rome': 'CET',
-      'Europe/Madrid': 'CET',
-      'Europe/Amsterdam': 'CET',
-      'Europe/Brussels': 'CET',
-      'Europe/Vienna': 'CET',
-      'Europe/Stockholm': 'CET',
-      'Europe/Oslo': 'CET',
-      'Europe/Copenhagen': 'CET',
-      'Europe/Helsinki': 'EET',
-      'Europe/Athens': 'EET',
-      'Europe/Istanbul': 'TRT',
-      'Europe/Moscow': 'MSK',
-      'Europe/Zurich': 'CET',
-      'Europe/Dublin': 'GMT',
-      'Europe/Lisbon': 'WET',
-      'Europe/Warsaw': 'CET',
-      'Asia/Tokyo': 'JST',
-      'Asia/Seoul': 'KST',
-      'Asia/Shanghai': 'CST',
-      'Asia/Hong_Kong': 'HKT',
-      'Asia/Singapore': 'SGT',
-      'Asia/Dubai': 'GST',
-      'Asia/Kolkata': 'IST',
-      'Asia/Bangkok': 'ICT',
-      'Asia/Manila': 'PHT',
-      'Asia/Jakarta': 'WIB',
-      'Asia/Taipei': 'CST',
-      'Asia/Kuala_Lumpur': 'MYT',
-      'Australia/Sydney': 'AEDT',
-      'Australia/Melbourne': 'AEDT',
-      'Australia/Brisbane': 'AEST',
-      'Australia/Perth': 'AWST',
-      'Pacific/Auckland': 'NZDT',
-    };
-    return abbreviations[timezone] || timezone;
+    return getCurrentTimezoneAbbr(timezone);
   }
 
-  // ✅ UPDATED: Timezone offset with abbreviation support
+  // ✅ FIXED: Dynamic timezone offset (DST-aware)
   getTimezoneOffset(timezone) {
-    const abbrev = this.getTimezoneAbbreviation(timezone);
-    
-    const timezoneOffsets = {
-      'PST': -8, 'PDT': -7,
-      'MST': -7, 'MDT': -6,
-      'CST': -6, 'CDT': -5,
-      'EST': -5, 'EDT': -4,
-      'AST': -4, 'ADT': -3,
-      'NST': -3.5, 'NDT': -2.5,
-      'AKST': -9, 'AKDT': -8,
-      'HST': -10,
-      'UTC': 0, 'GMT': 0,
-      'WET': 0, 'WEST': 1,
-      'CET': 1, 'CEST': 2,
-      'EET': 2, 'EEST': 3,
-      'TRT': 3, 'MSK': 3,
-      'GST': 4, 'IST': 5.5,
-      'ICT': 7, 'WIB': 7,
-      'SGT': 8, 'HKT': 8,
-      'PHT': 8, 'MYT': 8,
-      'JST': 9, 'KST': 9,
-      'AEST': 10, 'AEDT': 11,
-      'AWST': 8, 'NZDT': 13,
-      'NZST': 12,
-    };
-    
-    return timezoneOffsets[abbrev] || 0;
+    return getCurrentTimezoneOffset(timezone);
   }
 
   getAbilityScoreColor(score) {
@@ -339,7 +465,7 @@ class GoogleSheetsService {
     }
 
     try {
-      // ✅ NEW: Verify spreadsheet access and tab existence
+      // ✅ Verify spreadsheet access and tab existence
       console.log(`🔍 [SHEETS] Checking spreadsheet: ${this.spreadsheetId}`);
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
@@ -368,7 +494,7 @@ class GoogleSheetsService {
         'Subclass',
         'Role',
         'Ability Score',
-        'Battle Imagines', // ✅ NEW COLUMN
+        'Battle Imagines',
         'Guild',
         'Timezone',
         'Registered'
@@ -413,7 +539,7 @@ class GoogleSheetsService {
           // ✅ UPDATED: Format timezone - we'll add the time via formula later
           const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
           
-          // ✅ NEW: Get Battle Imagines for main character
+          // ✅ Get Battle Imagines for main character
           const mainBattleImagines = await BattleImagineRepo.findByCharacter(mainChar.id);
           const mainBattleImaginesText = mainBattleImagines
             .map(img => `${img.imagine_name} ${img.tier}`)
@@ -429,7 +555,7 @@ class GoogleSheetsService {
             mainChar.subclass,
             mainChar.role,
             this.formatAbilityScore(mainChar.ability_score),
-            mainBattleImaginesText, // ✅ NEW
+            mainBattleImaginesText,
             mainChar.guild || '',
             '', // Empty - will be filled by formula
             `'${this.formatDate(mainChar.created_at)}`
@@ -457,7 +583,7 @@ class GoogleSheetsService {
               subclass.subclass,
               subclass.role,
               this.formatAbilityScore(subclass.ability_score),
-              '', // ✅ Subclasses don't have Battle Imagines
+              '', // Subclasses don't have Battle Imagines
               mainChar.guild || '',
               '', // Empty - will be filled by formula
               `'${this.formatDate(mainChar.created_at)}`
@@ -482,7 +608,7 @@ class GoogleSheetsService {
           // Use the already-fetched discordName (same user, same Discord name)
           const altDiscordName = discordName;
           
-          // ✅ NEW: Get Battle Imagines for alt
+          // ✅ Get Battle Imagines for alt
           const altBattleImagines = await BattleImagineRepo.findByCharacter(alt.id);
           const altBattleImaginesText = altBattleImagines
             .map(img => `${img.imagine_name} ${img.tier}`)
@@ -498,7 +624,7 @@ class GoogleSheetsService {
             alt.subclass,
             alt.role,
             this.formatAbilityScore(alt.ability_score),
-            altBattleImaginesText, // ✅ NEW
+            altBattleImaginesText,
             alt.guild || '',
             '', // Empty - will be filled by formula
             `'${this.formatDate(alt.created_at)}`
@@ -531,7 +657,7 @@ class GoogleSheetsService {
               subclass.subclass,
               subclass.role,
               this.formatAbilityScore(subclass.ability_score),
-              '', // ✅ Subclasses don't have Battle Imagines
+              '', // Subclasses don't have Battle Imagines
               alt.guild || '',
               '', // Empty - will be filled by formula
               `'${this.formatDate(alt.created_at)}`
@@ -553,14 +679,14 @@ class GoogleSheetsService {
         }
       }
 
-      // ✅ UPDATED: Clear ALL data AND formatting before writing
+      // ✅ Clear ALL data AND formatting before writing
       console.log('🗑️  [SHEETS] Clearing existing data from Member List...');
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
         range: 'Member List!A1:Z1000',
       });
       
-      // ✅ NEW: Clear all formatting to prevent broken layout after deletions
+      // ✅ Clear all formatting to prevent broken layout after deletions
       console.log('🧹 [SHEETS] Clearing all formatting...');
       await this.clearAllFormatting('Member List');
 
@@ -721,19 +847,20 @@ class GoogleSheetsService {
           });
         }
 
+        // ✅ FIXED: Use UTC-based calculation with dynamic offset (no hardcoded spreadsheet offset)
         if (meta.timezone && meta.timezone !== '') {
-          const offset = this.getTimezoneOffset(meta.timezone);
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
+          const offset = this.getTimezoneOffset(meta.timezone);
           
-          const spreadsheetOffset = -7;
-          const adjustedOffset = offset - spreadsheetOffset;
-          
-          const formula = `=CONCATENATE("${abbrev} ", TEXT(NOW() + (${adjustedOffset}/24), "h:mm AM/PM"))`;
+          // Formula: Get current UTC time (NOW()), then add timezone offset
+          const formula = `=CONCATENATE("${abbrev} ", TEXT(NOW() + (${offset}/24), "h:mm AM/PM"))`;
           
           valueUpdates.push({
             range: `L${rowIndex}`,
             values: [[formula]]
           });
+          
+          console.log(`[TIMEZONE] ${meta.timezone} → ${abbrev} (offset: ${offset})`);
         }
       }
 
@@ -852,7 +979,6 @@ class GoogleSheetsService {
       
       // ✅ UPDATED: Add Battle Imagines column width
       const columnWidths = [160, 150, 100, 95, 50, 180, 145, 85, 125, 200, 105, 170, 105];
-      //                                                                  ^^^ NEW: 200px for Battle Imagines
       columnWidths.forEach((width, index) => {
         requests.push({
           updateDimensionProperties: {
@@ -1036,7 +1162,7 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 8, '', rowBg);
         }
         
-        // ✅ NEW: Battle Imagines column (index 9)
+        // ✅ Battle Imagines column (index 9)
         this.addBoldTextCell(requests, sheetId, rowIndex, 9, rowBg);
         
         this.addBoldTextCell(requests, sheetId, rowIndex, 10, rowBg);
@@ -1053,7 +1179,7 @@ class GoogleSheetsService {
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: 0,
-              endColumnIndex: 13 // ✅ UPDATED from 12 to 13
+              endColumnIndex: 13
             },
             top: {
               style: 'SOLID',
@@ -1096,7 +1222,7 @@ class GoogleSheetsService {
                 startRowIndex: rowIndex,
                 endRowIndex: rowIndex + 1,
                 startColumnIndex: 0,
-                endColumnIndex: 13 // ✅ UPDATED from 12 to 13
+                endColumnIndex: 13
               },
               bottom: {
                 style: 'SOLID_THICK',
