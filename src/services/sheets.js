@@ -472,6 +472,29 @@ class GoogleSheetsService {
         'Registered'
       ];
 
+      // ✅ FIX 1: Write headers if needed
+      try {
+        const currentHeaders = await this.sheets.spreadsheets.values.get({
+          spreadsheetId: this.spreadsheetId,
+          range: 'Member List!A1:M1',
+        }).catch(() => ({ data: { values: [[]] } }));
+
+        const existingHeaders = currentHeaders.data.values?.[0] || [];
+        const headersMatch = JSON.stringify(existingHeaders) === JSON.stringify(headers);
+
+        if (!headersMatch) {
+          console.log('📝 [SHEETS] Writing/updating headers...');
+          await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.spreadsheetId,
+            range: 'Member List!A1:M1',
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [headers] },
+          });
+        }
+      } catch (error) {
+        console.log('⚠️  [SHEETS] Could not verify headers:', error.message);
+      }
+
       // ✅ Build new data
       const rows = [];
       const rowMetadata = [];
@@ -653,6 +676,12 @@ class GoogleSheetsService {
       console.log(`   🔄 To update: ${diff.rowsToUpdate.length} rows`);
       console.log(`   ➕ To add: ${diff.rowsToAdd.length} rows`);
       console.log(`   ➖ To delete: ${diff.rowsToDelete.length} rows`);
+      
+      // Calculate API calls saved
+      const totalChanges = diff.rowsToUpdate.length + diff.rowsToAdd.length + diff.rowsToDelete.length;
+      if (totalChanges > 0) {
+        console.log(`   📉 API efficiency: ${totalChanges} changes → ~3 API calls (saved ${totalChanges - 3} calls!)`);
+      }
 
       // ✅ If nothing changed, skip update
       if (diff.rowsToUpdate.length === 0 && diff.rowsToAdd.length === 0 && diff.rowsToDelete.length === 0) {
@@ -673,19 +702,28 @@ class GoogleSheetsService {
         });
       }
 
-      // Handle updated rows (only update changed cells)
+      // Handle updated rows (batch them to avoid quota)
       if (diff.rowsToUpdate.length > 0) {
         console.log(`🔄 [SHEETS] Updating ${diff.rowsToUpdate.length} changed rows...`);
-        for (const update of diff.rowsToUpdate) {
-          const rowNumber = update.index + 2; // +2 for header and 0-index
-          await this.sheets.spreadsheets.values.update({
+        
+        // ✅ BATCH UPDATE: Use batchUpdate to send multiple rows at once
+        const batchData = diff.rowsToUpdate.map(update => ({
+          range: `Member List!A${update.index + 2}:M${update.index + 2}`,
+          values: [update.data]
+        }));
+        
+        // Send all updates in one API call (much faster, avoids quota)
+        try {
+          await this.sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: this.spreadsheetId,
-            range: `Member List!A${rowNumber}:M${rowNumber}`,
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-              values: [update.data],
-            },
+            requestBody: {
+              valueInputOption: 'USER_ENTERED',
+              data: batchData
+            }
           });
+          console.log(`✅ [SHEETS] Batch updated ${diff.rowsToUpdate.length} rows in one call`);
+        } catch (error) {
+          console.error(`❌ [SHEETS] Batch update error:`, error.message);
         }
       }
 
@@ -704,12 +742,21 @@ class GoogleSheetsService {
         });
       }
 
-      // ✅ Apply full formatting (ensures grey subclasses work correctly)
-      console.log(`🎨 [SHEETS] Applying formatting to all rows...`);
-      await this.formatCleanSheet('Member List', headers.length, rows.length);
-      await this.applyCleanDesign('Member List', rowMetadata);
-      await this.addClassLogos('Member List', rowMetadata);
-      await this.enableAutoRecalculation();
+      // ✅ QUOTA FIX: Only apply full formatting when necessary
+      // (First sync, rows added/deleted, or major changes)
+      const needsFullFormatting = diff.rowsToAdd.length > 0 || 
+                                   diff.rowsToDelete.length > 0 ||
+                                   currentData.length === 0;
+
+      if (needsFullFormatting) {
+        console.log(`🎨 [SHEETS] Applying formatting (${diff.rowsToAdd.length} added, ${diff.rowsToDelete.length} deleted)...`);
+        await this.formatCleanSheet('Member List', headers.length, rows.length);
+        await this.applyCleanDesign('Member List', rowMetadata);
+        await this.addClassLogos('Member List', rowMetadata);
+        await this.enableAutoRecalculation();
+      } else {
+        console.log(`⏭️  [SHEETS] Skipping formatting (only data updated, formatting preserved)`);
+      }
 
       console.log(`✅ [SHEETS] Sync complete (smooth, no flickering!)`);
 
@@ -946,61 +993,7 @@ class GoogleSheetsService {
       const sheetId = sheet.properties.sheetId;
       const requests = [];
 
-      requests.push({
-        mergeCells: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: 0,
-            endRowIndex: 1,
-            startColumnIndex: 3,
-            endColumnIndex: 5
-          },
-          mergeType: 'MERGE_ALL'
-        }
-      });
-      
-      requests.push({
-        updateCells: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: 0,
-            endRowIndex: 1,
-            startColumnIndex: 3,
-            endColumnIndex: 4
-          },
-          rows: [{
-            values: [{
-              userEnteredValue: { stringValue: 'Class' },
-              userEnteredFormat: {
-                backgroundColor: {
-                  red: 0.32,
-                  green: 0.20,
-                  blue: 0.58
-                },
-                textFormat: {
-                  foregroundColor: {
-                    red: 1,
-                    green: 1,
-                    blue: 1
-                  },
-                  fontSize: 11,
-                  bold: true,
-                  fontFamily: 'Google Sans'
-                },
-                horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE',
-                padding: {
-                  top: 16,
-                  bottom: 16,
-                  left: 14,
-                  right: 14
-                }
-              }
-            }]
-          }],
-          fields: 'userEnteredValue,userEnteredFormat'
-        }
-      });
+      // ✅ FIX 2: Removed header merge - Type and Icon should be separate columns
       
       const columnWidths = [160, 150, 100, 95, 50, 180, 145, 85, 125, 200, 105, 170, 105];
       columnWidths.forEach((width, index) => {
@@ -1058,6 +1051,25 @@ class GoogleSheetsService {
           : meta.isSubclass 
           ? { red: 0.92, green: 0.92, blue: 0.93 } // ✅ Medium grey - more visible!
           : { red: 1, green: 1, blue: 1 };
+        
+        // ✅ FIX 3: Apply background to ENTIRE ROW first (ensures grey shows)
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 0,
+              endColumnIndex: 13  // All columns A-M
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: rowBg
+              }
+            },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
+        });
         
         const discordColor = meta.isSubclass 
           ? { red: 0.50, green: 0.52, blue: 0.55 }
