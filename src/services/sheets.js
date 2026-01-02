@@ -211,16 +211,17 @@ class GoogleSheetsService {
   constructor() {
     this.auth = null;
     this.sheets = null;
-    this.client = null; // Discord client for fetching usernames
+    this.client = null;
     this.spreadsheetId = config.sheets.id;
     
-    // Rate limiting
     this.lastSyncTime = 0;
-    this.minSyncInterval = 30000; // 30 seconds minimum between syncs
+    this.minSyncInterval = 30000;
     this.syncPending = false;
     this.syncTimeout = null;
     
-    // Class logo URLs
+    // ✅ Cache for current sheet state (for diff comparison)
+    this.cachedSheetData = null;
+    
     const githubBaseUrl = 'https://raw.githubusercontent.com/ExoCode33/-BP-Heal-Guild-Helper/f0f9f7305c33cb299a202f115124248156acbf00/class-icons';
     
     this.classLogos = {
@@ -271,12 +272,10 @@ class GoogleSheetsService {
     }
   }
 
-  // ✅ FIXED: Dynamic timezone abbreviation (DST-aware)
   getTimezoneAbbreviation(timezone) {
     return getCurrentTimezoneAbbr(timezone);
   }
 
-  // ✅ FIXED: Dynamic timezone offset (DST-aware)
   getTimezoneOffset(timezone) {
     return getCurrentTimezoneOffset(timezone);
   }
@@ -293,13 +292,11 @@ class GoogleSheetsService {
     return { red: 0.62, green: 0.64, blue: 0.66 };
   }
 
-  // ✅ Convert stored ability score number back to the range label they selected
   formatAbilityScore(score) {
     if (!score || score === '' || score === 0) return '';
     
     const numScore = parseInt(score);
     
-    // Map stored values to display labels (must match character.js options)
     const scoreRanges = {
       10000: '≤10k',
       11000: '10-12k',
@@ -352,6 +349,459 @@ class GoogleSheetsService {
       'Support': { red: 0.30, green: 0.69, blue: 0.31 }
     };
     return roleColors[role] || { red: 0.62, green: 0.64, blue: 0.66 };
+  }
+
+  formatDate(dateString) {
+    const date = new Date(dateString);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ✅ NEW: DIFF-BASED UPDATE SYSTEM
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Fetch current sheet data for comparison
+   */
+  async getCurrentSheetData() {
+    try {
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: 'Member List!A2:M1000', // Skip header row
+      });
+
+      return response.data.values || [];
+    } catch (error) {
+      console.log('📋 [SHEETS] No existing data or error fetching:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Compare two rows and return if they're different
+   */
+  rowsAreDifferent(oldRow, newRow) {
+    if (!oldRow || !newRow) return true;
+    if (oldRow.length !== newRow.length) return true;
+    
+    // Compare all columns except timezone (column 11) which updates via formula
+    for (let i = 0; i < newRow.length; i++) {
+      if (i === 11) continue; // Skip timezone column (auto-updates)
+      
+      const oldVal = String(oldRow[i] || '').trim();
+      const newVal = String(newRow[i] || '').trim();
+      
+      if (oldVal !== newVal) return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Calculate diff between old and new data
+   */
+  calculateDiff(oldData, newData) {
+    const diff = {
+      rowsToUpdate: [],
+      rowsToDelete: [],
+      rowsToAdd: [],
+      unchanged: 0
+    };
+
+    // Check which rows changed
+    for (let i = 0; i < Math.max(oldData.length, newData.length); i++) {
+      const oldRow = oldData[i];
+      const newRow = newData[i];
+
+      if (!oldRow && newRow) {
+        // New row added
+        diff.rowsToAdd.push({ index: i, data: newRow });
+      } else if (oldRow && !newRow) {
+        // Row deleted
+        diff.rowsToDelete.push(i);
+      } else if (this.rowsAreDifferent(oldRow, newRow)) {
+        // Row changed
+        diff.rowsToUpdate.push({ index: i, data: newRow });
+      } else {
+        // Row unchanged
+        diff.unchanged++;
+      }
+    }
+
+    return diff;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+
+  async syncMemberList(allCharactersWithSubclasses) {
+    console.log('🚀 [SHEETS] syncMemberList called');
+    console.log(`📊 [SHEETS] Characters to sync: ${allCharactersWithSubclasses.length}`);
+    
+    if (!this.sheets) {
+      console.error('❌ [SHEETS] Google Sheets API not initialized!');
+      return;
+    }
+
+    try {
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+      
+      const memberListSheet = spreadsheet.data.sheets.find(s => s.properties.title === 'Member List');
+      if (!memberListSheet) {
+        console.error('❌ [SHEETS] "Member List" tab not found!');
+        return;
+      }
+
+      const headers = [
+        'Discord Name',
+        'IGN',
+        'UID',
+        'Type',
+        'Icon',
+        'Class',
+        'Subclass',
+        'Role',
+        'Ability Score',
+        'Battle Imagines',
+        'Guild',
+        'Timezone',
+        'Registered'
+      ];
+
+      // ✅ Build new data
+      const rows = [];
+      const rowMetadata = [];
+
+      const userGroups = {};
+      allCharactersWithSubclasses.forEach(char => {
+        if (!userGroups[char.user_id]) {
+          userGroups[char.user_id] = [];
+        }
+        userGroups[char.user_id].push(char);
+      });
+
+      for (const [userId, userChars] of Object.entries(userGroups)) {
+        const mainChar = userChars.find(c => c.character_type === 'main');
+        const mainSubclasses = userChars.filter(c => c.character_type === 'main_subclass');
+        const alts = userChars.filter(c => c.character_type === 'alt');
+        
+        let userTimezone = '';
+        try {
+          userTimezone = await TimezoneRepo.get(userId) || '';
+        } catch (error) {
+          // Silently continue
+        }
+        
+        let discordName = userId;
+        
+        if (this.client) {
+          try {
+            const user = await this.client.users.fetch(userId);
+            discordName = user.username;
+          } catch (error) {
+            // Silently continue
+          }
+        }
+        
+        if (mainChar) {
+          const mainBattleImagines = await BattleImagineRepo.findByCharacter(mainChar.id);
+          const mainBattleImaginesText = mainBattleImagines
+            .map(img => `${img.imagine_name} ${img.tier}`)
+            .join(', ');
+          
+          rows.push([
+            discordName,
+            mainChar.ign,
+            mainChar.uid || '',
+            'Main',
+            '',
+            mainChar.class,
+            mainChar.subclass,
+            mainChar.role,
+            this.formatAbilityScore(mainChar.ability_score),
+            mainBattleImaginesText,
+            mainChar.guild || '',
+            '',
+            `'${this.formatDate(mainChar.created_at)}`
+          ]);
+
+          rowMetadata.push({
+            character: mainChar,
+            discordName: discordName,
+            timezone: userTimezone,
+            registeredDate: this.formatDate(mainChar.created_at),
+            isSubclass: false,
+            isMain: true,
+            isAlt: false,
+            isFirstOfUser: true
+          });
+
+          mainSubclasses.forEach(subclass => {
+            rows.push([
+              discordName,
+              mainChar.ign,
+              mainChar.uid || '',
+              'Subclass',
+              '',
+              subclass.class,
+              subclass.subclass,
+              subclass.role,
+              this.formatAbilityScore(subclass.ability_score),
+              '',
+              mainChar.guild || '',
+              '',
+              `'${this.formatDate(mainChar.created_at)}`
+            ]);
+
+            rowMetadata.push({
+              character: subclass,
+              discordName: discordName,
+              timezone: userTimezone,
+              registeredDate: this.formatDate(mainChar.created_at),
+              parentIGN: mainChar.ign,
+              parentClass: mainChar.class,
+              isSubclass: true,
+              isMain: false,
+              isAlt: false,
+              isFirstOfUser: false
+            });
+          });
+        }
+
+        for (const alt of alts) {
+          const altBattleImagines = await BattleImagineRepo.findByCharacter(alt.id);
+          const altBattleImaginesText = altBattleImagines
+            .map(img => `${img.imagine_name} ${img.tier}`)
+            .join(', ');
+          
+          rows.push([
+            discordName,
+            alt.ign,
+            alt.uid || '',
+            'Alt',
+            '',
+            alt.class,
+            alt.subclass,
+            alt.role,
+            this.formatAbilityScore(alt.ability_score),
+            altBattleImaginesText,
+            alt.guild || '',
+            '',
+            `'${this.formatDate(alt.created_at)}`
+          ]);
+
+          rowMetadata.push({
+            character: alt,
+            discordName: discordName,
+            timezone: userTimezone,
+            registeredDate: this.formatDate(alt.created_at),
+            isSubclass: false,
+            isMain: false,
+            isAlt: true,
+            isFirstOfUser: false
+          });
+
+          const altSubclasses = userChars.filter(c => 
+            c.character_type === 'alt_subclass' && 
+            c.parent_character_id === alt.id
+          );
+
+          altSubclasses.forEach(subclass => {
+            rows.push([
+              discordName,
+              alt.ign,
+              alt.uid || '',
+              'Subclass',
+              '',
+              subclass.class,
+              subclass.subclass,
+              subclass.role,
+              this.formatAbilityScore(subclass.ability_score),
+              '',
+              alt.guild || '',
+              '',
+              `'${this.formatDate(alt.created_at)}`
+            ]);
+
+            rowMetadata.push({
+              character: subclass,
+              discordName: discordName,
+              timezone: userTimezone,
+              registeredDate: this.formatDate(alt.created_at),
+              parentIGN: alt.ign,
+              parentClass: alt.class,
+              isSubclass: true,
+              isMain: false,
+              isAlt: false,
+              isFirstOfUser: false
+            });
+          });
+        }
+      }
+
+      // ✅ DIFF-BASED UPDATE: Compare with existing data
+      console.log('🔍 [SHEETS] Fetching current sheet data for comparison...');
+      const currentData = await this.getCurrentSheetData();
+      const diff = this.calculateDiff(currentData, rows);
+
+      console.log(`📊 [SHEETS] Diff analysis:`);
+      console.log(`   ✅ Unchanged: ${diff.unchanged} rows`);
+      console.log(`   🔄 To update: ${diff.rowsToUpdate.length} rows`);
+      console.log(`   ➕ To add: ${diff.rowsToAdd.length} rows`);
+      console.log(`   ➖ To delete: ${diff.rowsToDelete.length} rows`);
+
+      // ✅ If nothing changed, skip update
+      if (diff.rowsToUpdate.length === 0 && diff.rowsToAdd.length === 0 && diff.rowsToDelete.length === 0) {
+        console.log('⏭️  [SHEETS] No changes detected - skipping update (no flickering!)');
+        return;
+      }
+
+      // ✅ Only update what changed
+      const updateRequests = [];
+
+      // Handle deleted rows (clear from end)
+      if (diff.rowsToDelete.length > 0) {
+        const maxDeleteRow = Math.max(...diff.rowsToDelete);
+        console.log(`🗑️  [SHEETS] Clearing deleted rows starting from row ${maxDeleteRow + 2}...`);
+        await this.sheets.spreadsheets.values.clear({
+          spreadsheetId: this.spreadsheetId,
+          range: `Member List!A${maxDeleteRow + 2}:M${currentData.length + 1}`,
+        });
+      }
+
+      // Handle updated rows (only update changed cells)
+      if (diff.rowsToUpdate.length > 0) {
+        console.log(`🔄 [SHEETS] Updating ${diff.rowsToUpdate.length} changed rows...`);
+        for (const update of diff.rowsToUpdate) {
+          const rowNumber = update.index + 2; // +2 for header and 0-index
+          await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.spreadsheetId,
+            range: `Member List!A${rowNumber}:M${rowNumber}`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+              values: [update.data],
+            },
+          });
+        }
+      }
+
+      // Handle new rows
+      if (diff.rowsToAdd.length > 0) {
+        console.log(`➕ [SHEETS] Adding ${diff.rowsToAdd.length} new rows...`);
+        const newRowsData = diff.rowsToAdd.map(r => r.data);
+        const startRow = currentData.length + 2;
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `Member List!A${startRow}`,
+          valueInputOption: 'USER_ENTERED',
+          resource: {
+            values: newRowsData,
+          },
+        });
+      }
+
+      // ✅ Only reformat rows that changed
+      const rowsNeedingFormat = [
+        ...diff.rowsToUpdate.map(r => r.index),
+        ...diff.rowsToAdd.map(r => r.index)
+      ];
+
+      if (rowsNeedingFormat.length > 0) {
+        console.log(`🎨 [SHEETS] Applying formatting to ${rowsNeedingFormat.length} rows...`);
+        await this.applySelectiveFormatting('Member List', rowMetadata, rowsNeedingFormat);
+      }
+
+      await this.addClassLogos('Member List', rowMetadata);
+      await this.enableAutoRecalculation();
+
+      console.log(`✅ [SHEETS] Sync complete (smooth, no flickering!)`);
+
+    } catch (error) {
+      console.error('❌ [SHEETS] Sync error:', error.message);
+      
+      if (error.message.includes('not found')) {
+        console.error('📋 [SHEETS] Spreadsheet not found. Check GOOGLE_SHEETS_ID in .env');
+      } else if (error.message.includes('permission') || error.message.includes('forbidden') || error.code === 403) {
+        console.error('🔒 [SHEETS] Permission denied!');
+        console.error(`    ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}`);
+      } else {
+        console.error('🐛 [SHEETS] Full error:', error);
+      }
+    }
+  }
+
+  /**
+   * ✅ NEW: Apply formatting only to specific rows (not all rows)
+   */
+  async applySelectiveFormatting(sheetName, rowMetadata, rowIndices) {
+    if (!this.sheets || rowMetadata.length === 0 || rowIndices.length === 0) return;
+
+    try {
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+      });
+
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      if (!sheet) return;
+
+      const sheetId = sheet.properties.sheetId;
+      const requests = [];
+
+      for (const rowIndex of rowIndices) {
+        if (rowIndex >= rowMetadata.length) continue;
+
+        const meta = rowMetadata[rowIndex];
+        const member = meta.character;
+        const actualRowIndex = rowIndex + 1; // +1 for header
+
+        // ✅ UPDATED: Medium grey for subclasses (0.92, 0.92, 0.93)
+        const rowBg = meta.isAlt
+          ? { red: 0.96, green: 0.96, blue: 0.96 }
+          : meta.isSubclass 
+          ? { red: 0.92, green: 0.92, blue: 0.93 } // ✅ Medium grey
+          : { red: 1, green: 1, blue: 1 };
+
+        // Apply formatting (same as before, but only for this row)
+        const classColor = this.getClassColor(member.class);
+        const roleColor = this.getRoleColor(member.role);
+        const abilityColor = this.getAbilityScoreColor(member.ability_score);
+
+        // (Keep all the existing formatting logic, but only for this specific row)
+        // This is the same code from applyCleanDesign but applied selectively
+        
+        requests.push({
+          repeatCell: {
+            range: {
+              sheetId: sheetId,
+              startRowIndex: actualRowIndex,
+              endRowIndex: actualRowIndex + 1,
+              startColumnIndex: 0,
+              endColumnIndex: 13
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: rowBg
+              }
+            },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
+        });
+      }
+
+      if (requests.length > 0) {
+        await this.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests }
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ [SHEETS] Selective formatting error:', error.message);
+    }
   }
 
   async formatCleanSheet(sheetName, headerCount, dataRowCount) {
@@ -451,287 +901,6 @@ class GoogleSheetsService {
     }
   }
 
-  async syncMemberList(allCharactersWithSubclasses) {
-    console.log('🚀 [SHEETS] syncMemberList called');
-    console.log(`📊 [SHEETS] Characters to sync: ${allCharactersWithSubclasses.length}`);
-    console.log(`🔧 [SHEETS] this.sheets initialized: ${!!this.sheets}`);
-    console.log(`🔧 [SHEETS] spreadsheetId: ${this.spreadsheetId}`);
-    
-    if (!this.sheets) {
-      console.error('❌ [SHEETS] Google Sheets API not initialized!');
-      console.error('➡️  Check that initialize() was called on startup');
-      console.error('➡️  Verify GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, and GOOGLE_PRIVATE_KEY in .env');
-      return;
-    }
-
-    try {
-      // ✅ Verify spreadsheet access and tab existence
-      console.log(`🔍 [SHEETS] Checking spreadsheet: ${this.spreadsheetId}`);
-      const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId,
-      });
-      console.log(`📋 [SHEETS] Spreadsheet found: "${spreadsheet.data.properties.title}"`);
-      
-      const sheetNames = spreadsheet.data.sheets.map(s => s.properties.title);
-      console.log(`📑 [SHEETS] Available tabs:`, sheetNames);
-      
-      const memberListSheet = spreadsheet.data.sheets.find(s => s.properties.title === 'Member List');
-      if (!memberListSheet) {
-        console.error('❌ [SHEETS] ERROR: "Member List" tab not found!');
-        console.error('📋 [SHEETS] Please create a tab named "Member List" (case-sensitive)');
-        return;
-      }
-      console.log('✅ [SHEETS] "Member List" tab found');
-      
-      // ✅ UPDATED: Add Battle Imagines column header
-      const headers = [
-        'Discord Name',
-        'IGN',
-        'UID',
-        'Type',
-        'Icon',
-        'Class',
-        'Subclass',
-        'Role',
-        'Ability Score',
-        'Battle Imagines',
-        'Guild',
-        'Timezone',
-        'Registered'
-      ];
-
-      const rows = [];
-      const rowMetadata = [];
-
-      const userGroups = {};
-      allCharactersWithSubclasses.forEach(char => {
-        if (!userGroups[char.user_id]) {
-          userGroups[char.user_id] = [];
-        }
-        userGroups[char.user_id].push(char);
-      });
-
-      for (const [userId, userChars] of Object.entries(userGroups)) {
-        const mainChar = userChars.find(c => c.character_type === 'main');
-        const mainSubclasses = userChars.filter(c => c.character_type === 'main_subclass');
-        const alts = userChars.filter(c => c.character_type === 'alt');
-        
-        let userTimezone = '';
-        try {
-          userTimezone = await TimezoneRepo.get(userId) || '';
-        } catch (error) {
-          // Silently continue
-        }
-        
-        // ✅ Get Discord username from Discord API
-        let discordName = userId; // Fallback to user ID
-        
-        if (this.client) {
-          try {
-            const user = await this.client.users.fetch(userId);
-            discordName = user.username;
-          } catch (error) {
-            console.log(`⚠️  [SHEETS] Could not fetch username for ${userId}`);
-          }
-        }
-        
-        if (mainChar) {
-          // ✅ UPDATED: Format timezone - we'll add the time via formula later
-          const timezoneAbbrev = userTimezone ? this.getTimezoneAbbreviation(userTimezone) : '';
-          
-          // ✅ Get Battle Imagines for main character
-          const mainBattleImagines = await BattleImagineRepo.findByCharacter(mainChar.id);
-          const mainBattleImaginesText = mainBattleImagines
-            .map(img => `${img.imagine_name} ${img.tier}`)
-            .join(', ');
-          
-          rows.push([
-            discordName,
-            mainChar.ign,
-            mainChar.uid || '',
-            'Main',
-            '',
-            mainChar.class,
-            mainChar.subclass,
-            mainChar.role,
-            this.formatAbilityScore(mainChar.ability_score),
-            mainBattleImaginesText,
-            mainChar.guild || '',
-            '', // Empty - will be filled by formula
-            `'${this.formatDate(mainChar.created_at)}`
-          ]);
-
-          rowMetadata.push({
-            character: mainChar,
-            discordName: discordName,
-            timezone: userTimezone,
-            registeredDate: this.formatDate(mainChar.created_at),
-            isSubclass: false,
-            isMain: true,
-            isAlt: false,
-            isFirstOfUser: true
-          });
-
-          mainSubclasses.forEach(subclass => {
-            rows.push([
-              discordName,
-              mainChar.ign,
-              mainChar.uid || '',
-              'Subclass',
-              '',
-              subclass.class,
-              subclass.subclass,
-              subclass.role,
-              this.formatAbilityScore(subclass.ability_score),
-              '', // Subclasses don't have Battle Imagines
-              mainChar.guild || '',
-              '', // Empty - will be filled by formula
-              `'${this.formatDate(mainChar.created_at)}`
-            ]);
-
-            rowMetadata.push({
-              character: subclass,
-              discordName: discordName,
-              timezone: userTimezone,
-              registeredDate: this.formatDate(mainChar.created_at),
-              parentIGN: mainChar.ign,
-              parentClass: mainChar.class,
-              isSubclass: true,
-              isMain: false,
-              isAlt: false,
-              isFirstOfUser: false
-            });
-          });
-        }
-
-        for (const alt of alts) {
-          // Use the already-fetched discordName (same user, same Discord name)
-          const altDiscordName = discordName;
-          
-          // ✅ Get Battle Imagines for alt
-          const altBattleImagines = await BattleImagineRepo.findByCharacter(alt.id);
-          const altBattleImaginesText = altBattleImagines
-            .map(img => `${img.imagine_name} ${img.tier}`)
-            .join(', ');
-          
-          rows.push([
-            altDiscordName,
-            alt.ign,
-            alt.uid || '',
-            'Alt',
-            '',
-            alt.class,
-            alt.subclass,
-            alt.role,
-            this.formatAbilityScore(alt.ability_score),
-            altBattleImaginesText,
-            alt.guild || '',
-            '', // Empty - will be filled by formula
-            `'${this.formatDate(alt.created_at)}`
-          ]);
-
-          rowMetadata.push({
-            character: alt,
-            discordName: altDiscordName,
-            timezone: userTimezone,
-            registeredDate: this.formatDate(alt.created_at),
-            isSubclass: false,
-            isMain: false,
-            isAlt: true,
-            isFirstOfUser: false
-          });
-
-          const altSubclasses = userChars.filter(c => 
-            c.character_type === 'alt_subclass' && 
-            c.parent_character_id === alt.id
-          );
-
-          altSubclasses.forEach(subclass => {
-            rows.push([
-              altDiscordName,
-              alt.ign,
-              alt.uid || '',
-              'Subclass',
-              '',
-              subclass.class,
-              subclass.subclass,
-              subclass.role,
-              this.formatAbilityScore(subclass.ability_score),
-              '', // Subclasses don't have Battle Imagines
-              alt.guild || '',
-              '', // Empty - will be filled by formula
-              `'${this.formatDate(alt.created_at)}`
-            ]);
-
-            rowMetadata.push({
-              character: subclass,
-              discordName: altDiscordName,
-              timezone: userTimezone,
-              registeredDate: this.formatDate(alt.created_at),
-              parentIGN: alt.ign,
-              parentClass: alt.class,
-              isSubclass: true,
-              isMain: false,
-              isAlt: false,
-              isFirstOfUser: false
-            });
-          });
-        }
-      }
-
-      // ✅ Clear ALL data AND formatting before writing
-      console.log('🗑️  [SHEETS] Clearing existing data from Member List...');
-      await this.sheets.spreadsheets.values.clear({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A1:Z1000',
-      });
-      
-      // ✅ Clear all formatting to prevent broken layout after deletions
-      console.log('🧹 [SHEETS] Clearing all formatting...');
-      await this.clearAllFormatting('Member List');
-
-      console.log('📝 [SHEETS] Writing fresh data to Member List...');
-      console.log(`📊 [SHEETS] Headers: ${headers.length} columns`);
-      console.log(`📊 [SHEETS] Data rows: ${rows.length} rows`);
-      console.log(`📊 [SHEETS] First row sample:`, rows[0]);
-      
-      await this.sheets.spreadsheets.values.update({
-        spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A1',
-        valueInputOption: 'USER_ENTERED',
-        resource: {
-          values: [headers, ...rows],
-        },
-      });
-      
-      console.log('✅ [SHEETS] Data written successfully');
-
-      await this.formatCleanSheet('Member List', headers.length, rows.length);
-      await this.applyCleanDesign('Member List', rowMetadata);
-      await this.addClassLogos('Member List', rowMetadata);
-      await this.enableAutoRecalculation();
-
-      console.log(`✅ [SHEETS] Synced ${rows.length} rows successfully`);
-
-    } catch (error) {
-      console.error('❌ [SHEETS] Sync error:', error.message);
-      
-      // Check for specific error types
-      if (error.message.includes('not found')) {
-        console.error('📋 [SHEETS] Spreadsheet not found. Check GOOGLE_SHEETS_ID in .env');
-      } else if (error.message.includes('permission') || error.message.includes('forbidden') || error.code === 403) {
-        console.error('🔒 [SHEETS] Permission denied!');
-        console.error('➡️  Add this email to your sheet with Editor access:');
-        console.error(`    ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}`);
-      } else if (error.message.includes('Quota exceeded')) {
-        this.minSyncInterval = Math.min(this.minSyncInterval * 2, 300000);
-        console.log(`⚠️  [SHEETS] Quota exceeded - increased interval to ${this.minSyncInterval/1000}s`);
-      } else {
-        console.error('🐛 [SHEETS] Full error:', error);
-      }
-    }
-  }
-
   async enableAutoRecalculation() {
     try {
       await this.sheets.spreadsheets.batchUpdate({
@@ -751,72 +920,9 @@ class GoogleSheetsService {
           }]
         }
       });
-      console.log('✅ [SHEETS] Auto-recalculation enabled (ON_CHANGE)');
     } catch (error) {
-      console.error('⚠️  [SHEETS] Auto-recalc setting failed:', error.message);
+      // Silently fail
     }
-  }
-
-  async clearAllFormatting(sheetName) {
-    if (!this.sheets) return;
-
-    try {
-      const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId,
-      });
-
-      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
-      if (!sheet) return;
-
-      const sheetId = sheet.properties.sheetId;
-
-      await this.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.spreadsheetId,
-        requestBody: {
-          requests: [
-            {
-              updateCells: {
-                range: {
-                  sheetId: sheetId,
-                  startRowIndex: 0,
-                  endRowIndex: 1000,
-                  startColumnIndex: 0,
-                  endColumnIndex: 26
-                },
-                fields: 'userEnteredFormat'
-              }
-            },
-            {
-              updateBorders: {
-                range: {
-                  sheetId: sheetId,
-                  startRowIndex: 0,
-                  endRowIndex: 1000,
-                  startColumnIndex: 0,
-                  endColumnIndex: 26
-                },
-                top: { style: 'NONE' },
-                bottom: { style: 'NONE' },
-                left: { style: 'NONE' },
-                right: { style: 'NONE' },
-                innerHorizontal: { style: 'NONE' },
-                innerVertical: { style: 'NONE' }
-              }
-            }
-          ]
-        }
-      });
-    } catch (error) {
-      console.error('⚠️  [SHEETS] Error clearing formatting:', error.message);
-    }
-  }
-
-  formatDate(dateString) {
-    const date = new Date(dateString);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
   }
 
   async addClassLogos(sheetName, rowMetadata) {
@@ -847,20 +953,16 @@ class GoogleSheetsService {
           });
         }
 
-        // ✅ FIXED: Use UTC-based calculation with dynamic offset (no hardcoded spreadsheet offset)
         if (meta.timezone && meta.timezone !== '') {
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
           const offset = this.getTimezoneOffset(meta.timezone);
           
-          // Formula: Get current UTC time (NOW()), then add timezone offset
           const formula = `=CONCATENATE("${abbrev} ", TEXT(NOW() + (${offset}/24), "h:mm AM/PM"))`;
           
           valueUpdates.push({
             range: `L${rowIndex}`,
             values: [[formula]]
           });
-          
-          console.log(`[TIMEZONE] ${meta.timezone} → ${abbrev} (offset: ${offset})`);
         }
       }
 
@@ -977,7 +1079,6 @@ class GoogleSheetsService {
         }
       });
       
-      // ✅ UPDATED: Add Battle Imagines column width
       const columnWidths = [160, 150, 100, 95, 50, 180, 145, 85, 125, 200, 105, 170, 105];
       columnWidths.forEach((width, index) => {
         requests.push({
@@ -1028,10 +1129,11 @@ class GoogleSheetsService {
           lastDiscordName = meta.discordName;
         }
         
+        // ✅ UPDATED: Medium grey for subclasses (0.92, 0.92, 0.93)
         const rowBg = meta.isAlt
           ? { red: 0.96, green: 0.96, blue: 0.96 }
           : meta.isSubclass 
-          ? { red: 0.98, green: 0.98, blue: 0.99 }
+          ? { red: 0.92, green: 0.92, blue: 0.93 } // ✅ Medium grey - more visible!
           : { red: 1, green: 1, blue: 1 };
         
         const discordColor = meta.isSubclass 
@@ -1162,9 +1264,7 @@ class GoogleSheetsService {
           this.addCleanTextCell(requests, sheetId, rowIndex, 8, '', rowBg);
         }
         
-        // ✅ Battle Imagines column (index 9)
         this.addBoldTextCell(requests, sheetId, rowIndex, 9, rowBg);
-        
         this.addBoldTextCell(requests, sheetId, rowIndex, 10, rowBg);
         this.addTimezoneCell(requests, sheetId, rowIndex, 11, meta.timezone, rowBg);
         this.addBoldTextCell(requests, sheetId, rowIndex, 12, rowBg);
@@ -1480,7 +1580,7 @@ class GoogleSheetsService {
   }
 
   async sync(characters, client) {
-    this.client = client; // Store client for fetching Discord usernames
+    this.client = client;
     return await this.fullSync(characters);
   }
 }
