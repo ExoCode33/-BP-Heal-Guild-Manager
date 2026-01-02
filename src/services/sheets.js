@@ -704,17 +704,10 @@ class GoogleSheetsService {
         });
       }
 
-      // ✅ Only reformat rows that changed
-      const rowsNeedingFormat = [
-        ...diff.rowsToUpdate.map(r => r.index),
-        ...diff.rowsToAdd.map(r => r.index)
-      ];
-
-      if (rowsNeedingFormat.length > 0) {
-        console.log(`🎨 [SHEETS] Applying formatting to ${rowsNeedingFormat.length} rows...`);
-        await this.applySelectiveFormatting('Member List', rowMetadata, rowsNeedingFormat);
-      }
-
+      // ✅ Apply full formatting (ensures grey subclasses work correctly)
+      console.log(`🎨 [SHEETS] Applying formatting to all rows...`);
+      await this.formatCleanSheet('Member List', headers.length, rows.length);
+      await this.applyCleanDesign('Member List', rowMetadata);
       await this.addClassLogos('Member List', rowMetadata);
       await this.enableAutoRecalculation();
 
@@ -731,76 +724,6 @@ class GoogleSheetsService {
       } else {
         console.error('🐛 [SHEETS] Full error:', error);
       }
-    }
-  }
-
-  /**
-   * ✅ NEW: Apply formatting only to specific rows (not all rows)
-   */
-  async applySelectiveFormatting(sheetName, rowMetadata, rowIndices) {
-    if (!this.sheets || rowMetadata.length === 0 || rowIndices.length === 0) return;
-
-    try {
-      const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId,
-      });
-
-      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
-      if (!sheet) return;
-
-      const sheetId = sheet.properties.sheetId;
-      const requests = [];
-
-      for (const rowIndex of rowIndices) {
-        if (rowIndex >= rowMetadata.length) continue;
-
-        const meta = rowMetadata[rowIndex];
-        const member = meta.character;
-        const actualRowIndex = rowIndex + 1; // +1 for header
-
-        // ✅ UPDATED: Medium grey for subclasses (0.92, 0.92, 0.93)
-        const rowBg = meta.isAlt
-          ? { red: 0.96, green: 0.96, blue: 0.96 }
-          : meta.isSubclass 
-          ? { red: 0.92, green: 0.92, blue: 0.93 } // ✅ Medium grey
-          : { red: 1, green: 1, blue: 1 };
-
-        // Apply formatting (same as before, but only for this row)
-        const classColor = this.getClassColor(member.class);
-        const roleColor = this.getRoleColor(member.role);
-        const abilityColor = this.getAbilityScoreColor(member.ability_score);
-
-        // (Keep all the existing formatting logic, but only for this specific row)
-        // This is the same code from applyCleanDesign but applied selectively
-        
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: actualRowIndex,
-              endRowIndex: actualRowIndex + 1,
-              startColumnIndex: 0,
-              endColumnIndex: 13
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: rowBg
-              }
-            },
-            fields: 'userEnteredFormat.backgroundColor'
-          }
-        });
-      }
-
-      if (requests.length > 0) {
-        await this.sheets.spreadsheets.batchUpdate({
-          spreadsheetId: this.spreadsheetId,
-          requestBody: { requests }
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ [SHEETS] Selective formatting error:', error.message);
     }
   }
 
