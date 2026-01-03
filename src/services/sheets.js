@@ -1082,12 +1082,10 @@ class GoogleSheetsService {
           lastDiscordName = meta.discordName;
         }
         
-        // ✅ UPDATED: Medium grey for subclasses (0.92, 0.92, 0.93)
+        // ✅ Row backgrounds: Alt = light grey, Main/Subclass = white
         const rowBg = meta.isAlt
-          ? { red: 0.96, green: 0.96, blue: 0.96 }
-          : meta.isSubclass 
-          ? { red: 0.92, green: 0.92, blue: 0.93 } // ✅ Medium grey - more visible!
-          : { red: 1, green: 1, blue: 1 };
+          ? { red: 0.96, green: 0.96, blue: 0.96 }  // Alt: light grey
+          : { red: 1, green: 1, blue: 1 };           // Main/Subclass: white
         
         // ✅ FIX 3: Apply background to ENTIRE ROW first (ensures grey shows)
         requests.push({
