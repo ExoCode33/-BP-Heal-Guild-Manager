@@ -13,7 +13,7 @@ import logger from '../services/logger.js';
 import { CharacterRepo, BattleImagineRepo, TimezoneRepo } from '../database/repositories.js';
 import state from '../services/state.js';
 import config from '../config/index.js';
-import { CLASSES, ABILITY_SCORES, REGIONS, TIMEZONE_ABBR, TIERS } from '../config/game.js';
+import { CLASSES, ABILITY_SCORES, REGIONS, TIMEZONE_ABBR, TIERS, COLORS } from '../config/game.js';
 import { formatScore } from '../ui/utils.js';
 import { updateNickname } from '../services/nickname.js';
 import { profileEmbed } from '../ui/embeds.js';
@@ -254,7 +254,6 @@ async function assignRoles(client, userId, guildName, characterData = null) {
   }
 }
 
-// ✅ NEW: Assign roles for pending application (Visitor + Verified)
 async function assignPendingRoles(client, userId) {
   if (!config.discord?.guildId) {
     console.log('[REGISTRATION] Guild ID not configured');
@@ -265,13 +264,11 @@ async function assignPendingRoles(client, userId) {
     const guild = await client.guilds.fetch(config.discord.guildId);
     const member = await guild.members.fetch(userId);
 
-    // Add Visitor role
     if (config.roles.visitor) {
       await member.roles.add(config.roles.visitor);
       console.log(`[REGISTRATION] Added Visitor role to ${userId} (pending)`);
     }
 
-    // Add Verified role
     if (config.roles.verified) {
       await member.roles.add(config.roles.verified);
       console.log(`[REGISTRATION] Added Verified role to ${userId} (pending)`);
@@ -307,6 +304,10 @@ async function removeRoles(client, userId) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MAIN START FUNCTION - WITH REPLACEMENT WARNING
+// ═══════════════════════════════════════════════════════════════════
+
 export async function start(interaction, userId, characterType = 'main') {
   if (hasActiveInteraction(userId, interaction.id)) {
     console.log(`[REGISTRATION] Race condition detected for ${userId}, ignoring duplicate interaction`);
@@ -327,6 +328,58 @@ export async function start(interaction, userId, characterType = 'main') {
     return showClassSelection(interaction, userId);
   }
   
+  // ✅ CHECK FOR EXISTING MAIN - SHOW REPLACEMENT WARNING
+  const existingMain = await CharacterRepo.findMain(userId);
+  if (existingMain && characterType === 'main') {
+    console.log('[REGISTRATION] User has existing main, showing replacement warning');
+    
+    // Get subclasses count
+    const allChars = await CharacterRepo.findAllByUser(userId);
+    const mainSubclasses = allChars.filter(c => c.character_type === 'main_subclass');
+    
+    const warningEmbed = new EmbedBuilder()
+      .setColor('#FF9800')
+      .setDescription(
+        '# ⚠️ **Replace Main Character?**\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+        '**You already have a main character registered:**\n\n' +
+        `🎮 **IGN:** ${existingMain.ign}\n` +
+        `🆔 **UID:** ${existingMain.uid}\n` +
+        `🎭 **Class:** ${existingMain.class} - ${existingMain.subclass}\n` +
+        `💪 **Score:** ${formatScore(existingMain.ability_score)}\n` +
+        `🏰 **Guild:** ${existingMain.guild || 'None'}\n\n` +
+        '**⚠️ Warning - This will DELETE:**\n' +
+        `• Your **main character** (${existingMain.ign})\n` +
+        (mainSubclasses.length > 0 ? `• **${mainSubclasses.length} subclass${mainSubclasses.length > 1 ? 'es' : ''}**\n` : '') +
+        '• This action **cannot be undone**\n\n' +
+        '**Do you want to continue?**'
+      )
+      .setFooter({ text: 'Think carefully - all progress will be lost!' })
+      .setTimestamp();
+    
+    const confirmRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`confirm_replace_main_${userId}`)
+        .setLabel('✅ Yes, Replace Main')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`cancel_replace_main_${userId}`)
+        .setLabel('❌ Cancel')
+        .setStyle(ButtonStyle.Secondary)
+    );
+    
+    clearActiveInteraction(userId);
+    
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({ embeds: [warningEmbed], components: [confirmRow] });
+    } else {
+      await interaction.update({ embeds: [warningEmbed], components: [confirmRow] });
+    }
+    
+    return;
+  }
+  
+  // ✅ NO EXISTING MAIN - START NORMAL REGISTRATION
   state.set(userId, 'reg', { type: 'main' });
   
   const totalSteps = getTotalSteps('main');
@@ -361,6 +414,104 @@ export async function start(interaction, userId, characterType = 'main') {
   clearActiveInteraction(userId);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// REPLACEMENT CONFIRMATION HANDLERS
+// ═══════════════════════════════════════════════════════════════════
+
+export async function confirmReplaceMain(interaction, userId) {
+  console.log('[REGISTRATION] ═══════════════════════════════════════');
+  console.log('[REGISTRATION] User confirmed main character replacement');
+  
+  try {
+    // Get existing main and all related characters
+    const existingMain = await CharacterRepo.findMain(userId);
+    if (!existingMain) {
+      console.log('[REGISTRATION] No existing main found, proceeding normally');
+      state.clear(userId, 'reg');
+      await start(interaction, userId, 'main');
+      return;
+    }
+    
+    const allChars = await CharacterRepo.findAllByUser(userId);
+    const mainSubclasses = allChars.filter(c => c.character_type === 'main_subclass');
+    
+    console.log(`[REGISTRATION] Deleting:`);
+    console.log(`  - Main: ${existingMain.ign} (ID: ${existingMain.id})`);
+    console.log(`  - Subclasses: ${mainSubclasses.length}`);
+    
+    // Collect all classes to check for role removal
+    const classesToCheck = new Set([existingMain.class]);
+    mainSubclasses.forEach(sub => classesToCheck.add(sub.class));
+    
+    // Delete all main-related characters
+    await CharacterRepo.delete(existingMain.id);
+    console.log(`[REGISTRATION] ✅ Deleted main character`);
+    
+    for (const sub of mainSubclasses) {
+      await CharacterRepo.delete(sub.id);
+      console.log(`[REGISTRATION] ✅ Deleted subclass: ${sub.class}`);
+    }
+    
+    // Remove class roles if no longer used by any character
+    for (const className of classesToCheck) {
+      await classRoleService.removeClassRoleIfUnused(userId, className);
+      console.log(`[REGISTRATION] ✅ Checked class role: ${className}`);
+    }
+    
+    // Log the replacement
+    logger.delete(
+      interaction.user.username, 
+      'replacement', 
+      `${existingMain.ign} + ${mainSubclasses.length} subclass${mainSubclasses.length !== 1 ? 'es' : ''}`
+    );
+    
+    console.log('[REGISTRATION] ✅ Replacement complete, starting fresh registration');
+    console.log('[REGISTRATION] ═══════════════════════════════════════');
+    
+    // Clear state and start fresh registration
+    state.clear(userId, 'reg');
+    await start(interaction, userId, 'main');
+    
+  } catch (error) {
+    console.error('[REGISTRATION] ❌ Replacement error:', error);
+    logger.error('Registration', `Replacement failed: ${error.message}`, error);
+    
+    const errorEmbed = new EmbedBuilder()
+      .setColor(COLORS.ERROR)
+      .setDescription(
+        '# ❌ **Replacement Failed**\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+        'Something went wrong during replacement.\n\n' +
+        'Please contact an admin for help.'
+      )
+      .setTimestamp();
+    
+    await interaction.update({ embeds: [errorEmbed], components: [] });
+  }
+}
+
+export async function cancelReplaceMain(interaction, userId) {
+  console.log('[REGISTRATION] User cancelled main replacement');
+  
+  state.clear(userId, 'reg');
+  
+  const cancelEmbed = new EmbedBuilder()
+    .setColor(COLORS.PRIMARY)
+    .setDescription(
+      '# ✅ **Cancelled**\n' +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      'Your existing character has been kept.\n\n' +
+      'Use `/edit-character` to manage your profile.'
+    )
+    .setTimestamp();
+  
+  await interaction.update({ embeds: [cancelEmbed], components: [] });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUBCLASS REGISTRATION
+// ═══════════════════════════════════════════════════════════════════
+
 async function showClassSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   const totalSteps = getTotalSteps('subclass');
@@ -389,6 +540,10 @@ async function showClassSelection(interaction, userId) {
 
   await interaction.update({ embeds: [embed], components: [row1, row2] });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// REGION/COUNTRY/TIMEZONE HANDLERS
+// ═══════════════════════════════════════════════════════════════════
 
 export async function handleRegion(interaction, userId) {
   if (hasActiveInteraction(userId, interaction.id)) {
@@ -542,6 +697,10 @@ export async function handleTimezone(interaction, userId) {
   clearActiveInteraction(userId);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CLASS/SUBCLASS/SCORE HANDLERS
+// ═══════════════════════════════════════════════════════════════════
+
 export async function handleClass(interaction, userId) {
   if (hasActiveInteraction(userId, interaction.id)) {
     console.log(`[REGISTRATION] Race condition detected for ${userId} at class select, ignoring`);
@@ -677,7 +836,6 @@ export async function handleScore(interaction, userId) {
 
       console.log('[REGISTRATION] Created subclass:', character.id);
 
-      // ✅ ADD CLASS ROLE
       await classRoleService.addClassRole(userId, currentState.class);
 
       const characters = await CharacterRepo.findAllByUser(userId);
@@ -718,6 +876,10 @@ export async function handleScore(interaction, userId) {
   
   clearActiveInteraction(userId);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// BATTLE IMAGINE HANDLERS
+// ═══════════════════════════════════════════════════════════════════
 
 async function showBattleImagineSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
@@ -805,6 +967,10 @@ export async function handleBattleImagine(interaction, userId) {
   clearActiveInteraction(userId);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// GUILD SELECTION
+// ═══════════════════════════════════════════════════════════════════
+
 async function proceedToGuildSelection(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   const scoreLabel = ABILITY_SCORES.find(s => s.value === currentState.abilityScore)?.label || currentState.abilityScore;
@@ -888,6 +1054,10 @@ export async function handleGuild(interaction, userId) {
   clearActiveInteraction(userId);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// IGN/UID SUBMISSION (FINAL STEP)
+// ═══════════════════════════════════════════════════════════════════
+
 export async function handleIGN(interaction, userId) {
   const ign = interaction.fields.getTextInputValue('ign');
   const uid = interaction.fields.getTextInputValue('uid').trim();
@@ -955,16 +1125,12 @@ export async function handleIGN(interaction, userId) {
       }
     }
 
-    // ✅ ADD CLASS ROLE
     await classRoleService.addClassRole(userId, currentState.class);
 
-    // Handle guild-specific logic
     if (currentState.guild === 'iDolls' && config.roles.guild1) {
-      // Pending application: Give Visitor + Verified roles
       await assignPendingRoles(interaction.client, userId);
       await applicationService.createApplication(userId, character.id, currentState.guild);
       
-      // ✅ CUTE PINK EMBED for pending application
       const successEmbed = new EmbedBuilder()
         .setColor('#EC4899')
         .setDescription(
@@ -990,7 +1156,6 @@ export async function handleIGN(interaction, userId) {
       return;
     }
     
-    // For other guilds
     await assignRoles(interaction.client, userId, currentState.guild, character);
     
     state.clear(userId, 'reg');
@@ -1020,21 +1185,9 @@ export async function handleIGN(interaction, userId) {
   }
 }
 
-export async function handleDelete(interaction, userId, characterId) {
-  try {
-    const allChars = await CharacterRepo.findAllByUser(userId);
-    const mainChars = allChars.filter(c => c.character_type === 'main');
-    
-    const charToDelete = allChars.find(c => c.id === characterId);
-    
-    if (charToDelete && charToDelete.character_type === 'main' && mainChars.length === 1) {
-      await removeRoles(interaction.client, userId);
-    }
-    
-  } catch (error) {
-    console.error('[REGISTRATION] Error handling character deletion:', error.message);
-  }
-}
+// ═══════════════════════════════════════════════════════════════════
+// RETRY IGN/UID
+// ═══════════════════════════════════════════════════════════════════
 
 export async function retryIGN(interaction, userId) {
   const currentState = state.get(userId, 'reg');
@@ -1077,6 +1230,10 @@ export async function retryIGN(interaction, userId) {
 
   await interaction.showModal(modal);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// BACK NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
 
 export async function backToRegion(interaction, userId) {
   await start(interaction, userId);
@@ -1171,6 +1328,30 @@ export async function backToBattleImagine(interaction, userId) {
   await showBattleImagineSelection(interaction, userId);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CHARACTER DELETION HANDLER
+// ═══════════════════════════════════════════════════════════════════
+
+export async function handleDelete(interaction, userId, characterId) {
+  try {
+    const allChars = await CharacterRepo.findAllByUser(userId);
+    const mainChars = allChars.filter(c => c.character_type === 'main');
+    
+    const charToDelete = allChars.find(c => c.id === characterId);
+    
+    if (charToDelete && charToDelete.character_type === 'main' && mainChars.length === 1) {
+      await removeRoles(interaction.client, userId);
+    }
+    
+  } catch (error) {
+    console.error('[REGISTRATION] Error handling character deletion:', error.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════
+
 export default {
   start,
   handleRegion,
@@ -1184,6 +1365,8 @@ export default {
   handleIGN,
   retryIGN,
   handleDelete,
+  confirmReplaceMain,
+  cancelReplaceMain,
   backToRegion,
   backToCountry,
   backToTimezone,
