@@ -131,8 +131,13 @@ function isCurrentlyDST(timezone) {
     
     const janOffset = getOffsetAtDate(timezone, jan);
     const julOffset = getOffsetAtDate(timezone, jul);
-    const nowOffset = getOffsetAtDate(timezone, now);
     
+    // ✅ FIX: If offsets are the same year-round, timezone doesn't observe DST
+    if (janOffset === julOffset) {
+      return false;
+    }
+    
+    const nowOffset = getOffsetAtDate(timezone, now);
     const maxOffset = Math.max(janOffset, julOffset);
     return nowOffset === maxOffset;
   } catch (error) {
@@ -763,16 +768,17 @@ class GoogleSheetsService {
       // (First sync, rows added/deleted, or major changes)
       const needsFullFormatting = diff.rowsToAdd.length > 0 || 
                                    diff.rowsToDelete.length > 0 ||
-                                   currentData.length === 0;
+                                   currentData.length === 0 ||
+                                   diff.rowsToUpdate.length === currentData.length; // ✅ Force on mass update
 
       if (needsFullFormatting) {
-        console.log(`🎨 [SHEETS] Applying formatting (${diff.rowsToAdd.length} added, ${diff.rowsToDelete.length} deleted)...`);
+        console.log(`🎨 [SHEETS] Applying formatting (${diff.rowsToAdd.length} added, ${diff.rowsToDelete.length} deleted, ${diff.rowsToUpdate.length} updated)...`);
         await this.formatCleanSheet('Member List', headers.length, rows.length);
         await this.applyCleanDesign('Member List', rowMetadata);
         await this.addClassLogos('Member List', rowMetadata);
         await this.enableAutoRecalculation();
       } else {
-        console.log(`⏭️  [SHEETS] Skipping formatting (only data updated, formatting preserved)`);
+        console.log(`⏭️  [SHEETS] Skipping formatting (only ${diff.rowsToUpdate.length} rows updated, formatting preserved)`);
       }
 
       console.log(`✅ [SHEETS] Sync complete (smooth, no flickering!)`);
