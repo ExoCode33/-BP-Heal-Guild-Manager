@@ -141,9 +141,9 @@ export async function route(interaction) {
       await registration.startAltRegistration(interaction, userId);
     }
 
-    // ✅ NEW: Add Character Button
+    // ✅ Add Character Button
     else if (customId === `add_character_${userId}`) {
-      const { showAddCharacterMenu } = await import('./addCharacter.js');
+      const { showAddCharacterMenu } = await import('./adding.js');
       await showAddCharacterMenu(interaction, userId);
     }
 
@@ -301,9 +301,9 @@ export async function routeSelectMenu(interaction) {
       await registration.handleGuild(interaction, userId);
     }
 
-    // ✅ NEW: Add Character Type Selection
+    // ✅ Add Character Type Selection
     else if (customId === `select_add_character_type_${userId}`) {
-      const { handleAddCharacterType } = await import('./addCharacter.js');
+      const { handleAddCharacterType } = await import('./adding.js');
       await handleAddCharacterType(interaction, userId);
     }
 
