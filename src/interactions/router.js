@@ -78,7 +78,7 @@ export async function route(interaction) {
       const existingMain = await CharacterRepo.findMain(userId);
       if (existingMain) {
         await interaction.reply({
-          content: '❌ You already have a main character registered! Players cannot use the Visitor button.',
+          content: '💖 **Hehe, caught you!** ≽^•⩊•^≼\n\nLooks like you\'re already playing! This button is only for our non-player friends who just wanna hang out~\n\nUse `/character` to see your adorable profile instead! 🎮✨',
           flags: MessageFlags.Ephemeral
         });
         return;
@@ -90,7 +90,7 @@ export async function route(interaction) {
       // Check if they already have the Visitor role
       if (config.roles.visitor && member.roles.cache.has(config.roles.visitor)) {
         await interaction.reply({
-          content: '❌ You already have the Visitor role!',
+          content: '🌸 **You\'re already vibing with us!** (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧\n\nNo need to click again, silly~ You\'ve got the Visitor role! Now go have fun! 💕',
           flags: MessageFlags.Ephemeral
         });
         return;
