@@ -1,4 +1,4 @@
-import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } from 'discord.js';
 import { CharacterRepo, UserRepo, BattleImagineRepo, TimezoneRepo } from '../database/repositories.js';
 import { updateNickname } from '../services/nickname.js';
 import * as ui from '../ui/components.js';
@@ -8,50 +8,7 @@ import config from '../config/index.js';
 import logger from '../services/logger.js';
 import * as classRoleService from '../services/classRoles.js';
 import * as applicationService from '../services/applications.js';
-
-// ═══════════════════════════════════════════════════════════════════
-// STATE MANAGEMENT
-// ═══════════════════════════════════════════════════════════════════
-
-const registrationState = new Map();
-const STATE_TTL = 30 * 60 * 1000; // 30 minutes
-
-const state = {
-  set(userId, key, value) {
-    const userState = registrationState.get(userId) || {};
-    userState[key] = value;
-    userState.lastUpdated = Date.now();
-    registrationState.set(userId, userState);
-    console.log(`[STATE] Set ${key} for user ${userId}:`, value);
-  },
-
-  get(userId, key) {
-    const userState = registrationState.get(userId);
-    if (!userState) return null;
-    
-    // Check if state has expired
-    if (Date.now() - userState.lastUpdated > STATE_TTL) {
-      console.log(`[STATE] Expired for user ${userId}, clearing`);
-      registrationState.delete(userId);
-      return null;
-    }
-    
-    return userState[key];
-  },
-
-  clear(userId, key) {
-    if (key) {
-      const userState = registrationState.get(userId);
-      if (userState) {
-        delete userState[key];
-        console.log(`[STATE] Cleared ${key} for user ${userId}`);
-      }
-    } else {
-      registrationState.delete(userId);
-      console.log(`[STATE] Cleared all state for user ${userId}`);
-    }
-  }
-};
+import state from '../services/state.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // RACE CONDITION PROTECTION
@@ -218,7 +175,11 @@ export async function start(interaction, userId) {
     const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
     
     clearActiveInteraction(userId);
-    await interaction.update({ embeds: [warningEmbed], components: [row] });
+    await interaction.reply({ 
+      embeds: [warningEmbed], 
+      components: [row],
+      flags: MessageFlags.Ephemeral 
+    });
     return;
   }
   
@@ -241,7 +202,11 @@ export async function start(interaction, userId) {
 
   const row = new ActionRowBuilder().addComponents(selectMenu);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.reply({ 
+    embeds: [embed], 
+    components: [row],
+    flags: MessageFlags.Ephemeral 
+  });
   
   clearActiveInteraction(userId);
 }
