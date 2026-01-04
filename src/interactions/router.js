@@ -69,20 +69,50 @@ export async function route(interaction) {
     if (customId === 'verification_register') {
       await registration.start(interaction, userId);
     }
-    // ✅ NEW: Verification Non-Player Button (I'm just here to vibe)
+    // ✅ IMPROVED: Verification Non-Player Button (I'm just here to vibe)
     else if (customId === 'verification_non_player') {
       const config = await import('../config/index.js').then(m => m.default);
+      const { CharacterRepo } = await import('../database/repositories.js');
+      
+      // Check if user already has a main character
+      const existingMain = await CharacterRepo.findMain(userId);
+      if (existingMain) {
+        await interaction.reply({
+          content: '❌ You already have a main character registered! Players cannot use the Visitor button.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      
       const guild = await interaction.client.guilds.fetch(config.discord.guildId);
       const member = await guild.members.fetch(userId);
       
-      // Add visitor role
+      // Check if they already have the Visitor role
+      if (config.roles.visitor && member.roles.cache.has(config.roles.visitor)) {
+        await interaction.reply({
+          content: '❌ You already have the Visitor role!',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      
+      // Add BOTH Visitor and Verified roles
+      const rolesAdded = [];
+      
       if (config.roles.visitor) {
         await member.roles.add(config.roles.visitor);
+        rolesAdded.push('Visitor');
         console.log(`✅ [VERIFICATION] Added Visitor role to ${member.user.username}`);
       }
       
+      if (config.roles.verified) {
+        await member.roles.add(config.roles.verified);
+        rolesAdded.push('Verified');
+        console.log(`✅ [VERIFICATION] Added Verified role to ${member.user.username}`);
+      }
+      
       await interaction.reply({
-        content: '✅ **Welcome!** You now have the Visitor role. Enjoy chatting with us! 💕',
+        content: `✅ **Welcome!** You now have the ${rolesAdded.join(' and ')} role${rolesAdded.length > 1 ? 's' : ''}. Enjoy chatting with us! 💕`,
         flags: MessageFlags.Ephemeral
       });
     }
