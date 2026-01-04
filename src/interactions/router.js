@@ -142,9 +142,11 @@ export async function route(interaction) {
     }
 
     // ✅ Add Character Button
-    else if (customId === `add_character_${userId}`) {
+    else if (customId.startsWith('add_character_')) {
+      // Extract target user ID from button (supports admin adding for other users)
+      const targetUserId = customId.replace('add_character_', '');
       const { showAddCharacterMenu } = await import('./adding.js');
-      await showAddCharacterMenu(interaction, userId);
+      await showAddCharacterMenu(interaction, targetUserId);
     }
 
     // Registration - Back Buttons
@@ -171,8 +173,10 @@ export async function route(interaction) {
     }
 
     // Editing
-    else if (customId === `edit_character_${userId}`) {
-      await editing.start(interaction, userId);
+    else if (customId.startsWith('edit_character_')) {
+      // Extract target user ID from button (supports admin editing other users)
+      const targetUserId = customId.replace('edit_character_', '');
+      await editing.start(interaction, targetUserId);
     }
     else if (customId === `back_to_edit_select_${userId}`) {
       await editing.backToEditSelect(interaction, userId);
@@ -191,13 +195,17 @@ export async function route(interaction) {
     }
 
     // 🆕 Discord Nickname (Main Button)
-    else if (customId === `discord_nickname_${userId}`) {
-      await editing.showNicknameSelection(interaction, userId);
+    else if (customId.startsWith('discord_nickname_')) {
+      // Extract target user ID from button
+      const targetUserId = customId.replace('discord_nickname_', '');
+      await editing.showNicknameSelection(interaction, targetUserId);
     }
 
     // Deletion/Removal
-    else if (customId === `remove_character_${userId}`) {
-      await deletion.start(interaction, userId);
+    else if (customId.startsWith('remove_character_')) {
+      // Extract target user ID from button (supports admin removing for other users)
+      const targetUserId = customId.replace('remove_character_', '');
+      await deletion.start(interaction, targetUserId);
     }
     else if (customId === `confirm_remove_main_${userId}`) {
       await deletion.executeRemoveMain(interaction, userId);
