@@ -396,6 +396,12 @@ export async function routeSelectMenu(interaction) {
       const targetUserId = customId.replace('edit_select_nickname_', '');
       await editing.handleNicknameEdit(interaction, targetUserId);
     }
+    
+    // ✅ NEW: Editing - Discord Nickname Style
+    else if (customId.startsWith('edit_select_nickname_style_')) {
+      const targetUserId = customId.replace('edit_select_nickname_style_', '');
+      await editing.handleNicknameStyleEdit(interaction, targetUserId);
+    }
 
     // Deletion - Remove Type Selection
     else if (customId.startsWith('select_remove_type_')) {
