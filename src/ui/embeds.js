@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { COLORS } from '../config/game.js';
-import { formatScore, formatTime, getRoleEmoji, getClassEmoji } from './utils.js';
+import { formatScore, formatTime, getRoleEmoji, getClassEmoji, getScoreRange } from './utils.js';
 import { TimezoneRepo, BattleImagineRepo, ApplicationRepo } from '../database/repositories.js';
 
 export const embed = (title, description) => {
@@ -98,7 +98,7 @@ export async function profileEmbed(user, characters, interaction = null) {
   mainSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + primaryChar.ign + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + primaryChar.uid + '\u001b[0m\n';
   mainSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + primaryChar.class + ' - ' + primaryChar.subclass + '\u001b[0m\n';
-  mainSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(primaryChar.ability_score) + '\u001b[0m\n';
+  mainSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + getScoreRange(primaryChar.ability_score) + '\u001b[0m\n';
 
   const mainBI = await BattleImagineRepo.findByCharacter(primaryChar.id);
   if (mainBI.length > 0) {
@@ -120,7 +120,7 @@ export async function profileEmbed(user, characters, interaction = null) {
     subs.forEach((sub, i) => {
       subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
       subSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + sub.class + ' - ' + sub.subclass + '\u001b[0m\n';
-      subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(sub.ability_score) + '\u001b[0m\n';
+      subSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + getScoreRange(sub.ability_score) + '\u001b[0m\n';
     });
     subSection += '\u001b[1;35m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\n';
     subSection += '```';
@@ -135,7 +135,7 @@ export async function profileEmbed(user, characters, interaction = null) {
       altSection += '\u001b[1;34m🎮 IGN:\u001b[0m \u001b[1;37m' + alt.ign + '\u001b[0m\n';
       altSection += '\u001b[1;34m🆔 UID:\u001b[0m \u001b[1;37m' + alt.uid + '\u001b[0m\n';
       altSection += '\u001b[1;34m🎭 Class:\u001b[0m \u001b[1;37m' + alt.class + ' - ' + alt.subclass + '\u001b[0m\n';
-      altSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + formatScore(alt.ability_score) + '\u001b[0m\n';
+      altSection += '\u001b[1;34m💪 Score:\u001b[0m \u001b[1;37m' + getScoreRange(alt.ability_score) + '\u001b[0m\n';
       
       const altBI = await BattleImagineRepo.findByCharacter(alt.id);
       if (altBI.length > 0) {
