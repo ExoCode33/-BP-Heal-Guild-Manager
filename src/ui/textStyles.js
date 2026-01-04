@@ -7,51 +7,61 @@ const STYLES = {
   normal: {
     name: 'Normal',
     emoji: '📝',
+    number: '1️⃣',
     convert: (text) => text
   },
   bold_sans: {
     name: 'Bold Sans',
-    emoji: '𝗕',
+    emoji: '💪',
+    number: '2️⃣',
     convert: (text) => convertToUnicode(text, 0x1D5D4, 0x1D5EE)
   },
   italic_sans: {
     name: 'Italic Sans',
-    emoji: '𝘐',
+    emoji: '✨',
+    number: '3️⃣',
     convert: (text) => convertToUnicode(text, 0x1D608, 0x1D622)
   },
   bold_italic: {
     name: 'Bold Italic',
-    emoji: '𝙄',
+    emoji: '⚡',
+    number: '4️⃣',
     convert: (text) => convertToUnicode(text, 0x1D63C, 0x1D656)
   },
   small_caps: {
     name: 'Small Caps',
-    emoji: 'ꜱ',
+    emoji: '🔹',
+    number: '5️⃣',
     convert: (text) => convertToSmallCaps(text)
   },
   double_struck: {
     name: 'Double-Struck',
-    emoji: '𝔻',
+    emoji: '🎯',
+    number: '6️⃣',
     convert: (text) => convertToUnicode(text, 0x1D538, 0x1D552)
   },
   cursive_bold: {
     name: 'Cursive Bold',
-    emoji: '𝓑',
+    emoji: '💫',
+    number: '7️⃣',
     convert: (text) => convertToUnicode(text, 0x1D4D0, 0x1D4EA)
   },
   cursive: {
     name: 'Cursive',
-    emoji: '𝒞',
+    emoji: '🌟',
+    number: '8️⃣',
     convert: (text) => convertToUnicode(text, 0x1D49C, 0x1D4B6)
   },
   monospace: {
     name: 'Monospace',
-    emoji: '𝙼',
+    emoji: '⌨️',
+    number: '9️⃣',
     convert: (text) => convertToUnicode(text, 0x1D670, 0x1D68A)
   },
   serif: {
     name: 'Serif',
-    emoji: '𝖲',
+    emoji: '📰',
+    number: '🔟',
     convert: (text) => convertToUnicode(text, 0x1D5A0, 0x1D5BA)
   }
 };
@@ -128,7 +138,7 @@ export function getStyleOptions() {
     label: style.name,
     value: key,
     emoji: style.emoji,
-    description: `Example: ${style.convert('Example')}`
+    description: `${style.number} ${style.convert('Example')}`
   }));
 }
 
@@ -151,9 +161,27 @@ export function styleNickname(nickname, styleKey = 'normal') {
   return styledParts.join(' · ');
 }
 
+/**
+ * Get examples of all styles applied to a nickname
+ * @param {string} nickname - Nickname to preview
+ * @returns {string} Formatted preview text
+ */
+export function getStylePreviews(nickname) {
+  if (!nickname) return '';
+  
+  const previews = [];
+  for (const [key, style] of Object.entries(STYLES)) {
+    const styled = styleNickname(nickname, key);
+    previews.push(`${style.number} **${style.name}:** ${styled}`);
+  }
+  
+  return previews.join('\n');
+}
+
 export default {
   applyStyle,
   getStyleOptions,
   styleNickname,
+  getStylePreviews,
   STYLES
 };
