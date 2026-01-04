@@ -1,6 +1,78 @@
 import logger from './logger.js';
+import { CharacterRepo } from '../database/repositories.js';
+import db from '../database/connection.js';
 
-export async function updateNickname(client, guildId, userId, ign) {
+// ═══════════════════════════════════════════════════════════════════
+// NICKNAME PREFERENCES REPOSITORY
+// ═══════════════════════════════════════════════════════════════════
+
+export const NicknamePrefsRepo = {
+  async get(userId) {
+    const result = await db.query(
+      'SELECT nickname_preferences FROM users WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows[0]?.nickname_preferences || null;
+  },
+
+  async set(userId, characterIds) {
+    // Ensure user exists first
+    await db.query(
+      'INSERT INTO users (user_id, nickname_preferences) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET nickname_preferences = $2',
+      [userId, characterIds]
+    );
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILD NICKNAME FROM PREFERENCES
+// ═══════════════════════════════════════════════════════════════════
+
+export async function buildNickname(userId) {
+  // Get user's nickname preferences
+  const prefs = await NicknamePrefsRepo.get(userId);
+  
+  // Get all characters
+  const characters = await CharacterRepo.findAllByUser(userId);
+  const main = characters.find(c => c.character_type === 'main');
+  
+  if (!main) return null; // No main character, no nickname
+  
+  // Default: Just main character if no preferences set
+  if (!prefs || prefs.length === 0) {
+    return main.ign;
+  }
+  
+  // Build nickname from preferences
+  // Always ensure main is first, then add selected characters in registration order
+  const selectedChars = [];
+  
+  // Always add main first
+  selectedChars.push(main.ign);
+  
+  // Add other selected characters (alts/subclasses) in registration order
+  for (const char of characters) {
+    if (char.character_type !== 'main' && prefs.includes(char.id)) {
+      selectedChars.push(char.ign);
+    }
+  }
+  
+  // Join with middle dot separator
+  let nickname = selectedChars.join(' · ');
+  
+  // Truncate if too long (max 32 chars)
+  if (nickname.length > 32) {
+    nickname = nickname.substring(0, 29) + '...';
+  }
+  
+  return nickname;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UPDATE DISCORD NICKNAME
+// ═══════════════════════════════════════════════════════════════════
+
+export async function updateNickname(client, guildId, userId, customNickname = null) {
   try {
     const guild = await client.guilds.fetch(guildId);
     if (!guild) return { success: false, reason: 'Guild not found' };
@@ -8,10 +80,14 @@ export async function updateNickname(client, guildId, userId, ign) {
     const member = await guild.members.fetch(userId);
     if (!member) return { success: false, reason: 'Member not found' };
 
-    const current = member.nickname || member.user.username;
-    if (current === ign) return { success: true };
+    // Build nickname from preferences if not provided
+    const nickname = customNickname || await buildNickname(userId);
+    if (!nickname) return { success: false, reason: 'No main character' };
 
-    if (ign.length > 32) return { success: false, reason: 'IGN too long' };
+    const current = member.nickname || member.user.username;
+    if (current === nickname) return { success: true };
+
+    if (nickname.length > 32) return { success: false, reason: 'Nickname too long' };
     if (member.id === guild.ownerId) return { success: false, reason: 'Server owner' };
 
     const bot = guild.members.me;
@@ -23,7 +99,8 @@ export async function updateNickname(client, guildId, userId, ign) {
       return { success: false, reason: 'Role hierarchy' };
     }
 
-    await member.setNickname(ign, 'IGN sync');
+    await member.setNickname(nickname, 'IGN sync');
+    console.log(`✅ [NICKNAME] Updated ${member.user.username} → ${nickname}`);
     return { success: true };
   } catch (e) {
     if (e.code === 50013) return { success: false, reason: 'Permission denied' };
@@ -37,7 +114,7 @@ export async function syncAllNicknames(client, guildId, mainCharacters) {
   const failures = [];
 
   for (const char of mainCharacters) {
-    const result = await updateNickname(client, guildId, char.user_id, char.ign);
+    const result = await updateNickname(client, guildId, char.user_id);
     if (result.success) {
       updated++;
     } else {
