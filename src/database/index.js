@@ -14,17 +14,21 @@ async function initialize() {
     CREATE TABLE IF NOT EXISTS users (
       user_id VARCHAR(20) PRIMARY KEY,
       nickname_preferences INTEGER[],
+      style_preference VARCHAR(50) DEFAULT 'normal',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Add nickname_preferences column if it doesn't exist (for existing databases)
+  // Add nickname_preferences and style_preference columns if they don't exist (for existing databases)
   await pool.query(`
     DO $$ 
     BEGIN
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'nickname_preferences') THEN
         ALTER TABLE users ADD COLUMN nickname_preferences INTEGER[];
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'style_preference') THEN
+        ALTER TABLE users ADD COLUMN style_preference VARCHAR(50) DEFAULT 'normal';
       END IF;
     END $$;
   `);
