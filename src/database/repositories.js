@@ -277,14 +277,18 @@ export const BattleImagineRepo = {
 // ═══════════════════════════════════════════════════════════════════
 
 export const ApplicationRepo = {
-  async create({ userId, characterId, guildName, messageId = null, channelId = null }) {
+  async create({ user_id, character_id, guild_name, message_id = null, channel_id = null }) {
+    console.log('[APP REPO] Creating application with:', { user_id, character_id, guild_name, message_id, channel_id });
+    
     const result = await db.query(
       `INSERT INTO guild_applications 
        (user_id, character_id, guild_name, message_id, channel_id, status, accept_votes, deny_votes, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, 'pending', '{}', '{}', NOW(), NOW()) 
        RETURNING *`,
-      [userId, characterId, guildName, messageId, channelId]
+      [user_id, character_id, guild_name, message_id, channel_id]
     );
+    
+    console.log('[APP REPO] Created application:', result.rows[0]);
     return result.rows[0];
   },
 
@@ -334,7 +338,13 @@ export const ApplicationRepo = {
     values.push(id);
 
     const query = `UPDATE guild_applications SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    
+    console.log('[APP REPO] Update query:', query);
+    console.log('[APP REPO] Update values:', values);
+    
     const result = await db.query(query, values);
+    
+    console.log('[APP REPO] Update result:', result.rows[0]);
     return result.rows[0];
   },
 
