@@ -298,17 +298,6 @@ export async function executeRemoveMain(interaction, userId) {
     // 🆕 Clear nickname preferences and update Discord nickname
     const { NicknamePrefsRepo, updateNickname } = await import('../services/nickname.js');
     const config = await import('../config/index.js').then(m => m.default);
-    
-    // Get remaining characters to check if there's a new main
-    const remainingChars = await CharacterRepo.findAllByUser(userId);
-    const newMain = remainingChars.find(c => c.character_type === 'main');
-    
-    if (newMain) {
-      // User still has a main, update nickname preferences to empty (just main name)
-      await NicknamePrefsRepo.set(userId, []);
-      await updateNickname(interaction.client, config.discord.guildId, userId);
-      console.log('[REMOVE] Updated Discord nickname for new main');
-    }
 
     // Update class roles - check if class is still used
     const remainingCharacters = await CharacterRepo.findAllByUser(userId);
@@ -331,6 +320,13 @@ export async function executeRemoveMain(interaction, userId) {
     // Show updated profile or no characters message
     const characters = await CharacterRepo.findAllByUser(userId);
     const newMain = characters.find(c => c.character_type === 'main');
+    
+    // Update nickname if there's a new main
+    if (newMain) {
+      await NicknamePrefsRepo.set(userId, []);
+      await updateNickname(interaction.client, config.discord.guildId, userId);
+      console.log('[REMOVE] Updated Discord nickname for new main');
+    }
 
     if (characters.length === 0) {
       const embed = new EmbedBuilder()
