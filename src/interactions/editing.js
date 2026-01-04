@@ -1,6 +1,7 @@
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } from 'discord.js';
 import { CharacterRepo, BattleImagineRepo } from '../database/repositories.js';
 import { CLASSES, ABILITY_SCORES, COLORS } from '../config/game.js';
+import { getScoreRange } from '../ui/utils.js';
 import * as ui from '../ui/components.js';
 import { profileEmbed } from '../ui/embeds.js';
 import logger from '../services/logger.js';
@@ -55,6 +56,7 @@ export async function start(interaction, userId) {
     )
     .setTimestamp();
 
+  // ✅ FIXED: Character dropdown with score range
   const characterOptions = characters.map(char => {
     const iconId = CLASSES[char.class]?.iconId || null;
     const emoji = iconId ? { id: iconId } : (CLASSES[char.class]?.emoji || '🎮');
@@ -62,7 +64,7 @@ export async function start(interaction, userId) {
     return {
       label: `${char.ign} (${char.class})`,
       value: String(char.id),
-      description: `${char.subclass} - ${char.ability_score}`,
+      description: `${char.subclass} - ${getScoreRange(char.ability_score)}`,
       emoji: emoji
     };
   });
@@ -102,6 +104,7 @@ export async function selectCharacter(interaction, userId) {
   console.log('[EDIT] Selected character:', characterId, character.ign);
   state.set(userId, 'edit', { characterId, character });
 
+  // ✅ FIXED: Edit field selection with score range
   const embed = new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
     .setDescription(
@@ -110,7 +113,7 @@ export async function selectCharacter(interaction, userId) {
       'What would you like to edit?\n\n' +
       `**🎭 Class:** ${character.class}\n` +
       `**✨ Subclass:** ${character.subclass}\n` +
-      `**💪 Score:** ${character.ability_score}\n` +
+      `**💪 Score:** ${getScoreRange(character.ability_score)}\n` +
       `**🎮 IGN:** ${character.ign}\n` +
       `**🆔 UID:** ${character.uid}\n` +
       `**🏰 Guild:** ${character.guild}`
@@ -329,12 +332,13 @@ async function showScoreSelection(interaction, userId) {
   const currentState = state.get(userId, 'edit');
   const character = currentState.character;
 
+  // ✅ FIXED: Score selection with current score range
   const embed = new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
     .setDescription(
       `# 💪 **Edit Ability Score**\n` +
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-      `**Current:** ${character.ability_score}\n\n` +
+      `**Current:** ${getScoreRange(character.ability_score)}\n\n` +
       'Select a new score range.'
     )
     .setTimestamp();
