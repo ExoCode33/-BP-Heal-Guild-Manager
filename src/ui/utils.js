@@ -4,9 +4,11 @@ export function formatScore(score) {
   return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-// ✅ NEW: Get the score range label from the stored value
+// ✅ FIXED: Get the score range label from the stored value (handles both string and number)
 export function getScoreRange(abilityScore) {
-  const scoreObj = ABILITY_SCORES.find(s => s.value === abilityScore);
+  // Convert to string to handle both number and string inputs from database
+  const scoreString = String(abilityScore);
+  const scoreObj = ABILITY_SCORES.find(s => s.value === scoreString);
   return scoreObj ? scoreObj.label : abilityScore;
 }
 
