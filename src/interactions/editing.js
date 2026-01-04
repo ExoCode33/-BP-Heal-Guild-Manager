@@ -128,8 +128,7 @@ export async function selectCharacter(interaction, userId) {
     { label: 'IGN', value: 'ign', emoji: '🎮' },
     { label: 'UID', value: 'uid', emoji: '🆔' },
     { label: 'Guild', value: 'guild', emoji: '🏰' },
-    { label: 'Battle Imagines', value: 'battle_imagines', emoji: '⚔️' },
-    { label: 'Discord Nickname', value: 'discord_nickname', emoji: '🏷️' }
+    { label: 'Battle Imagines', value: 'battle_imagines', emoji: '⚔️' }
   ];
 
   const selectMenu = new StringSelectMenuBuilder()
@@ -177,9 +176,6 @@ export async function selectField(interaction, userId) {
       break;
     case 'battle_imagines':
       await showBattleImagineSelection(interaction, userId);
-      break;
-    case 'discord_nickname':
-      await showNicknameSelection(interaction, userId);
       break;
   }
 }
@@ -761,7 +757,7 @@ export async function handleBattleImagineTierEdit(interaction, userId) {
 // DISCORD NICKNAME EDITING
 // ═══════════════════════════════════════════════════════════════════
 
-async function showNicknameSelection(interaction, userId) {
+export async function showNicknameSelection(interaction, userId) {
   const characters = await CharacterRepo.findAllByUser(userId);
   const main = characters.find(c => c.character_type === 'main');
   const alts = characters.filter(c => c.character_type === 'alt');
@@ -832,8 +828,8 @@ async function showNicknameSelection(interaction, userId) {
     .addOptions(options);
 
   const backButton = new ButtonBuilder()
-    .setCustomId(`back_to_edit_field_${userId}`)
-    .setLabel('◀️ Back')
+    .setCustomId(`back_to_profile_${userId}`)
+    .setLabel('◀️ Back to Profile')
     .setStyle(ButtonStyle.Secondary);
 
   const row1 = new ActionRowBuilder().addComponents(selectMenu);
