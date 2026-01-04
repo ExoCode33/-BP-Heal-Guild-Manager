@@ -21,6 +21,28 @@ export const NicknamePrefsRepo = {
       'INSERT INTO users (user_id, nickname_preferences) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET nickname_preferences = $2',
       [userId, characterIds]
     );
+  },
+
+  /**
+   * Clean up orphaned character IDs from preferences
+   * Removes any character IDs that no longer exist in the database
+   */
+  async cleanup(userId) {
+    const prefs = await this.get(userId);
+    if (!prefs || prefs.length === 0) return;
+
+    // Get all valid character IDs for this user
+    const characters = await CharacterRepo.findAllByUser(userId);
+    const validIds = characters.map(c => c.id);
+
+    // Filter out orphaned IDs
+    const cleanedPrefs = prefs.filter(id => validIds.includes(id));
+
+    // Update if anything changed
+    if (cleanedPrefs.length !== prefs.length) {
+      await this.set(userId, cleanedPrefs);
+      console.log(`[NICKNAME] Cleaned up ${prefs.length - cleanedPrefs.length} orphaned preference(s)`);
+    }
   }
 };
 
@@ -29,6 +51,9 @@ export const NicknamePrefsRepo = {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function buildNickname(userId) {
+  // Clean up orphaned IDs first
+  await NicknamePrefsRepo.cleanup(userId);
+  
   // Get user's nickname preferences
   const prefs = await NicknamePrefsRepo.get(userId);
   
