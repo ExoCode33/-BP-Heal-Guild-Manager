@@ -7,18 +7,21 @@ import logger from '../services/logger.js';
 import * as classRoleService from '../services/classRoles.js';
 
 // ═══════════════════════════════════════════════════════════════════
-// DELETE CHARACTER - SELECT CHARACTER
+// REMOVE - SELECT TYPE
 // ═══════════════════════════════════════════════════════════════════
 
 export async function start(interaction, userId) {
-  console.log('[DELETE] Starting delete for user:', userId);
+  console.log('[REMOVE] Starting remove for user:', userId);
 
   const characters = await CharacterRepo.findAllByUser(userId);
+  const main = characters.find(c => c.character_type === 'main');
+  const alts = characters.filter(c => c.character_type === 'alt');
+  const subclasses = characters.filter(c => c.character_type === 'main_subclass');
 
-  if (characters.length === 0) {
+  if (!main) {
     const embed = new EmbedBuilder()
       .setColor(COLORS.ERROR)
-      .setDescription('# ❌ **No Characters**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou have no characters to delete.')
+      .setDescription('# ❌ **No Characters**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nYou have no characters to remove.')
       .setTimestamp();
 
     await interaction.update({ embeds: [embed], components: [] });
@@ -28,31 +31,58 @@ export async function start(interaction, userId) {
   const embed = new EmbedBuilder()
     .setColor('#FF9900')
     .setDescription(
-      '# 🗑️ **Delete Character**\n' +
+      '# 🗑️ **Remove Character**\n' +
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
       '⚠️ **Warning:** This action cannot be undone!\n\n' +
-      'Select the character you want to delete.'
+      'What would you like to remove?'
     )
     .setTimestamp();
 
-  const characterOptions = characters.map(char => {
-    const config = require('../config/index.js').default;
-    const CLASSES = config.game?.classes || {};
-    const iconId = CLASSES[char.class]?.iconId || null;
-    const emoji = iconId ? { id: iconId } : '🎮';
-    
-    return {
-      label: `${char.ign} (${char.class})`,
-      value: String(char.id),
-      description: `${char.subclass} - ${char.ability_score}`,
-      emoji: emoji
-    };
+  const options = [];
+
+  // Add main option (with subclasses warning if any)
+  if (main) {
+    const subclassWarning = subclasses.length > 0 ? ` (+ ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''})` : '';
+    options.push({
+      label: `Main Character${subclassWarning}`,
+      value: 'main',
+      description: `${main.ign} - ${main.class}`,
+      emoji: '🎮'
+    });
+  }
+
+  // Add subclass options
+  subclasses.forEach(sub => {
+    options.push({
+      label: `Subclass: ${sub.class}`,
+      value: `subclass_${sub.id}`,
+      description: `${sub.subclass} - ${sub.ability_score}`,
+      emoji: '✨'
+    });
+  });
+
+  // Add alt options
+  alts.forEach(alt => {
+    options.push({
+      label: `Alt: ${alt.ign}`,
+      value: `alt_${alt.id}`,
+      description: `${alt.class} - ${alt.subclass}`,
+      emoji: '🎭'
+    });
+  });
+
+  // Add remove all option
+  options.push({
+    label: 'Remove All Data',
+    value: 'all',
+    description: 'Delete all characters and data',
+    emoji: '💀'
   });
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(`select_delete_character_${userId}`)
-    .setPlaceholder('🗑️ Select character to delete')
-    .addOptions(characterOptions);
+    .setCustomId(`select_remove_type_${userId}`)
+    .setPlaceholder('🗑️ Select what to remove')
+    .addOptions(options);
 
   const backButton = new ButtonBuilder()
     .setCustomId(`back_to_profile_${userId}`)
@@ -66,39 +96,44 @@ export async function start(interaction, userId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// DELETE CHARACTER - CONFIRM
+// REMOVE - CONFIRM
 // ═══════════════════════════════════════════════════════════════════
 
-export async function selectCharacter(interaction, userId) {
-  const characterId = parseInt(interaction.values[0]);
-  const character = await CharacterRepo.findById(characterId);
+export async function selectRemoveType(interaction, userId) {
+  const selectedType = interaction.values[0];
 
-  if (!character) {
-    await interaction.update({
-      content: '❌ Character not found.',
-      components: []
-    });
-    return;
+  console.log('[REMOVE] Selected type:', selectedType);
+
+  if (selectedType === 'main') {
+    await confirmRemoveMain(interaction, userId);
+  } else if (selectedType === 'all') {
+    await confirmRemoveAll(interaction, userId);
+  } else if (selectedType.startsWith('subclass_')) {
+    const subclassId = parseInt(selectedType.split('_')[1]);
+    await confirmRemoveSubclass(interaction, userId, subclassId);
+  } else if (selectedType.startsWith('alt_')) {
+    const altId = parseInt(selectedType.split('_')[1]);
+    await confirmRemoveAlt(interaction, userId, altId);
   }
+}
 
-  console.log('[DELETE] Selected character:', characterId, character.ign);
-
-  const isMain = character.character_type === 'main';
-  const subclasses = isMain ? await CharacterRepo.findSubclasses(characterId) : [];
+async function confirmRemoveMain(interaction, userId) {
+  const main = await CharacterRepo.findMain(userId);
+  const subclasses = await CharacterRepo.findSubclasses(main.id);
 
   const embed = new EmbedBuilder()
     .setColor('#FF0000')
     .setDescription(
-      `# ⚠️ **Confirm Deletion**\n` +
+      `# ⚠️ **Remove Main Character?**\n` +
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-      '**You are about to delete:**\n\n' +
-      `🎮 **IGN:** ${character.ign}\n` +
-      `🆔 **UID:** ${character.uid}\n` +
-      `🎭 **Class:** ${character.class} - ${character.subclass}\n` +
-      `💪 **Score:** ${character.ability_score}\n` +
-      `🏰 **Guild:** ${character.guild}\n\n` +
-      (isMain && subclasses.length > 0
-        ? `⚠️ **This will also delete ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''}:**\n` +
+      '**You are about to remove:**\n\n' +
+      `🎮 **IGN:** ${main.ign}\n` +
+      `🆔 **UID:** ${main.uid}\n` +
+      `🎭 **Class:** ${main.class} - ${main.subclass}\n` +
+      `💪 **Score:** ${main.ability_score}\n` +
+      `🏰 **Guild:** ${main.guild}\n\n` +
+      (subclasses.length > 0
+        ? `⚠️ **This will also remove ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''}:**\n` +
           subclasses.map(s => `  • ${s.class} - ${s.subclass}`).join('\n') + '\n\n'
         : '') +
       '**This action cannot be undone!**'
@@ -106,12 +141,123 @@ export async function selectCharacter(interaction, userId) {
     .setTimestamp();
 
   const confirmButton = new ButtonBuilder()
-    .setCustomId(`confirm_delete_${userId}_${characterId}`)
-    .setLabel('✅ Yes, Delete')
+    .setCustomId(`confirm_remove_main_${userId}`)
+    .setLabel('✅ Yes, Remove Main')
     .setStyle(ButtonStyle.Danger);
 
   const cancelButton = new ButtonBuilder()
-    .setCustomId(`cancel_delete_${userId}`)
+    .setCustomId(`cancel_remove_${userId}`)
+    .setLabel('❌ Cancel')
+    .setStyle(ButtonStyle.Secondary);
+
+  const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+async function confirmRemoveSubclass(interaction, userId, subclassId) {
+  const subclass = await CharacterRepo.findById(subclassId);
+
+  if (!subclass) {
+    await interaction.update({
+      content: '❌ Subclass not found.',
+      components: []
+    });
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor('#FF9900')
+    .setDescription(
+      `# ⚠️ **Remove Subclass?**\n` +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '**You are about to remove:**\n\n' +
+      `🎭 **Class:** ${subclass.class}\n` +
+      `✨ **Subclass:** ${subclass.subclass}\n` +
+      `💪 **Score:** ${subclass.ability_score}\n\n` +
+      '**This action cannot be undone!**'
+    )
+    .setTimestamp();
+
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(`confirm_remove_subclass_${userId}_${subclassId}`)
+    .setLabel('✅ Yes, Remove Subclass')
+    .setStyle(ButtonStyle.Danger);
+
+  const cancelButton = new ButtonBuilder()
+    .setCustomId(`cancel_remove_${userId}`)
+    .setLabel('❌ Cancel')
+    .setStyle(ButtonStyle.Secondary);
+
+  const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+async function confirmRemoveAlt(interaction, userId, altId) {
+  const alt = await CharacterRepo.findById(altId);
+
+  if (!alt) {
+    await interaction.update({
+      content: '❌ Alt character not found.',
+      components: []
+    });
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor('#FF9900')
+    .setDescription(
+      `# ⚠️ **Remove Alt Character?**\n` +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '**You are about to remove:**\n\n' +
+      `🎮 **IGN:** ${alt.ign}\n` +
+      `🆔 **UID:** ${alt.uid}\n` +
+      `🎭 **Class:** ${alt.class} - ${alt.subclass}\n` +
+      `💪 **Score:** ${alt.ability_score}\n` +
+      `🏰 **Guild:** ${alt.guild}\n\n` +
+      '**This action cannot be undone!**'
+    )
+    .setTimestamp();
+
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(`confirm_remove_alt_${userId}_${altId}`)
+    .setLabel('✅ Yes, Remove Alt')
+    .setStyle(ButtonStyle.Danger);
+
+  const cancelButton = new ButtonBuilder()
+    .setCustomId(`cancel_remove_${userId}`)
+    .setLabel('❌ Cancel')
+    .setStyle(ButtonStyle.Secondary);
+
+  const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+
+  await interaction.update({ embeds: [embed], components: [row] });
+}
+
+async function confirmRemoveAll(interaction, userId) {
+  const characters = await CharacterRepo.findAllByUser(userId);
+
+  const embed = new EmbedBuilder()
+    .setColor('#8B0000')
+    .setDescription(
+      `# 💀 **Remove ALL Data?**\n` +
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+      '**⚠️ EXTREME WARNING ⚠️**\n\n' +
+      `**This will permanently delete ${characters.length} character${characters.length > 1 ? 's' : ''}:**\n` +
+      characters.map(c => `  • ${c.ign} (${c.class})`).join('\n') + '\n\n' +
+      '**ALL data will be lost forever!**\n' +
+      '**This action cannot be undone!**'
+    )
+    .setTimestamp();
+
+  const confirmButton = new ButtonBuilder()
+    .setCustomId(`confirm_remove_all_${userId}`)
+    .setLabel('💀 YES, DELETE EVERYTHING')
+    .setStyle(ButtonStyle.Danger);
+
+  const cancelButton = new ButtonBuilder()
+    .setCustomId(`cancel_remove_${userId}`)
     .setLabel('❌ Cancel')
     .setStyle(ButtonStyle.Secondary);
 
@@ -121,56 +267,62 @@ export async function selectCharacter(interaction, userId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// DELETE CHARACTER - EXECUTE
+// REMOVE - EXECUTE
 // ═══════════════════════════════════════════════════════════════════
 
-export async function confirmDelete(interaction, userId, characterId) {
-  console.log('[DELETE] Confirming delete for character:', characterId);
+export async function executeRemoveMain(interaction, userId) {
+  console.log('[REMOVE] Executing remove main for user:', userId);
 
   try {
-    const character = await CharacterRepo.findById(characterId);
+    const main = await CharacterRepo.findMain(userId);
 
-    if (!character) {
+    if (!main) {
       await interaction.update({
-        content: '❌ Character not found.',
+        content: '❌ Main character not found.',
         components: []
       });
       return;
     }
 
-    const isMain = character.character_type === 'main';
-    const characterClass = character.class;
+    const mainClass = main.class;
 
-    // Delete subclasses if this is a main character
-    if (isMain) {
-      await CharacterRepo.deleteSubclasses(characterId);
-      console.log('[DELETE] Deleted subclasses for main:', characterId);
-    }
+    // Delete subclasses
+    await CharacterRepo.deleteSubclasses(main.id);
+    console.log('[REMOVE] Deleted subclasses for main:', main.id);
 
-    // Delete the character
-    await CharacterRepo.delete(characterId);
-    console.log('[DELETE] Deleted character:', characterId);
+    // Delete the main character
+    await CharacterRepo.delete(main.id);
+    console.log('[REMOVE] Deleted main character:', main.id);
 
-    // Update class roles - check if the class is still used by other characters
+    // Update class roles - check if class is still used
     const remainingCharacters = await CharacterRepo.findAllByUser(userId);
-    const stillUsesClass = remainingCharacters.some(c => c.class === characterClass);
+    const stillUsesClass = remainingCharacters.some(c => c.class === mainClass);
 
     if (!stillUsesClass) {
-      await classRoleService.removeClassRole(userId, characterClass);
-      console.log('[DELETE] Removed class role:', characterClass);
+      await classRoleService.removeClassRole(userId, mainClass);
+      console.log('[REMOVE] Removed class role:', mainClass);
     }
 
-    // Show updated profile
+    // Also check subclass roles
+    const subclasses = await CharacterRepo.findSubclasses(userId);
+    for (const sub of subclasses) {
+      const stillUsesSubClass = remainingCharacters.some(c => c.class === sub.class);
+      if (!stillUsesSubClass) {
+        await classRoleService.removeClassRole(userId, sub.class);
+      }
+    }
+
+    // Show updated profile or no characters message
     const characters = await CharacterRepo.findAllByUser(userId);
-    const main = characters.find(c => c.character_type === 'main');
+    const newMain = characters.find(c => c.character_type === 'main');
 
     if (characters.length === 0) {
       const embed = new EmbedBuilder()
         .setColor(COLORS.SUCCESS)
         .setDescription(
-          '# ✅ **Character Deleted**\n' +
+          '# ✅ **Main Character Removed**\n' +
           '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-          `**${character.ign}** has been deleted.\n\n` +
+          `**${main.ign}** has been removed.\n\n` +
           'You have no characters registered.\n' +
           'Use `/register` to create a new character.'
         )
@@ -179,7 +331,7 @@ export async function confirmDelete(interaction, userId, characterId) {
       await interaction.update({ embeds: [embed], components: [] });
     } else {
       const embed = await profileEmbed(interaction.user, characters, interaction);
-      const buttons = ui.profileButtons(userId, !!main);
+      const buttons = ui.profileButtons(userId, !!newMain);
 
       await interaction.update({
         embeds: [embed],
@@ -187,10 +339,163 @@ export async function confirmDelete(interaction, userId, characterId) {
       });
     }
 
-    logger.delete(interaction.user.username, character.ign, character.class);
+    logger.delete(interaction.user.username, main.ign, main.class);
   } catch (error) {
-    console.error('[DELETE ERROR]', error);
-    logger.error('Delete', `Delete error: ${error.message}`, error);
+    console.error('[REMOVE ERROR]', error);
+    logger.error('Remove', `Remove main error: ${error.message}`, error);
+
+    await interaction.update({
+      content: '❌ Something went wrong. Please try again!',
+      components: []
+    });
+  }
+}
+
+export async function executeRemoveSubclass(interaction, userId, subclassId) {
+  console.log('[REMOVE] Executing remove subclass:', subclassId);
+
+  try {
+    const subclass = await CharacterRepo.findById(subclassId);
+
+    if (!subclass) {
+      await interaction.update({
+        content: '❌ Subclass not found.',
+        components: []
+      });
+      return;
+    }
+
+    const subclassClass = subclass.class;
+
+    // Delete the subclass
+    await CharacterRepo.delete(subclassId);
+    console.log('[REMOVE] Deleted subclass:', subclassId);
+
+    // Update class roles - check if class is still used
+    const remainingCharacters = await CharacterRepo.findAllByUser(userId);
+    const stillUsesClass = remainingCharacters.some(c => c.class === subclassClass);
+
+    if (!stillUsesClass) {
+      await classRoleService.removeClassRole(userId, subclassClass);
+      console.log('[REMOVE] Removed class role:', subclassClass);
+    }
+
+    // Show updated profile
+    const characters = await CharacterRepo.findAllByUser(userId);
+    const main = characters.find(c => c.character_type === 'main');
+
+    const embed = await profileEmbed(interaction.user, characters, interaction);
+    const buttons = ui.profileButtons(userId, !!main);
+
+    await interaction.update({
+      embeds: [embed],
+      components: buttons
+    });
+
+    logger.delete(interaction.user.username, subclass.ign, `${subclass.class} (subclass)`);
+  } catch (error) {
+    console.error('[REMOVE ERROR]', error);
+    logger.error('Remove', `Remove subclass error: ${error.message}`, error);
+
+    await interaction.update({
+      content: '❌ Something went wrong. Please try again!',
+      components: []
+    });
+  }
+}
+
+export async function executeRemoveAlt(interaction, userId, altId) {
+  console.log('[REMOVE] Executing remove alt:', altId);
+
+  try {
+    const alt = await CharacterRepo.findById(altId);
+
+    if (!alt) {
+      await interaction.update({
+        content: '❌ Alt character not found.',
+        components: []
+      });
+      return;
+    }
+
+    const altClass = alt.class;
+
+    // Delete the alt
+    await CharacterRepo.delete(altId);
+    console.log('[REMOVE] Deleted alt:', altId);
+
+    // Update class roles - check if class is still used
+    const remainingCharacters = await CharacterRepo.findAllByUser(userId);
+    const stillUsesClass = remainingCharacters.some(c => c.class === altClass);
+
+    if (!stillUsesClass) {
+      await classRoleService.removeClassRole(userId, altClass);
+      console.log('[REMOVE] Removed class role:', altClass);
+    }
+
+    // Show updated profile
+    const characters = await CharacterRepo.findAllByUser(userId);
+    const main = characters.find(c => c.character_type === 'main');
+
+    const embed = await profileEmbed(interaction.user, characters, interaction);
+    const buttons = ui.profileButtons(userId, !!main);
+
+    await interaction.update({
+      embeds: [embed],
+      components: buttons
+    });
+
+    logger.delete(interaction.user.username, alt.ign, alt.class);
+  } catch (error) {
+    console.error('[REMOVE ERROR]', error);
+    logger.error('Remove', `Remove alt error: ${error.message}`, error);
+
+    await interaction.update({
+      content: '❌ Something went wrong. Please try again!',
+      components: []
+    });
+  }
+}
+
+export async function executeRemoveAll(interaction, userId) {
+  console.log('[REMOVE] Executing remove all for user:', userId);
+
+  try {
+    const characters = await CharacterRepo.findAllByUser(userId);
+
+    // Collect all unique classes
+    const allClasses = new Set(characters.map(c => c.class));
+
+    // Delete all characters
+    for (const character of characters) {
+      await CharacterRepo.delete(character.id);
+    }
+
+    console.log('[REMOVE] Deleted all characters for user:', userId);
+
+    // Remove all class roles
+    for (const className of allClasses) {
+      await classRoleService.removeClassRole(userId, className);
+      console.log('[REMOVE] Removed class role:', className);
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(COLORS.SUCCESS)
+      .setDescription(
+        '# ✅ **All Data Removed**\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+        `**All ${characters.length} character${characters.length > 1 ? 's' : ''} have been removed.**\n\n` +
+        'You have no characters registered.\n' +
+        'Use `/register` to create a new character.'
+      )
+      .setTimestamp();
+
+    await interaction.update({ embeds: [embed], components: [] });
+
+    logger.delete(interaction.user.username, 'ALL', `Removed ${characters.length} characters`);
+  } catch (error) {
+    console.error('[REMOVE ERROR]', error);
+    logger.error('Remove', `Remove all error: ${error.message}`, error);
 
     await interaction.update({
       content: '❌ Something went wrong. Please try again!',
@@ -200,11 +505,11 @@ export async function confirmDelete(interaction, userId, characterId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// DELETE CHARACTER - CANCEL
+// CANCEL
 // ═══════════════════════════════════════════════════════════════════
 
-export async function cancelDelete(interaction, userId) {
-  console.log('[DELETE] Cancelled delete for user:', userId);
+export async function cancelRemove(interaction, userId) {
+  console.log('[REMOVE] Cancelled remove for user:', userId);
 
   const characters = await CharacterRepo.findAllByUser(userId);
   const main = characters.find(c => c.character_type === 'main');
@@ -224,7 +529,10 @@ export async function cancelDelete(interaction, userId) {
 
 export default {
   start,
-  selectCharacter,
-  confirmDelete,
-  cancelDelete
+  selectRemoveType,
+  executeRemoveMain,
+  executeRemoveSubclass,
+  executeRemoveAlt,
+  executeRemoveAll,
+  cancelRemove
 };
