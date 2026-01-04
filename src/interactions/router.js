@@ -351,6 +351,11 @@ export async function routeSelectMenu(interaction) {
       await editing.handleBattleImagineTierEdit(interaction, userId);
     }
 
+    // ✅ NEW: Editing - Discord Nickname
+    else if (customId === `edit_select_nickname_${userId}`) {
+      await editing.handleNicknameEdit(interaction, userId);
+    }
+
     // Deletion - Remove Type Selection
     else if (customId === `select_remove_type_${userId}`) {
       await deletion.selectRemoveType(interaction, userId);
