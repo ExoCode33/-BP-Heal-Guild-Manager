@@ -71,6 +71,7 @@ class ApplicationService {
 
       const updated = await ApplicationRepo.addVote(applicationId, interaction.user.id, voteType);
       
+      // ✅ UPDATE THE MESSAGE TO SHOW NEW VOTE COUNTS
       await this.updateApplicationMessage(updated);
 
       const acceptCount = updated.accept_votes?.length || 0;
@@ -151,6 +152,10 @@ class ApplicationService {
     }
   }
 
+  async cancelOverride(interaction, applicationId) {
+    await interaction.update({ content: '❌ Override cancelled.', components: [] });
+  }
+
   async approveApplication(application, overrideBy = null) {
     try {
       await ApplicationRepo.updateStatus(application.id, 'approved');
@@ -176,6 +181,7 @@ class ApplicationService {
         console.log(`[APP] Removed Visitor role from ${application.user_id}`);
       }
 
+      // ✅ UPDATE MESSAGE TO SHOW APPROVAL
       await this.updateApplicationMessage(application, 'approved', overrideBy);
 
       logger.info('Application approved', `User: ${application.user_id} | Guild: ${application.guild_name}`);
@@ -208,14 +214,13 @@ class ApplicationService {
         console.log(`[APP] Added Visitor role to ${application.user_id}`);
       }
 
-      // ✅ FIXED: Keep the Verified role - they're still a registered user!
-      // Do NOT remove the verified role when denied
-      // They registered a character, they just didn't get into the guild
+      // ✅ Keep the Verified role - they're still a registered user!
       if (config.roles.verified && !member.roles.cache.has(config.roles.verified)) {
         await member.roles.add(config.roles.verified);
         console.log(`[APP] Ensured Verified role for ${application.user_id}`);
       }
 
+      // ✅ UPDATE MESSAGE TO SHOW DENIAL
       await this.updateApplicationMessage(application, 'denied', overrideBy);
 
       logger.info('Application denied', `User: ${application.user_id} | Guild: ${application.guild_name}`);
@@ -236,6 +241,7 @@ class ApplicationService {
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
       if (finalStatus) {
+        // ✅ FINAL STATUS - Show approval or denial
         const color = finalStatus === 'approved' ? '#00FF00' : '#FF0000';
         const statusText = finalStatus === 'approved' ? '✅ APPROVED' : '❌ DENIED';
         const description = overrideBy 
@@ -253,6 +259,7 @@ class ApplicationService {
 
         await message.edit({ embeds: [embed], components: [] });
       } else {
+        // ✅ PENDING STATUS - Update vote counts
         const embed = await profileEmbed(user, characters, { guild });
         const applicationEmbed = addVotingFooter(embed, application);
         const buttons = createApplicationButtons(application.id);
@@ -287,7 +294,7 @@ class ApplicationService {
             }
           }
 
-          // ✅ FIX: Fetch the FULL application with votes from findById
+          // ✅ Fetch the FULL application with votes
           const fullApp = await ApplicationRepo.findById(app.id);
           
           if (!fullApp) {
