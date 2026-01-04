@@ -391,18 +391,18 @@ export async function routeSelectMenu(interaction) {
       await editing.handleBattleImagineTierEdit(interaction, targetUserId);
     }
 
-    // ✅ NEW: Editing - Discord Nickname
-    else if (customId.startsWith('edit_select_nickname_')) {
-      const targetUserId = customId.replace('edit_select_nickname_', '');
-      await editing.handleNicknameEdit(interaction, targetUserId);
-    }
-    
-    // ✅ NEW: Editing - Discord Nickname Style
+    // ✅ FIXED ORDER: More specific pattern FIRST (style handler before general nickname handler)
+    // Editing - Discord Nickname Style (MUST come before general nickname handler)
     else if (customId.startsWith('edit_select_nickname_style_')) {
       const targetUserId = customId.replace('edit_select_nickname_style_', '');
       console.log('[ROUTER] Calling handleNicknameStyleEdit for user:', targetUserId);
       await editing.handleNicknameStyleEdit(interaction, targetUserId);
       console.log('[ROUTER] handleNicknameStyleEdit completed');
+    }
+    // Editing - Discord Nickname (general handler, comes AFTER style)
+    else if (customId.startsWith('edit_select_nickname_')) {
+      const targetUserId = customId.replace('edit_select_nickname_', '');
+      await editing.handleNicknameEdit(interaction, targetUserId);
     }
 
     // Deletion - Remove Type Selection
