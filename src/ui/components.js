@@ -1,76 +1,48 @@
-import { ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
-
-// ═══════════════════════════════════════════════════════════════════
-// PROFILE BUTTONS
-// ═══════════════════════════════════════════════════════════════════
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 export function profileButtons(userId, hasMain) {
-  const rows = [];
-
-  // Row 1: Main actions
-  const row1Components = [];
+  const row1 = new ActionRowBuilder();
+  const row2 = new ActionRowBuilder();
 
   if (hasMain) {
-    row1Components.push(
+    row1.addComponents(
       new ButtonBuilder()
-        .setCustomId(`reg_subclass_${userId}`)
-        .setLabel('➕ Add Subclass')
-        .setStyle(ButtonStyle.Primary)
-    );
-
-    row1Components.push(
+        .setCustomId(`add_subclass_${userId}`)
+        .setLabel('Add Subclass')
+        .setEmoji('➕')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId(`reg_alt_${userId}`)
-        .setLabel('🎮 Add Alt Character')
-        .setStyle(ButtonStyle.Primary)
-    );
-
-    row1Components.push(
+        .setCustomId(`add_alt_${userId}`)
+        .setLabel('Add Alt Character')
+        .setEmoji('🎭')
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId(`edit_character_${userId}`)
-        .setLabel('✏️ Edit Character')
+        .setLabel('Edit Character')
+        .setEmoji('✏️')
         .setStyle(ButtonStyle.Secondary)
     );
-  } else {
-    row1Components.push(
+
+    row2.addComponents(
       new ButtonBuilder()
-        .setCustomId(`reg_start_${userId}`)
-        .setLabel('📝 Register Character')
+        .setCustomId(`remove_character_${userId}`)
+        .setLabel('Remove')
+        .setEmoji('🗑️')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    return [row1, row2];
+  } else {
+    row1.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`register_${userId}`)
+        .setLabel('Register')
+        .setEmoji('📝')
         .setStyle(ButtonStyle.Success)
     );
+
+    return [row1];
   }
-
-  rows.push(new ActionRowBuilder().addComponents(row1Components));
-
-  // Row 2: Deletion actions
-  if (hasMain) {
-    const row2Components = [];
-
-    row2Components.push(
-      new ButtonBuilder()
-        .setCustomId(`delete_character_${userId}`)
-        .setLabel('🗑️ Delete Main')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    row2Components.push(
-      new ButtonBuilder()
-        .setCustomId(`delete_alt_${userId}`)
-        .setLabel('🗑️ Delete Alt')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    row2Components.push(
-      new ButtonBuilder()
-        .setCustomId(`delete_all_data_${userId}`)
-        .setLabel('💀 Delete All Data')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    rows.push(new ActionRowBuilder().addComponents(row2Components));
-  }
-
-  return rows;
 }
 
 export default {
