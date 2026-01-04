@@ -214,6 +214,16 @@ export async function route(interaction) {
       await deletion.cancelRemove(interaction, userId);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // ADMIN SETTINGS
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Admin Settings - Back Button
+    else if (customId === `admin_settings_back_${userId}`) {
+      const { handleSettingsBackButton } = await import('../services/adminSettings.js');
+      await handleSettingsBackButton(interaction);
+    }
+
     // Profile / Back to Profile
     else if (customId === `back_to_profile_${userId}`) {
       const { profileEmbed } = await import('../ui/embeds.js');
@@ -344,6 +354,42 @@ export async function routeSelectMenu(interaction) {
     // Deletion - Remove Type Selection
     else if (customId === `select_remove_type_${userId}`) {
       await deletion.selectRemoveType(interaction, userId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ADMIN SETTINGS
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Admin Settings Main Menu
+    else if (customId === `admin_settings_menu_${userId}`) {
+      const { handleSettingsMenuSelect } = await import('../services/adminSettings.js');
+      await handleSettingsMenuSelect(interaction);
+    }
+
+    // Admin Logging Settings
+    else if (customId === `admin_logs_channel_${userId}`) {
+      const { handleLogChannelSelect } = await import('../services/adminSettings.js');
+      await handleLogChannelSelect(interaction);
+    }
+    else if (customId === `admin_logs_batch_${userId}`) {
+      const { handleLogBatchSelect } = await import('../services/adminSettings.js');
+      await handleLogBatchSelect(interaction);
+    }
+    else if (customId === `admin_logs_categories_${userId}`) {
+      const { handleLogCategoriesSelect } = await import('../services/adminSettings.js');
+      await handleLogCategoriesSelect(interaction);
+    }
+
+    // Admin Ephemeral Settings
+    else if (customId === `admin_ephemeral_${userId}`) {
+      const { handleEphemeralSelect } = await import('../services/adminSettings.js');
+      await handleEphemeralSelect(interaction);
+    }
+
+    // Admin Verification Settings
+    else if (customId === `admin_verification_channel_${userId}`) {
+      const { handleVerificationChannelSelect } = await import('../services/adminSettings.js');
+      await handleVerificationChannelSelect(interaction);
     }
 
     else {
