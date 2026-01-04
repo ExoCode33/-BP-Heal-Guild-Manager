@@ -289,47 +289,10 @@ export async function start(interaction, userId) {
   const existingMain = await CharacterRepo.findMain(userId);
   
   if (existingMain) {
-    // Show warning about replacing main
-    const subclasses = await CharacterRepo.findSubclasses(existingMain.id);
-    
-    const warningEmbed = new EmbedBuilder()
-      .setColor('#FF9900')
-      .setDescription(
-        '# ⚠️ **Replace Main Character?**\n' +
-        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '**You already have a main character!**\n\n' +
-        `🎮 **Current Main:** ${existingMain.ign}\n` +
-        `🆔 **UID:** ${existingMain.uid}\n` +
-        `🎭 **Class:** ${existingMain.class} - ${existingMain.subclass}\n` +
-        `💪 **Score:** ${existingMain.ability_score}\n` +
-        `🏰 **Guild:** ${existingMain.guild}\n\n` +
-        (subclasses.length > 0 
-          ? `**⚠️ This will also delete ${subclasses.length} subclass${subclasses.length > 1 ? 'es' : ''}:**\n` +
-            subclasses.map(s => `  • ${s.class} - ${s.subclass}`).join('\n') + '\n\n'
-          : '') +
-        '**This action cannot be undone!**\n' +
-        'Consider using `/edit-character` instead.'
-      )
-      .setTimestamp();
-    
-    const confirmButton = new ButtonBuilder()
-      .setCustomId(`confirm_replace_main_${userId}`)
-      .setLabel('✅ Yes, Replace Main')
-      .setStyle(ButtonStyle.Danger);
-    
-    const cancelButton = new ButtonBuilder()
-      .setCustomId(`cancel_replace_main_${userId}`)
-      .setLabel('❌ Cancel')
-      .setStyle(ButtonStyle.Secondary);
-    
-    const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
-    
+    // ✅ NEW: Show edit character menu instead of replace warning
+    const { showEditMenu } = await import('./editing.js');
     clearActiveInteraction(userId);
-    await interaction.reply({ 
-      embeds: [warningEmbed], 
-      components: [row],
-      flags: MessageFlags.Ephemeral 
-    });
+    await showEditMenu(interaction, userId);
     return;
   }
   
