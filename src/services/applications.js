@@ -32,7 +32,16 @@ class ApplicationService {
 
       const channel = await this.client.channels.fetch(config.channels.admin);
       const user = await this.client.users.fetch(userId);
-      const characters = await CharacterRepo.findAllByUser(userId);
+      
+      // ✅ FIX: Get the SPECIFIC character being applied with, not all characters
+      const character = await CharacterRepo.findById(characterId);
+      if (!character) {
+        console.error('[APP] Character not found:', characterId);
+        return null;
+      }
+
+      // Create an array with just this character so profileEmbed displays it
+      const characters = [character];
       
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
@@ -298,7 +307,16 @@ class ApplicationService {
       
       console.log(`[APP] Fetching user ${application.user_id}`);
       const user = await this.client.users.fetch(application.user_id);
-      const characters = await CharacterRepo.findAllByUser(application.user_id);
+      
+      // ✅ FIX: Get the SPECIFIC character for this application
+      const character = await CharacterRepo.findById(application.character_id);
+      if (!character) {
+        console.error('[APP] Character not found for application:', application.character_id);
+        return;
+      }
+
+      // Create array with just this character
+      const characters = [character];
       
       const guild = await this.client.guilds.fetch(config.discord.guildId);
 
@@ -378,7 +396,16 @@ class ApplicationService {
           }
           
           const user = await this.client.users.fetch(app.user_id);
-          const characters = await CharacterRepo.findAllByUser(app.user_id);
+          
+          // ✅ FIX: Get the SPECIFIC character for this application
+          const character = await CharacterRepo.findById(fullApp.character_id);
+          if (!character) {
+            console.error('[APP] Character not found for application:', fullApp.character_id);
+            continue;
+          }
+
+          // Create array with just this character
+          const characters = [character];
           
           // Create new embed with PRESERVED votes from fullApp
           const embed = await profileEmbed(user, characters, { guild });
