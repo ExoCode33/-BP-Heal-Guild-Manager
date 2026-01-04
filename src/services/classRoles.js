@@ -1,6 +1,19 @@
 import config from '../config/index.js';
-import { getClassRoleId } from '../utils/classRoleMapping.js';
-import logger from '../utils/logger.js';
+import { CLASSES } from '../config/game.js';
+import logger from './logger.js';
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════
+
+function getClassRoleId(className) {
+  if (!className) return null;
+  return config.classRoles?.[className] || null;
+}
+
+function getRole(className) {
+  return CLASSES[className]?.role || 'Unknown';
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // CLASS ROLE MANAGEMENT SERVICE
@@ -101,33 +114,53 @@ export async function removeClassRole(userId, className) {
 }
 
 /**
- * Update class roles when a character's class changes
+ * Sync all class roles for a user based on their characters
  * @param {string} userId - Discord user ID
- * @param {string} oldClass - Previous class name
- * @param {string} newClass - New class name
- * @param {Function} hasOtherWithOldClass - Function to check if user has other characters with old class
+ * @param {Array} characters - User's characters
  */
-export async function updateClassRole(userId, oldClass, newClass, hasOtherWithOldClass) {
+export async function syncUserClassRoles(userId, characters) {
   try {
-    // Add new class role
-    await addClassRole(userId, newClass);
+    const userClasses = new Set(characters.map(c => c.class));
+    const results = { success: true, rolesAdded: 0, rolesRemoved: 0 };
 
-    // Remove old class role only if no other characters have it
-    const hasOther = await hasOtherWithOldClass();
-    if (!hasOther) {
-      await removeClassRole(userId, oldClass);
+    // Add roles for classes the user has
+    for (const className of userClasses) {
+      const result = await addClassRole(userId, className);
+      if (result.success && result.reason !== 'Already has role') {
+        results.rolesAdded++;
+      }
     }
 
-    return { success: true };
+    // Remove roles for classes the user doesn't have
+    const allClasses = Object.keys(CLASSES);
+    for (const className of allClasses) {
+      if (!userClasses.has(className)) {
+        const result = await removeClassRole(userId, className);
+        if (result.success && result.reason !== 'Already removed') {
+          results.rolesRemoved++;
+        }
+      }
+    }
+
+    return results;
 
   } catch (error) {
-    console.error('[CLASS ROLE] Error updating class role:', error.message);
-    return { success: false, reason: error.message };
+    console.error('[CLASS ROLE] Error syncing roles:', error.message);
+    return { success: false, error: error.message };
   }
+}
+
+/**
+ * Initialize class role system
+ */
+export function init(client) {
+  global.discordClient = client;
+  console.log('✅ Class role service initialized');
 }
 
 export default {
   addClassRole,
   removeClassRole,
-  updateClassRole
+  syncUserClassRoles,
+  init
 };
