@@ -178,20 +178,25 @@ export async function route(interaction) {
       const targetUserId = customId.replace('edit_character_', '');
       await editing.start(interaction, targetUserId);
     }
-    else if (customId === `back_to_edit_select_${userId}`) {
-      await editing.backToEditSelect(interaction, userId);
+    else if (customId.startsWith('back_to_edit_select_')) {
+      const targetUserId = customId.replace('back_to_edit_select_', '');
+      await editing.backToEditSelect(interaction, targetUserId);
     }
-    else if (customId === `back_to_edit_field_${userId}`) {
-      await editing.backToEditField(interaction, userId);
+    else if (customId.startsWith('back_to_edit_field_')) {
+      const targetUserId = customId.replace('back_to_edit_field_', '');
+      await editing.backToEditField(interaction, targetUserId);
     }
-    else if (customId === `back_to_edit_class_${userId}`) {
-      await editing.backToEditClass(interaction, userId);
+    else if (customId.startsWith('back_to_edit_class_')) {
+      const targetUserId = customId.replace('back_to_edit_class_', '');
+      await editing.backToEditClass(interaction, targetUserId);
     }
-    else if (customId === `back_to_edit_bi_list_${userId}`) {
-      await editing.backToBIList(interaction, userId);
+    else if (customId.startsWith('back_to_edit_bi_list_')) {
+      const targetUserId = customId.replace('back_to_edit_bi_list_', '');
+      await editing.backToBIList(interaction, targetUserId);
     }
-    else if (customId === `retry_edit_uid_${userId}`) {
-      await editing.retryUIDEdit(interaction, userId);
+    else if (customId.startsWith('retry_edit_uid_')) {
+      const targetUserId = customId.replace('retry_edit_uid_', '');
+      await editing.retryUIDEdit(interaction, targetUserId);
     }
 
     // 🆕 Discord Nickname (Main Button)
@@ -207,24 +212,29 @@ export async function route(interaction) {
       const targetUserId = customId.replace('remove_character_', '');
       await deletion.start(interaction, targetUserId);
     }
-    else if (customId === `confirm_remove_main_${userId}`) {
-      await deletion.executeRemoveMain(interaction, userId);
+    else if (customId.startsWith('confirm_remove_main_')) {
+      const targetUserId = customId.replace('confirm_remove_main_', '');
+      await deletion.executeRemoveMain(interaction, targetUserId);
     }
     else if (customId.startsWith('confirm_remove_subclass_')) {
       const parts = customId.split('_');
       const subclassId = parseInt(parts[parts.length - 1]);
-      await deletion.executeRemoveSubclass(interaction, userId, subclassId);
+      const targetUserId = parts.slice(3, -1).join('_'); // Extract userId between 'confirm_remove_subclass_' and subclassId
+      await deletion.executeRemoveSubclass(interaction, targetUserId, subclassId);
     }
     else if (customId.startsWith('confirm_remove_alt_')) {
       const parts = customId.split('_');
       const altId = parseInt(parts[parts.length - 1]);
-      await deletion.executeRemoveAlt(interaction, userId, altId);
+      const targetUserId = parts.slice(3, -1).join('_'); // Extract userId between 'confirm_remove_alt_' and altId
+      await deletion.executeRemoveAlt(interaction, targetUserId, altId);
     }
-    else if (customId === `confirm_remove_all_${userId}`) {
-      await deletion.executeRemoveAll(interaction, userId);
+    else if (customId.startsWith('confirm_remove_all_')) {
+      const targetUserId = customId.replace('confirm_remove_all_', '');
+      await deletion.executeRemoveAll(interaction, targetUserId);
     }
-    else if (customId === `cancel_remove_${userId}`) {
-      await deletion.cancelRemove(interaction, userId);
+    else if (customId.startsWith('cancel_remove_')) {
+      const targetUserId = customId.replace('cancel_remove_', '');
+      await deletion.cancelRemove(interaction, targetUserId);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -238,16 +248,23 @@ export async function route(interaction) {
     }
 
     // Profile / Back to Profile
-    else if (customId === `back_to_profile_${userId}`) {
+    else if (customId.startsWith('back_to_profile_')) {
+      const targetUserId = customId.replace('back_to_profile_', '');
       const { profileEmbed } = await import('../ui/embeds.js');
-      const { profileButtons } = await import('../ui/components.js');
+      const { profileButtons, adminProfileButtons } = await import('../ui/components.js');
       const { CharacterRepo } = await import('../database/repositories.js');
 
-      const characters = await CharacterRepo.findAllByUser(userId);
+      const characters = await CharacterRepo.findAllByUser(targetUserId);
       const main = characters.find(c => c.character_type === 'main');
 
-      const embed = await profileEmbed(interaction.user, characters, interaction);
-      const buttons = profileButtons(userId, !!main);
+      // Get the target user for the embed
+      const targetUser = await interaction.client.users.fetch(targetUserId);
+      const embed = await profileEmbed(targetUser, characters, interaction);
+      
+      // Use admin buttons if viewing someone else's profile, otherwise use regular buttons
+      const buttons = targetUserId === interaction.user.id 
+        ? profileButtons(targetUserId, !!main)
+        : adminProfileButtons(targetUserId);
 
       await interaction.update({ embeds: [embed], components: buttons });
     }
@@ -381,8 +398,9 @@ export async function routeSelectMenu(interaction) {
     }
 
     // Deletion - Remove Type Selection
-    else if (customId === `select_remove_type_${userId}`) {
-      await deletion.selectRemoveType(interaction, userId);
+    else if (customId.startsWith('select_remove_type_')) {
+      const targetUserId = customId.replace('select_remove_type_', '');
+      await deletion.selectRemoveType(interaction, targetUserId);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -466,14 +484,16 @@ export async function routeModal(interaction) {
       await registration.handleIGN(interaction, userId);
     }
 
-    // Editing - IGN Modal
-    else if (customId === `edit_ign_modal_${userId}`) {
-      await editing.handleIGNEdit(interaction, userId);
+    // Editing - IGN Modal (supports admin editing other users)
+    else if (customId.startsWith('edit_ign_modal_')) {
+      const targetUserId = customId.replace('edit_ign_modal_', '');
+      await editing.handleIGNEdit(interaction, targetUserId);
     }
 
-    // Editing - UID Modal
-    else if (customId === `edit_uid_modal_${userId}`) {
-      await editing.handleUIDEdit(interaction, userId);
+    // Editing - UID Modal (supports admin editing other users)
+    else if (customId.startsWith('edit_uid_modal_')) {
+      const targetUserId = customId.replace('edit_uid_modal_', '');
+      await editing.handleUIDEdit(interaction, targetUserId);
     }
 
     else {
