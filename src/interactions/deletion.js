@@ -372,6 +372,15 @@ export async function executeRemoveSubclass(interaction, userId, subclassId) {
     await CharacterRepo.delete(subclassId);
     console.log('[REMOVE] Deleted subclass:', subclassId);
 
+    // 🆕 Clean up nickname preferences
+    const { NicknamePrefsRepo } = await import('../services/nickname.js');
+    const prefs = await NicknamePrefsRepo.get(userId);
+    if (prefs && prefs.includes(subclassId)) {
+      const updatedPrefs = prefs.filter(id => id !== subclassId);
+      await NicknamePrefsRepo.set(userId, updatedPrefs);
+      console.log('[REMOVE] Cleaned up nickname preferences for subclass:', subclassId);
+    }
+
     // Update class roles - check if class is still used
     const remainingCharacters = await CharacterRepo.findAllByUser(userId);
     const stillUsesClass = remainingCharacters.some(c => c.class === subclassClass);
@@ -425,6 +434,15 @@ export async function executeRemoveAlt(interaction, userId, altId) {
     await CharacterRepo.delete(altId);
     console.log('[REMOVE] Deleted alt:', altId);
 
+    // 🆕 Clean up nickname preferences
+    const { NicknamePrefsRepo } = await import('../services/nickname.js');
+    const prefs = await NicknamePrefsRepo.get(userId);
+    if (prefs && prefs.includes(altId)) {
+      const updatedPrefs = prefs.filter(id => id !== altId);
+      await NicknamePrefsRepo.set(userId, updatedPrefs);
+      console.log('[REMOVE] Cleaned up nickname preferences for alt:', altId);
+    }
+
     // Update class roles - check if class is still used
     const remainingCharacters = await CharacterRepo.findAllByUser(userId);
     const stillUsesClass = remainingCharacters.some(c => c.class === altClass);
@@ -473,6 +491,11 @@ export async function executeRemoveAll(interaction, userId) {
     }
 
     console.log('[REMOVE] Deleted all characters for user:', userId);
+
+    // 🆕 Clear all nickname preferences
+    const { NicknamePrefsRepo } = await import('../services/nickname.js');
+    await NicknamePrefsRepo.set(userId, []);
+    console.log('[REMOVE] Cleared nickname preferences');
 
     // Remove all class roles
     for (const className of allClasses) {
