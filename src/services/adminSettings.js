@@ -217,61 +217,48 @@ export async function showLoggingSettings(interaction) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// EPHEMERAL SETTINGS
+// EPHEMERAL SETTINGS (✅ UPDATED - SIMPLIFIED)
 // ═══════════════════════════════════════════════════════════════════
 
 export async function showEphemeralSettings(interaction) {
   try {
     const current = await EphemeralRepo.get(interaction.guildId);
     
+    // Only one option: /view-character
     const options = [
-      { label: '/edit-character', value: 'edit_character', description: '💬 COMMAND - Manage your profile', emoji: '✏️' },
-      { label: '/view-character', value: 'view_character', description: '💬 COMMAND - View character profiles', emoji: '👁' },
-      { label: '/admin', value: 'admin', description: '💬 COMMAND - Admin responses', emoji: '⚙️' },
-      { label: 'Registration', value: 'registration', description: '🔄 FLOW - New character registration', emoji: '📝' },
-      { label: 'Edit Actions', value: 'edit_actions', description: '🔄 FLOW - Editing character info', emoji: '🔧' },
-      { label: 'Add Character', value: 'add_character', description: '🔄 FLOW - Adding subclasses', emoji: '➕' },
-      { label: 'Delete Character', value: 'delete_character', description: '🔄 FLOW - Character deletion', emoji: '🗑️' },
-      { label: 'Error Messages', value: 'errors', description: '💬 MESSAGE - Error/validation messages', emoji: '❌' }
-    ].map(opt => ({ 
-      ...opt, 
-      default: current.includes(opt.value) 
-    }));
+      { 
+        label: '/view-character (Make Private)', 
+        value: 'view_character', 
+        description: 'Hide profile views from others', 
+        emoji: '👁',
+        default: current.includes('view_character')
+      }
+    ];
     
-    const categoryNames = {
-      'edit_character': '✏️ /edit-character',
-      'view_character': '👁 /view-character',
-      'admin': '⚙️ /admin',
-      'registration': '📝 Registration',
-      'edit_actions': '🔧 Edit Actions',
-      'add_character': '➕ Add Character',
-      'delete_character': '🗑️ Delete Character',
-      'errors': '❌ Errors'
-    };
-    
-    const currentList = current.length > 0 
-      ? current.map(c => categoryNames[c] || c).join('\n') 
-      : '*None (all public)*';
+    const isPrivate = current.includes('view_character');
     
     const description = 
-      `**Currently Private:**\n${currentList}\n\n` +
-      '✅ Selected = Private (only you see)\n' +
-      '❌ Not Selected = Public (everyone sees)\n\n' +
-      '**💡 Recommended Settings:**\n' +
-      '• ✏️ /edit-character - Private ✅\n' +
-      '• 👁 /view-character - Public ❌\n' +
-      '• 📝 Registration - Private ✅\n' +
-      '• 🔧 Edit Actions - Private ✅\n' +
-      '• ❌ Errors - Private ✅';
+      `**Current Setting:**\n\n` +
+      `👁 **/view-character** → ${isPrivate ? '**Private** 🔒' : '**Public** 🌍'}\n` +
+      `${isPrivate ? '• Only the user sees their profile' : '• Everyone can see profiles (recommended)'}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `**Everything else is always private:**\n` +
+      `🔒 /edit-character → Always private\n` +
+      `🔒 /admin → Always private\n` +
+      `🔒 Registration → Always private\n` +
+      `🔒 Editing/Adding/Deleting → Always private\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `💡 **Recommended:** Keep /view-character **public** (unchecked)\n` +
+      `This allows members to view each other's profiles for party grouping!`;
     
     const rows = [];
     
     rows.push(new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`admin_ephemeral_${interaction.user.id}`)
-        .setPlaceholder('Select ephemeral responses (private messages)')
+        .setPlaceholder(isPrivate ? '✅ Private (click to make public)' : '🌍 Public (click to make private)')
         .setMinValues(0)
-        .setMaxValues(options.length)
+        .setMaxValues(1)
         .addOptions(options)
     ));
 
@@ -283,7 +270,7 @@ export async function showEphemeralSettings(interaction) {
     ));
     
     await interaction.update({ 
-      embeds: [embed('👁 Ephemeral Settings', description)], 
+      embeds: [embed('👁 Privacy Settings', description)], 
       components: rows 
     });
   } catch (error) {
@@ -467,28 +454,25 @@ export async function handleLogCategoriesSelect(interaction) {
 }
 
 export async function handleEphemeralSelect(interaction) {
-  const selected = interaction.values;
+  const selected = interaction.values; // Array with 0 or 1 items
   
   try {
     await EphemeralRepo.set(interaction.guildId, selected);
     
-    const categoryNames = {
-      'edit_character': '✏️ /edit-character',
-      'view_character': '👁 /view-character',
-      'admin': '⚙️ /admin',
-      'registration': '📝 Registration',
-      'edit_actions': '🔧 Edit Actions',
-      'add_character': '➕ Add Character',
-      'delete_character': '🗑️ Delete Character',
-      'errors': '❌ Errors'
-    };
+    const isPrivate = selected.includes('view_character');
     
-    const currentList = selected.length > 0 
-      ? selected.map(c => categoryNames[c] || c).join('\n') 
-      : '*None (all public)*';
+    const description = 
+      `**/view-character** is now **${isPrivate ? 'Private 🔒' : 'Public 🌍'}**\n\n` +
+      (isPrivate 
+        ? '🔒 Profile views are now **private**\n' +
+          '• Only the user sees their own profile\n\n' +
+          '⚠️ Members won\'t be able to see each other\'s profiles for grouping.'
+        : '🌍 Profile views are now **public**\n' +
+          '• Everyone can see character profiles\n\n' +
+          '✅ Members can view each other\'s profiles to coordinate groups!');
     
     await interaction.update({ 
-      embeds: [embed('✅ Saved', `**Private Responses:**\n${currentList}`)], 
+      embeds: [embed('✅ Privacy Settings Updated', description)], 
       components: [] 
     });
   } catch (error) {
@@ -499,3 +483,5 @@ export async function handleEphemeralSelect(interaction) {
     });
   }
 }
+
+export const handleLogSelect = handleLogCategoriesSelect;
