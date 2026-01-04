@@ -1,5 +1,13 @@
-import db from './db.js';
-import { getRole } from '../utils/classRoleMapping.js';
+import db from './index.js';
+import { CLASSES } from '../config/game.js';
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER FUNCTION
+// ═══════════════════════════════════════════════════════════════════
+
+function getRole(className) {
+  return CLASSES[className]?.role || 'Unknown';
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // USER REPOSITORY
@@ -35,6 +43,33 @@ export const UserRepo = {
 
   async delete(userId) {
     await db.query('DELETE FROM users WHERE user_id = $1', [userId]);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// TIMEZONE REPOSITORY
+// ═══════════════════════════════════════════════════════════════════
+
+export const TimezoneRepo = {
+  async get(userId) {
+    const result = await db.query(
+      'SELECT timezone FROM user_timezones WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows[0]?.timezone || null;
+  },
+
+  async set(userId, timezone) {
+    await db.query(
+      `INSERT INTO user_timezones (user_id, timezone, updated_at) 
+       VALUES ($1, $2, NOW()) 
+       ON CONFLICT (user_id) DO UPDATE SET timezone = $2, updated_at = NOW()`,
+      [userId, timezone]
+    );
+  },
+
+  async delete(userId) {
+    await db.query('DELETE FROM user_timezones WHERE user_id = $1', [userId]);
   }
 };
 
@@ -100,10 +135,23 @@ export const CharacterRepo = {
     return result.rows.map(r => ({ ...r, role: getRole(r.class) }));
   },
 
+  async findAll() {
+    const result = await db.query(
+      `SELECT * FROM characters ORDER BY 
+       user_id, 
+       CASE character_type 
+         WHEN 'main' THEN 1 
+         WHEN 'main_subclass' THEN 2 
+         WHEN 'alt' THEN 3 
+       END, created_at`
+    );
+    return result.rows.map(r => ({ ...r, role: getRole(r.class) }));
+  },
+
   async create({ userId, ign, uid, className, subclass, abilityScore, guild, characterType = 'main', parentId = null }) {
     const result = await db.query(
       `INSERT INTO characters 
-       (user_id, ign, uid, class, subclass, ability_score, guild, character_type, parent_id, created_at, updated_at) 
+       (user_id, ign, uid, class, subclass, ability_score, guild, character_type, parent_character_id, created_at, updated_at) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) 
        RETURNING *`,
       [userId, ign, uid, className, subclass, abilityScore, guild, characterType, parentId]
@@ -135,7 +183,7 @@ export const CharacterRepo = {
   },
 
   async deleteSubclasses(parentId) {
-    await db.query('DELETE FROM characters WHERE parent_id = $1', [parentId]);
+    await db.query('DELETE FROM characters WHERE parent_character_id = $1', [parentId]);
   },
 
   async deleteAllByUser(userId) {
@@ -181,17 +229,21 @@ export const CharacterRepo = {
 export const BattleImagineRepo = {
   async findByCharacterId(characterId) {
     const result = await db.query(
-      `SELECT * FROM battle_imagines WHERE character_id = $1 ORDER BY name`,
+      `SELECT * FROM battle_imagines WHERE character_id = $1 ORDER BY imagine_name`,
       [characterId]
     );
     return result.rows;
   },
 
+  async findByCharacter(characterId) {
+    return await this.findByCharacterId(characterId);
+  },
+
   async add(characterId, imagineName, tier) {
     const result = await db.query(
-      `INSERT INTO battle_imagines (character_id, name, tier, created_at, updated_at) 
-       VALUES ($1, $2, $3, NOW(), NOW()) 
-       ON CONFLICT (character_id, name) DO UPDATE SET tier = $3, updated_at = NOW() 
+      `INSERT INTO battle_imagines (character_id, imagine_name, tier, created_at) 
+       VALUES ($1, $2, $3, NOW()) 
+       ON CONFLICT (character_id, imagine_name) DO UPDATE SET tier = $3 
        RETURNING *`,
       [characterId, imagineName, tier]
     );
@@ -200,8 +252,8 @@ export const BattleImagineRepo = {
 
   async update(characterId, imagineName, tier) {
     const result = await db.query(
-      `UPDATE battle_imagines SET tier = $3, updated_at = NOW() 
-       WHERE character_id = $1 AND name = $2 
+      `UPDATE battle_imagines SET tier = $3 
+       WHERE character_id = $1 AND imagine_name = $2 
        RETURNING *`,
       [characterId, imagineName, tier]
     );
@@ -210,7 +262,7 @@ export const BattleImagineRepo = {
 
   async delete(characterId, imagineName) {
     await db.query(
-      `DELETE FROM battle_imagines WHERE character_id = $1 AND name = $2`,
+      `DELETE FROM battle_imagines WHERE character_id = $1 AND imagine_name = $2`,
       [characterId, imagineName]
     );
   },
@@ -225,71 +277,162 @@ export const BattleImagineRepo = {
 // ═══════════════════════════════════════════════════════════════════
 
 export const ApplicationRepo = {
-  async create(userId, characterId, guild) {
+  async create({ userId, characterId, guildName, messageId = null, channelId = null }) {
     const result = await db.query(
-      `INSERT INTO applications (user_id, character_id, guild, status, created_at, updated_at) 
-       VALUES ($1, $2, $3, 'pending', NOW(), NOW()) 
+      `INSERT INTO guild_applications 
+       (user_id, character_id, guild_name, message_id, channel_id, status, accept_votes, deny_votes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, 'pending', '{}', '{}', NOW(), NOW()) 
        RETURNING *`,
-      [userId, characterId, guild]
+      [userId, characterId, guildName, messageId, channelId]
     );
     return result.rows[0];
   },
 
-  async findByUserId(userId) {
+  async findById(id) {
     const result = await db.query(
-      `SELECT a.*, c.ign, c.class, c.subclass, c.character_type 
-       FROM applications a 
-       LEFT JOIN characters c ON a.character_id = c.id 
-       WHERE a.user_id = $1 
-       ORDER BY a.created_at DESC`,
-      [userId]
+      `SELECT * FROM guild_applications WHERE id = $1`,
+      [id]
     );
-    return result.rows;
+    return result.rows[0];
   },
 
   async findByCharacterId(characterId) {
     const result = await db.query(
-      `SELECT * FROM applications WHERE character_id = $1`,
+      `SELECT * FROM guild_applications WHERE character_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [characterId]
+    );
+    return result.rows[0];
+  },
+
+  async findAllByUserAndCharacter(userId, characterId) {
+    const result = await db.query(
+      `SELECT * FROM guild_applications WHERE user_id = $1 AND character_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [userId, characterId]
     );
     return result.rows[0];
   },
 
   async findPending() {
     const result = await db.query(
-      `SELECT a.*, c.ign, c.class, c.subclass, c.character_type, u.timezone 
-       FROM applications a 
-       LEFT JOIN characters c ON a.character_id = c.id 
-       LEFT JOIN users u ON a.user_id = u.user_id 
-       WHERE a.status = 'pending' 
-       ORDER BY a.created_at ASC`
+      `SELECT * FROM guild_applications WHERE status = 'pending' ORDER BY created_at ASC`
     );
     return result.rows;
   },
 
-  async updateStatus(applicationId, status, reviewedBy = null) {
+  async update(id, updates) {
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+
+    Object.entries(updates).forEach(([key, value]) => {
+      fields.push(`${key} = $${paramCount}`);
+      values.push(value);
+      paramCount++;
+    });
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const query = `UPDATE guild_applications SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const result = await db.query(query, values);
+    return result.rows[0];
+  },
+
+  async updateStatus(id, status) {
     const result = await db.query(
-      `UPDATE applications 
-       SET status = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW() 
-       WHERE id = $1 
-       RETURNING *`,
-      [applicationId, status, reviewedBy]
+      `UPDATE guild_applications SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [id, status]
     );
     return result.rows[0];
   },
 
-  async delete(applicationId) {
-    await db.query('DELETE FROM applications WHERE id = $1', [applicationId]);
+  async addVote(id, userId, voteType) {
+    const column = voteType === 'accept' ? 'accept_votes' : 'deny_votes';
+    const otherColumn = voteType === 'accept' ? 'deny_votes' : 'accept_votes';
+    
+    const result = await db.query(
+      `UPDATE guild_applications 
+       SET ${column} = array_append(${column}, $2),
+           ${otherColumn} = array_remove(${otherColumn}, $2),
+           updated_at = NOW()
+       WHERE id = $1 
+       RETURNING *`,
+      [id, userId]
+    );
+    return result.rows[0];
   },
 
-  async deleteByCharacter(characterId) {
-    await db.query('DELETE FROM applications WHERE character_id = $1', [characterId]);
+  async delete(id) {
+    await db.query('DELETE FROM guild_applications WHERE id = $1', [id]);
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// LOG SETTINGS REPOSITORY
+// ═══════════════════════════════════════════════════════════════════
+
+export const LogSettingsRepo = {
+  async get(guildId) {
+    const result = await db.query(
+      'SELECT * FROM log_settings WHERE guild_id = $1',
+      [guildId]
+    );
+    return result.rows[0];
+  },
+
+  async upsert(guildId, settings) {
+    const { channelId, enabledCategories, batchInterval } = settings;
+    
+    const result = await db.query(
+      `INSERT INTO log_settings (guild_id, log_channel_id, enabled_categories, batch_interval, updated_at) 
+       VALUES ($1, $2, $3, $4, NOW()) 
+       ON CONFLICT (guild_id) 
+       DO UPDATE SET 
+         log_channel_id = COALESCE($2, log_settings.log_channel_id),
+         enabled_categories = COALESCE($3, log_settings.enabled_categories),
+         batch_interval = COALESCE($4, log_settings.batch_interval),
+         updated_at = NOW()
+       RETURNING *`,
+      [guildId, channelId, enabledCategories, batchInterval]
+    );
+    return result.rows[0];
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// EPHEMERAL SETTINGS REPOSITORY
+// ═══════════════════════════════════════════════════════════════════
+
+export const EphemeralRepo = {
+  async get(guildId) {
+    const result = await db.query(
+      'SELECT ephemeral_commands FROM ephemeral_settings WHERE guild_id = $1',
+      [guildId]
+    );
+    return result.rows[0]?.ephemeral_commands || [];
+  },
+
+  async set(guildId, commands) {
+    await db.query(
+      `INSERT INTO ephemeral_settings (guild_id, ephemeral_commands, updated_at) 
+       VALUES ($1, $2, NOW()) 
+       ON CONFLICT (guild_id) 
+       DO UPDATE SET ephemeral_commands = $2, updated_at = NOW()`,
+      [guildId, commands]
+    );
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════
+
 export default {
   UserRepo,
+  TimezoneRepo,
   CharacterRepo,
   BattleImagineRepo,
-  ApplicationRepo
+  ApplicationRepo,
+  LogSettingsRepo,
+  EphemeralRepo
 };
