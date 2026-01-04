@@ -1,6 +1,6 @@
 import logger from './logger.js';
 import { CharacterRepo } from '../database/repositories.js';
-import db from '../database/connection.js';
+import db from '../database/index.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // NICKNAME PREFERENCES REPOSITORY
