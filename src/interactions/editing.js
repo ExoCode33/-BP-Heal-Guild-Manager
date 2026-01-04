@@ -759,18 +759,28 @@ export async function handleBattleImagineTierEdit(interaction, userId) {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function showNicknameSelection(interaction, userId) {
+  console.log('[NICKNAME] showNicknameSelection called for userId:', userId);
+  
   const characters = await CharacterRepo.findAllByUser(userId);
+  console.log('[NICKNAME] Found characters:', characters.length);
+  
   const main = characters.find(c => c.character_type === 'main');
+  console.log('[NICKNAME] Main character:', main ? main.ign : 'NOT FOUND');
+  
   const alts = characters.filter(c => c.character_type === 'alt');
+  console.log('[NICKNAME] Alt characters:', alts.length);
   
   if (!main) {
+    console.log('[NICKNAME] ERROR: No main character, showing error message');
     await interaction.update({
-      content: '❌ **No main character found.**\n\nYou need to register a main character first before customizing your Discord nickname.\n\nUse `/character` to view your profile and add a main character.',
+      content: '❌ **No main character found.**\n\nYou need to register a main character first before customizing your Discord nickname.\n\nUse `/edit-character` to view your profile and add a main character.',
       components: [],
       embeds: []
     });
     return;
   }
+  
+  console.log('[NICKNAME] Proceeding with nickname selection for main:', main.ign);
 
   // Get current nickname preferences and style
   const prefs = await NicknamePrefsRepo.get(userId);
