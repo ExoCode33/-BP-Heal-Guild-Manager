@@ -304,4 +304,13 @@ export async function routeModal(interaction) {
         });
       }
     } catch (replyError) {
-      console.error('[ROUTER] Failed to send error me
+      console.error('[ROUTER] Failed to send error message:', replyError);
+    }
+  }
+}
+
+export default {
+  route,
+  routeSelectMenu,
+  routeModal
+};
