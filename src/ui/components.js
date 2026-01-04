@@ -1,48 +1,25 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 
-export function profileButtons(userId, hasMain) {
-  const row1 = new ActionRowBuilder();
-  const row2 = new ActionRowBuilder();
+export function profileButtons(userId, hasMain = false) {
+  const addCharacterButton = new ButtonBuilder()
+    .setCustomId(`add_character_${userId}`)
+    .setLabel('➕ Add Character')
+    .setStyle(ButtonStyle.Success);
 
-  if (hasMain) {
-    row1.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`add_subclass_${userId}`)
-        .setLabel('Add Subclass')
-        .setEmoji('➕')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`add_alt_${userId}`)
-        .setLabel('Add Alt Character')
-        .setEmoji('🎭')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`edit_character_${userId}`)
-        .setLabel('Edit Character')
-        .setEmoji('✏️')
-        .setStyle(ButtonStyle.Secondary)
-    );
+  const editButton = new ButtonBuilder()
+    .setCustomId(`edit_character_${userId}`)
+    .setLabel('✏️ Edit Character')
+    .setStyle(ButtonStyle.Primary);
 
-    row2.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`remove_character_${userId}`)
-        .setLabel('Remove')
-        .setEmoji('🗑️')
-        .setStyle(ButtonStyle.Danger)
-    );
+  const removeButton = new ButtonBuilder()
+    .setCustomId(`remove_character_${userId}`)
+    .setLabel('🗑️ Remove Character')
+    .setStyle(ButtonStyle.Danger);
 
-    return [row1, row2];
-  } else {
-    row1.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`register_${userId}`)
-        .setLabel('Register')
-        .setEmoji('📝')
-        .setStyle(ButtonStyle.Success)
-    );
+  const row1 = new ActionRowBuilder().addComponents(addCharacterButton, editButton);
+  const row2 = new ActionRowBuilder().addComponents(removeButton);
 
-    return [row1];
-  }
+  return [row1, row2];
 }
 
 export default {
