@@ -1,14 +1,13 @@
 import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { CharacterRepo, UserRepo, BattleImagineRepo } from '../database/repositories.js';
+import { CharacterRepo, UserRepo, BattleImagineRepo, TimezoneRepo } from '../database/repositories.js';
 import { updateNickname } from '../services/nickname.js';
 import * as ui from '../ui/components.js';
-import { profileEmbed } from '../ui/profile.js';
-import { CLASSES, ABILITY_SCORES, REGIONS, COLORS } from '../utils/constants.js';
-import { getClassIconId } from '../utils/classRoleMapping.js';
-import config from '../config.js';
-import logger from '../utils/logger.js';
-import * as classRoleService from '../services/classRole.js';
-import * as applicationService from '../services/application.js';
+import { profileEmbed } from '../ui/embeds.js';
+import { CLASSES, ABILITY_SCORES, REGIONS, COLORS } from '../config/game.js';
+import config from '../config/index.js';
+import logger from '../services/logger.js';
+import * as classRoleService from '../services/classRoles.js';
+import * as applicationService from '../services/applications.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // STATE MANAGEMENT
@@ -229,10 +228,10 @@ export async function start(interaction, userId) {
   const totalSteps = getTotalSteps('main');
   const embed = createRegEmbed(1, totalSteps, '🌎 Region Selection', 'Choose your region');
 
-  const regionOptions = REGIONS.map(region => ({
-    label: region.name,
-    value: region.name,
-    emoji: region.emoji
+  const regionOptions = Object.keys(REGIONS).map(region => ({
+    label: region,
+    value: region,
+    emoji: region === 'North America' ? '🌎' : region === 'South America' ? '🌎' : region === 'Europe' ? '🌍' : region === 'Asia' ? '🌏' : region === 'Oceania' ? '🌏' : '🌍'
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
@@ -301,10 +300,10 @@ export async function confirmReplaceMain(interaction, userId) {
     const totalSteps = getTotalSteps('main');
     const embed = createRegEmbed(1, totalSteps, '🌎 Region Selection', 'Choose your region');
 
-    const regionOptions = REGIONS.map(region => ({
-      label: region.name,
-      value: region.name,
-      emoji: region.emoji
+    const regionOptions = Object.keys(REGIONS).map(region => ({
+      label: region,
+      value: region,
+      emoji: region === 'North America' ? '🌎' : region === 'South America' ? '🌎' : region === 'Europe' ? '🌍' : region === 'Asia' ? '🌏' : region === 'Oceania' ? '🌏' : '🌍'
     }));
 
     const selectMenu = new StringSelectMenuBuilder()
@@ -361,12 +360,12 @@ export async function handleRegion(interaction, userId) {
   const currentState = state.get(userId, 'reg');
   state.set(userId, 'reg', { ...currentState, region: regionName });
 
-  const region = REGIONS.find(r => r.name === regionName);
+  const region = REGIONS[regionName];
   const totalSteps = getTotalSteps(currentState.type || 'main');
   
   const embed = createRegEmbed(2, totalSteps, '🏳️ Country Selection', `Region: ${regionName}`);
 
-  const countryOptions = region.countries.map(country => ({
+  const countryOptions = Object.keys(region).map(country => ({
     label: country,
     value: country,
     emoji: '🏳️'
@@ -405,38 +404,19 @@ export async function handleCountry(interaction, userId) {
   const totalSteps = getTotalSteps(currentState.type || 'main');
   const embed = createRegEmbed(3, totalSteps, '🕐 Timezone Selection', `Country: ${countryName}`);
 
-  const timezones = [
-    { label: 'UTC-12:00 (Baker Island)', value: 'UTC-12', emoji: '🕐' },
-    { label: 'UTC-11:00 (American Samoa)', value: 'UTC-11', emoji: '🕐' },
-    { label: 'UTC-10:00 (Hawaii)', value: 'UTC-10', emoji: '🕐' },
-    { label: 'UTC-09:00 (Alaska)', value: 'UTC-9', emoji: '🕐' },
-    { label: 'UTC-08:00 (PST/Los Angeles)', value: 'UTC-8', emoji: '🕐' },
-    { label: 'UTC-07:00 (MST/Denver)', value: 'UTC-7', emoji: '🕐' },
-    { label: 'UTC-06:00 (CST/Chicago)', value: 'UTC-6', emoji: '🕐' },
-    { label: 'UTC-05:00 (EST/New York)', value: 'UTC-5', emoji: '🕐' },
-    { label: 'UTC-04:00 (Atlantic/Halifax)', value: 'UTC-4', emoji: '🕐' },
-    { label: 'UTC-03:00 (Brazil/Buenos Aires)', value: 'UTC-3', emoji: '🕐' },
-    { label: 'UTC-02:00 (South Georgia)', value: 'UTC-2', emoji: '🕐' },
-    { label: 'UTC-01:00 (Azores)', value: 'UTC-1', emoji: '🕐' },
-    { label: 'UTC±00:00 (GMT/London)', value: 'UTC+0', emoji: '🕐' },
-    { label: 'UTC+01:00 (Paris/Berlin)', value: 'UTC+1', emoji: '🕐' },
-    { label: 'UTC+02:00 (Cairo/Athens)', value: 'UTC+2', emoji: '🕐' },
-    { label: 'UTC+03:00 (Moscow/Istanbul)', value: 'UTC+3', emoji: '🕐' },
-    { label: 'UTC+04:00 (Dubai/Baku)', value: 'UTC+4', emoji: '🕐' },
-    { label: 'UTC+05:00 (Pakistan/Uzbekistan)', value: 'UTC+5', emoji: '🕐' },
-    { label: 'UTC+06:00 (Bangladesh/Almaty)', value: 'UTC+6', emoji: '🕐' },
-    { label: 'UTC+07:00 (Bangkok/Jakarta)', value: 'UTC+7', emoji: '🕐' },
-    { label: 'UTC+08:00 (Singapore/Beijing)', value: 'UTC+8', emoji: '🕐' },
-    { label: 'UTC+09:00 (Tokyo/Seoul)', value: 'UTC+9', emoji: '🕐' },
-    { label: 'UTC+10:00 (Sydney/Vladivostok)', value: 'UTC+10', emoji: '🕐' },
-    { label: 'UTC+11:00 (New Caledonia)', value: 'UTC+11', emoji: '🕐' },
-    { label: 'UTC+12:00 (New Zealand)', value: 'UTC+12', emoji: '🕐' }
-  ];
+  const region = REGIONS[currentState.region];
+  const timezones = region[countryName];
+
+  const timezoneOptions = Object.entries(timezones).map(([label, value]) => ({
+    label: label,
+    value: value,
+    emoji: '🕐'
+  }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_timezone_${userId}`)
     .setPlaceholder('🕐 Select your timezone')
-    .addOptions(timezones);
+    .addOptions(timezoneOptions);
 
   const backButton = new ButtonBuilder()
     .setCustomId(`back_to_country_${userId}`)
@@ -464,18 +444,21 @@ export async function handleTimezone(interaction, userId) {
   state.set(userId, 'reg', { ...currentState, timezone });
 
   // Save timezone to user table
-  await UserRepo.create(userId, timezone);
+  await TimezoneRepo.set(userId, timezone);
   console.log('[REGISTRATION] Saved timezone for user:', userId, timezone);
 
   const totalSteps = getTotalSteps(currentState.type || 'main');
   const embed = createRegEmbed(4, totalSteps, '🎭 Class Selection', `Timezone: ${timezone}`);
 
-  const classOptions = Object.entries(CLASSES).map(([name, data]) => ({
-    label: name,
-    value: name,
-    description: data.role,
-    emoji: data.iconId ? { id: data.iconId } : data.emoji
-  }));
+  const classOptions = Object.entries(CLASSES).map(([name, data]) => {
+    const iconId = data.iconId || null;
+    return {
+      label: name,
+      value: name,
+      description: data.role,
+      emoji: iconId ? { id: iconId } : data.emoji
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
@@ -527,7 +510,7 @@ export async function handleClass(interaction, userId) {
 
   const subclassOptions = subclasses.map(subclassName => {
     const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
-    const iconId = getClassIconId(className);
+    const iconId = CLASSES[className]?.iconId || null;
     
     return {
       label: subclassName,
@@ -712,12 +695,13 @@ async function showBattleImagineSelection(interaction, userId) {
   const embed = createRegEmbed(
     stepNum, 
     totalSteps, 
-    `⚔️ ${currentImagine} Battle Imagine`, 
-    `Select your ${currentImagine} tier (or None)`
+    `⚔️ ${currentImagine.name} Battle Imagine`, 
+    `Select your ${currentImagine.name} tier (or None)`
   );
 
   const tierOptions = [
-    { label: 'None', value: 'none', emoji: '❌', description: `No ${currentImagine}` },
+    { label: 'None', value: 'none', emoji: '❌', description: `No ${currentImagine.name}` },
+    { label: 'Tier 0', value: 'T0', emoji: '0️⃣', description: 'Tier 0' },
     { label: 'Tier 1', value: 'T1', emoji: '1️⃣', description: 'Tier 1' },
     { label: 'Tier 2', value: 'T2', emoji: '2️⃣', description: 'Tier 2' },
     { label: 'Tier 3', value: 'T3', emoji: '3️⃣', description: 'Tier 3' },
@@ -727,7 +711,7 @@ async function showBattleImagineSelection(interaction, userId) {
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_battle_imagine_${userId}`)
-    .setPlaceholder(`⚔️ Select ${currentImagine} tier`)
+    .setPlaceholder(`⚔️ Select ${currentImagine.name} tier`)
     .addOptions(tierOptions);
 
   const backButton = new ButtonBuilder()
@@ -756,7 +740,7 @@ export async function handleBattleImagine(interaction, userId) {
   
   // Save the battle imagine if not "none"
   if (tier !== 'none') {
-    currentState.battleImagines.push({ name: currentImagine, tier });
+    currentState.battleImagines.push({ name: currentImagine.name, tier });
   }
   
   // Move to next imagine
@@ -782,11 +766,11 @@ async function showGuildSelection(interaction, userId) {
   
   const embed = createRegEmbed(stepNum, totalSteps, '🏰 Guild Selection', 'Choose your guild');
 
-  const guildOptions = [
-    { label: 'iDolls', value: 'iDolls', emoji: '💖', description: 'Apply to iDolls' },
-    { label: 'Visitor', value: 'Visitor', emoji: '👋', description: 'Guest/Visitor status' },
-    { label: 'Allied', value: 'Allied', emoji: '🤝', description: 'Allied guild member' }
-  ];
+  const guildOptions = config.guilds.map(guild => ({
+    label: guild.name,
+    value: guild.name,
+    emoji: guild.name === 'iDolls' ? '💖' : guild.name === 'Visitor' ? '👋' : '🤝'
+  }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_guild_${userId}`)
@@ -924,7 +908,7 @@ export async function handleIGN(interaction, userId) {
     await classRoleService.addClassRole(userId, currentState.class);
 
     // Handle guild-specific logic
-    if (currentState.guild === 'iDolls' && config.roles.guild1) {
+    if (currentState.guild === 'iDolls') {
       if (characterType === 'main') {
         await assignPendingRoles(interaction.client, userId);
       }
@@ -1038,12 +1022,15 @@ export async function startSubclassRegistration(interaction, userId, parentId) {
   const totalSteps = getTotalSteps('subclass');
   const embed = createRegEmbed(1, totalSteps, '🎭 Subclass Class', 'Choose your subclass class');
 
-  const classOptions = Object.entries(CLASSES).map(([name, data]) => ({
-    label: name,
-    value: name,
-    description: data.role,
-    emoji: data.iconId ? { id: data.iconId } : data.emoji
-  }));
+  const classOptions = Object.entries(CLASSES).map(([name, data]) => {
+    const iconId = data.iconId || null;
+    return {
+      label: name,
+      value: name,
+      description: data.role,
+      emoji: iconId ? { id: iconId } : data.emoji
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
@@ -1121,12 +1108,15 @@ export async function startAltRegistration(interaction, userId) {
   const totalSteps = getTotalSteps('alt');
   const embed = createRegEmbed(1, totalSteps, '🎭 Alt Character Class', 'Choose your alt\'s class');
 
-  const classOptions = Object.entries(CLASSES).map(([name, data]) => ({
-    label: name,
-    value: name,
-    description: data.role,
-    emoji: data.iconId ? { id: data.iconId } : data.emoji
-  }));
+  const classOptions = Object.entries(CLASSES).map(([name, data]) => {
+    const iconId = data.iconId || null;
+    return {
+      label: name,
+      value: name,
+      description: data.role,
+      emoji: iconId ? { id: iconId } : data.emoji
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
@@ -1159,10 +1149,10 @@ export async function backToRegion(interaction, userId) {
   
   const embed = createRegEmbed(1, totalSteps, '🌎 Region Selection', 'Choose your region');
 
-  const regionOptions = REGIONS.map(region => ({
-    label: region.name,
-    value: region.name,
-    emoji: region.emoji
+  const regionOptions = Object.keys(REGIONS).map(region => ({
+    label: region,
+    value: region,
+    emoji: region === 'North America' ? '🌎' : region === 'South America' ? '🌎' : region === 'Europe' ? '🌍' : region === 'Asia' ? '🌏' : region === 'Oceania' ? '🌏' : '🌍'
   }));
 
   const selectMenu = new StringSelectMenuBuilder()
@@ -1181,12 +1171,12 @@ export async function backToCountry(interaction, userId) {
   setActiveInteraction(userId, interaction.id);
   
   const currentState = state.get(userId, 'reg');
-  const region = REGIONS.find(r => r.name === currentState.region);
+  const region = REGIONS[currentState.region];
   const totalSteps = getTotalSteps(currentState.type || 'main');
   
   const embed = createRegEmbed(2, totalSteps, '🏳️ Country Selection', `Region: ${currentState.region}`);
 
-  const countryOptions = region.countries.map(country => ({
+  const countryOptions = Object.keys(region).map(country => ({
     label: country,
     value: country,
     emoji: '🏳️'
@@ -1218,38 +1208,19 @@ export async function backToTimezone(interaction, userId) {
   
   const embed = createRegEmbed(3, totalSteps, '🕐 Timezone Selection', `Country: ${currentState.country}`);
 
-  const timezones = [
-    { label: 'UTC-12:00 (Baker Island)', value: 'UTC-12', emoji: '🕐' },
-    { label: 'UTC-11:00 (American Samoa)', value: 'UTC-11', emoji: '🕐' },
-    { label: 'UTC-10:00 (Hawaii)', value: 'UTC-10', emoji: '🕐' },
-    { label: 'UTC-09:00 (Alaska)', value: 'UTC-9', emoji: '🕐' },
-    { label: 'UTC-08:00 (PST/Los Angeles)', value: 'UTC-8', emoji: '🕐' },
-    { label: 'UTC-07:00 (MST/Denver)', value: 'UTC-7', emoji: '🕐' },
-    { label: 'UTC-06:00 (CST/Chicago)', value: 'UTC-6', emoji: '🕐' },
-    { label: 'UTC-05:00 (EST/New York)', value: 'UTC-5', emoji: '🕐' },
-    { label: 'UTC-04:00 (Atlantic/Halifax)', value: 'UTC-4', emoji: '🕐' },
-    { label: 'UTC-03:00 (Brazil/Buenos Aires)', value: 'UTC-3', emoji: '🕐' },
-    { label: 'UTC-02:00 (South Georgia)', value: 'UTC-2', emoji: '🕐' },
-    { label: 'UTC-01:00 (Azores)', value: 'UTC-1', emoji: '🕐' },
-    { label: 'UTC±00:00 (GMT/London)', value: 'UTC+0', emoji: '🕐' },
-    { label: 'UTC+01:00 (Paris/Berlin)', value: 'UTC+1', emoji: '🕐' },
-    { label: 'UTC+02:00 (Cairo/Athens)', value: 'UTC+2', emoji: '🕐' },
-    { label: 'UTC+03:00 (Moscow/Istanbul)', value: 'UTC+3', emoji: '🕐' },
-    { label: 'UTC+04:00 (Dubai/Baku)', value: 'UTC+4', emoji: '🕐' },
-    { label: 'UTC+05:00 (Pakistan/Uzbekistan)', value: 'UTC+5', emoji: '🕐' },
-    { label: 'UTC+06:00 (Bangladesh/Almaty)', value: 'UTC+6', emoji: '🕐' },
-    { label: 'UTC+07:00 (Bangkok/Jakarta)', value: 'UTC+7', emoji: '🕐' },
-    { label: 'UTC+08:00 (Singapore/Beijing)', value: 'UTC+8', emoji: '🕐' },
-    { label: 'UTC+09:00 (Tokyo/Seoul)', value: 'UTC+9', emoji: '🕐' },
-    { label: 'UTC+10:00 (Sydney/Vladivostok)', value: 'UTC+10', emoji: '🕐' },
-    { label: 'UTC+11:00 (New Caledonia)', value: 'UTC+11', emoji: '🕐' },
-    { label: 'UTC+12:00 (New Zealand)', value: 'UTC+12', emoji: '🕐' }
-  ];
+  const region = REGIONS[currentState.region];
+  const timezones = region[currentState.country];
+
+  const timezoneOptions = Object.entries(timezones).map(([label, value]) => ({
+    label: label,
+    value: value,
+    emoji: '🕐'
+  }));
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_timezone_${userId}`)
     .setPlaceholder('🕐 Select your timezone')
-    .addOptions(timezones);
+    .addOptions(timezoneOptions);
 
   const backButton = new ButtonBuilder()
     .setCustomId(`back_to_country_${userId}`)
@@ -1288,12 +1259,15 @@ export async function backToClass(interaction, userId) {
   
   const embed = createRegEmbed(stepNum, totalSteps, '🎭 Class Selection', description);
 
-  const classOptions = Object.entries(CLASSES).map(([name, data]) => ({
-    label: name,
-    value: name,
-    description: data.role,
-    emoji: data.iconId ? { id: data.iconId } : data.emoji
-  }));
+  const classOptions = Object.entries(CLASSES).map(([name, data]) => {
+    const iconId = data.iconId || null;
+    return {
+      label: name,
+      value: name,
+      description: data.role,
+      emoji: iconId ? { id: iconId } : data.emoji
+    };
+  });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_class_${userId}`)
@@ -1334,7 +1308,7 @@ export async function backToSubclass(interaction, userId) {
 
   const subclassOptions = subclasses.map(subclassName => {
     const roleEmoji = classRole === 'Tank' ? '🛡️' : classRole === 'DPS' ? '⚔️' : '💚';
-    const iconId = getClassIconId(className);
+    const iconId = CLASSES[className]?.iconId || null;
     
     return {
       label: subclassName,
@@ -1452,4 +1426,3 @@ export default {
   backToScore,
   backToBattleImagine
 };
-
