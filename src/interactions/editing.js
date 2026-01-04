@@ -792,13 +792,15 @@ export async function showNicknameSelection(interaction, userId) {
   const options = [];
   
   // Add "All" option
-  options.push({
+  const allSelected = prefs === null || (prefs && prefs.length === alts.length);
+  const allOption = {
     label: 'All Characters',
     value: 'all',
     description: `${main.ign}${alts.length > 0 ? ' + ' + alts.length + ' alt(s)' : ''}`,
-    emoji: '✨',
-    default: prefs === null || (prefs && prefs.length === alts.length)
-  });
+    emoji: '✨'
+  };
+  if (allSelected) allOption.default = true;
+  options.push(allOption);
   
   // Add main (always included, but shown for clarity)
   options.push({
@@ -811,13 +813,17 @@ export async function showNicknameSelection(interaction, userId) {
   
   // Add alts
   for (const alt of alts) {
-    options.push({
+    const altOption = {
       label: alt.ign,
       value: `alt_${alt.id}`,
       description: `${alt.class} - Alt`,
-      emoji: '🎭',
-      default: prefs && prefs.includes(alt.id)
-    });
+      emoji: '🎭'
+    };
+    // Only add default if true
+    if (prefs && prefs.includes(alt.id)) {
+      altOption.default = true;
+    }
+    options.push(altOption);
   }
 
   const selectMenu = new StringSelectMenuBuilder()
