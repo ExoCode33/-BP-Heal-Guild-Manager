@@ -1,109 +1,73 @@
 import { EmbedBuilder } from 'discord.js';
-import { BattleImagineRepo, ApplicationRepo } from '../database/repositories.js';
-import { COLORS } from '../utils/constants.js';
-
-// ═══════════════════════════════════════════════════════════════════
-// PROFILE EMBED WITH ALT CHARACTERS
-// ═══════════════════════════════════════════════════════════════════
+import { COLORS } from '../config/game.js';
 
 export async function profileEmbed(user, characters, interaction) {
   const main = characters.find(c => c.character_type === 'main');
-  const subclasses = characters.filter(c => c.character_type === 'main_subclass');
   const alts = characters.filter(c => c.character_type === 'alt');
+  const subclasses = characters.filter(c => c.character_type === 'main_subclass');
 
-  if (!main && alts.length === 0) {
+  if (!main) {
     return new EmbedBuilder()
       .setColor(COLORS.PRIMARY)
-      .setAuthor({ name: `${user.username}'s Profile`, iconURL: user.displayAvatarURL() })
+      .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
       .setDescription(
         '# 📋 **Character Profile**\n' +
         '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-        '**No character registered yet!**\n\n' +
-        'Click **Register Character** to get started.'
+        '**No main character registered.**\n\n' +
+        'Use the **Register** button to create your main character.'
       )
       .setTimestamp();
   }
 
   let description = '# 📋 **Character Profile**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
 
-  // Main character section
-  if (main) {
-    const mainBattleImagines = await BattleImagineRepo.findByCharacterId(main.id);
-    const mainApplication = await ApplicationRepo.findByCharacterId(main.id);
+  // Main Character Section
+  description += '## 🎮 **Main Character**\n';
+  description += `**IGN:** ${main.ign}\n`;
+  description += `**UID:** ${main.uid}\n`;
+  description += `**Class:** ${main.class} - ${main.subclass}\n`;
+  description += `**Score:** ${main.ability_score}\n`;
+  description += `**Guild:** ${main.guild}\n`;
 
-    description += '🎮 **IGN:** ' + main.ign + '\n';
-    description += '🆔 **UID:** ' + main.uid + '\n';
-    description += '🎭 **Class:** ' + main.class + ' - ' + main.subclass + '\n';
-    description += '💪 **Score:** ' + main.ability_score + '\n';
-
-    if (mainBattleImagines && mainBattleImagines.length > 0) {
-      const biList = mainBattleImagines.map(bi => `${bi.name} ${bi.tier}`).join(', ');
-      description += '⚔️ **Battle Imagines:** ' + biList + '\n';
-    } else {
-      description += '⚔️ **Battle Imagines:** None\n';
-    }
-
-    if (mainApplication && mainApplication.status === 'pending') {
-      description += '🏰 **Guild:** ' + main.guild + ' (⏳ Pending)\n';
-    } else {
-      description += '🏰 **Guild:** ' + main.guild + '\n';
-    }
-
-    description += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+  // Battle Imagines for Main
+  const { BattleImagineRepo } = await import('../database/repositories.js');
+  const mainBIs = await BattleImagineRepo.findByCharacter(main.id);
+  if (mainBIs.length > 0) {
+    description += `**Battle Imagines:** ${mainBIs.map(bi => `${bi.name} (${bi.tier})`).join(', ')}\n`;
   }
 
-  // Subclasses section
+  // Subclasses
   if (subclasses.length > 0) {
-    description += `📊 **Subclasses (${subclasses.length})**\n`;
-    description += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-
-    for (const subclass of subclasses) {
-      description += '🎭 **Class:** ' + subclass.class + ' - ' + subclass.subclass + '\n';
-      description += '💪 **Score:** ' + subclass.ability_score + '\n';
-      description += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+    description += '\n## ✨ **Subclasses**\n';
+    for (const sub of subclasses) {
+      description += `• ${sub.class} - ${sub.subclass} (${sub.ability_score})\n`;
     }
-    
-    description += '\n';
   }
 
-  // Alt characters section
+  // Alt Characters
   if (alts.length > 0) {
-    description += `🎮 **Alt Characters (${alts.length})**\n`;
-    description += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-
+    description += '\n## 🎭 **Alt Characters**\n';
     for (const alt of alts) {
-      const altBattleImagines = await BattleImagineRepo.findByCharacterId(alt.id);
-      const altApplication = await ApplicationRepo.findByCharacterId(alt.id);
+      description += `\n**${alt.ign}**\n`;
+      description += `• UID: ${alt.uid}\n`;
+      description += `• Class: ${alt.class} - ${alt.subclass}\n`;
+      description += `• Score: ${alt.ability_score}\n`;
+      description += `• Guild: ${alt.guild}\n`;
 
-      description += '🎮 **IGN:** ' + alt.ign + '\n';
-      description += '🆔 **UID:** ' + alt.uid + '\n';
-      description += '🎭 **Class:** ' + alt.class + ' - ' + alt.subclass + '\n';
-      description += '💪 **Score:** ' + alt.ability_score + '\n';
-
-      if (altBattleImagines && altBattleImagines.length > 0) {
-        const biList = altBattleImagines.map(bi => `${bi.name} ${bi.tier}`).join(', ');
-        description += '⚔️ **Battle Imagines:** ' + biList + '\n';
-      } else {
-        description += '⚔️ **Battle Imagines:** None\n';
+      const altBIs = await BattleImagineRepo.findByCharacter(alt.id);
+      if (altBIs.length > 0) {
+        description += `• Battle Imagines: ${altBIs.map(bi => `${bi.name} (${bi.tier})`).join(', ')}\n`;
       }
-
-      if (altApplication && altApplication.status === 'pending') {
-        description += '🏰 **Guild:** ' + alt.guild + ' (⏳ Pending)\n';
-      } else {
-        description += '🏰 **Guild:** ' + alt.guild + '\n';
-      }
-
-      description += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
     }
   }
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(COLORS.PRIMARY)
-    .setAuthor({ name: `${user.username}'s Profile`, iconURL: user.displayAvatarURL() })
+    .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
     .setDescription(description)
     .setTimestamp();
+
+  return embed;
 }
 
-export default {
-  profileEmbed
-};
+export default { profileEmbed };
