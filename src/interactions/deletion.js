@@ -383,11 +383,16 @@ export async function executeRemoveSubclass(interaction, userId, subclassId) {
     await CharacterRepo.delete(subclassId);
     console.log('[REMOVE] Deleted subclass:', subclassId);
 
-    // 🆕 Clean up nickname preferences
+    // ✅ FIXED: Clean up nickname preferences with proper array handling
     const { NicknamePrefsRepo, updateNickname } = await import('../services/nickname.js');
     const prefs = await NicknamePrefsRepo.get(userId);
-    if (prefs && prefs.includes(subclassId)) {
-      const updatedPrefs = prefs.filter(id => id !== subclassId);
+    const characterIds = prefs?.characterIds || [];
+    
+    // Make sure characterIds is an array
+    const idsArray = Array.isArray(characterIds) ? characterIds : [];
+    
+    if (idsArray.includes(subclassId)) {
+      const updatedPrefs = idsArray.filter(id => id !== subclassId);
       await NicknamePrefsRepo.set(userId, updatedPrefs);
       console.log('[REMOVE] Cleaned up nickname preferences for subclass:', subclassId);
       
@@ -450,11 +455,16 @@ export async function executeRemoveAlt(interaction, userId, altId) {
     await CharacterRepo.delete(altId);
     console.log('[REMOVE] Deleted alt:', altId);
 
-    // 🆕 Clean up nickname preferences
+    // ✅ FIXED: Clean up nickname preferences with proper array handling
     const { NicknamePrefsRepo, updateNickname } = await import('../services/nickname.js');
     const prefs = await NicknamePrefsRepo.get(userId);
-    if (prefs && prefs.includes(altId)) {
-      const updatedPrefs = prefs.filter(id => id !== altId);
+    const characterIds = prefs?.characterIds || [];
+    
+    // Make sure characterIds is an array
+    const idsArray = Array.isArray(characterIds) ? characterIds : [];
+    
+    if (idsArray.includes(altId)) {
+      const updatedPrefs = idsArray.filter(id => id !== altId);
       await NicknamePrefsRepo.set(userId, updatedPrefs);
       console.log('[REMOVE] Cleaned up nickname preferences for alt:', altId);
       
