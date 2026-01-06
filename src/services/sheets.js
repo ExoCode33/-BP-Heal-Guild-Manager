@@ -608,12 +608,19 @@ class GoogleSheetsService {
         }
       ];
 
-      // Sync each sheet
-      for (const sheetConfig of sheetsToSync) {
-        console.log(`\n📋 [SHEETS] Syncing "${sheetConfig.name}"...`);
+      // Sync each sheet with delays to avoid quota issues
+      for (let i = 0; i < sheetsToSync.length; i++) {
+        const sheetConfig = sheetsToSync[i];
+        console.log(`\n📋 [SHEETS] Syncing "${sheetConfig.name}" (${i + 1}/${sheetsToSync.length})...`);
         const filteredCharacters = allCharactersWithSubclasses.filter(sheetConfig.filter);
         console.log(`   📊 Filtered to ${filteredCharacters.length} characters`);
         await this.syncToSheet(sheetConfig.name, filteredCharacters);
+        
+        // Add 3 second delay between sheets to avoid quota issues
+        if (i < sheetsToSync.length - 1) {
+          console.log(`   ⏳ Waiting 3 seconds before next sheet...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
       }
 
       console.log('\n✅ [SHEETS] All sheets synced successfully!');
@@ -1346,7 +1353,7 @@ class GoogleSheetsService {
       }
 
       if (requests.length > 0) {
-        const batchSize = 50;
+        const batchSize = 100; // Increased from 50 to reduce total requests
         console.log(`   📦 Sending ${requests.length} formatting requests in ${Math.ceil(requests.length / batchSize)} batches...`);
         
         for (let i = 0; i < requests.length; i += batchSize) {
@@ -1365,7 +1372,7 @@ class GoogleSheetsService {
           }
           
           if (i + batchSize < requests.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between batches
           }
         }
       }
