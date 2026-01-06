@@ -1172,20 +1172,15 @@ class GoogleSheetsService {
         // Icon cell - light pastel background
         this.addDropdownBadge(requests, sheetId, rowIndex, 4, { red: 0.50, green: 0.50, blue: 0.50 }, 'Icon', false);
         
-        // Class/Subclass styling - colored bullets
+        // Class/Subclass styling
         const classColor = this.getClassColor(member.class);
         this.addDropdownBadge(requests, sheetId, rowIndex, 5, classColor, 'Class', true);
         
-        // Subclass - only color bullet if it's actually a subclass
-        if (meta.isSubclass) {
-          const subclassColor = this.getClassColor(member.subclass || member.class);
-          this.addDropdownBadge(requests, sheetId, rowIndex, 6, subclassColor, 'Subclass', true);
-        } else {
-          this.addDropdownBadge(requests, sheetId, rowIndex, 6, { red: 0.35, green: 0.35, blue: 0.35 }, 'Subclass', false);
-        }
+        // Subclass - ALWAYS dark text, no colored text
+        this.addDropdownBadge(requests, sheetId, rowIndex, 6, { red: 0.20, green: 0.20, blue: 0.20 }, 'Subclass', false);
         
-        // Role badge - pastel with colored bullet
-        const roleColor = this.getRoleColor(member.role);
+        // Role badge - use INFERRED role for correct colors
+        const roleColor = this.getRoleColor(meta.inferredRole);
         this.addDropdownBadge(requests, sheetId, rowIndex, 7, roleColor, 'Role', true);
         
         // Ability score - progressive gradient colors
