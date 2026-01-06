@@ -1,20 +1,24 @@
-// INSTRUCTIONS: Replace your src/services/classRoles.js with this version
-// 
-// Key changes:
-// 1. Catches "Unknown Member" errors and logs them as warnings, not errors
-// 2. Automatically cleans up database for users who left
-// 3. Prevents spam in logs
-
 import config from '../config/index.js';
 import logger from './logger.js';
 import { CharacterRepo } from '../database/repositories.js';
+
+// Store client globally
+let discordClient = null;
+
+/**
+ * Initialize the class role service (required by index.js)
+ */
+export async function init(client) {
+  discordClient = client;
+  console.log('[CLASS ROLE] Service initialized');
+}
 
 /**
  * Add a class role to a user
  */
 export async function addClassRole(userId, className) {
   try {
-    const guild = await global.client.guilds.fetch(config.discord.guildId);
+    const guild = await discordClient.guilds.fetch(config.discord.guildId);
     
     // Try to fetch the member
     let member;
@@ -23,7 +27,6 @@ export async function addClassRole(userId, className) {
     } catch (error) {
       if (error.message === 'Unknown Member') {
         console.log(`[CLASS ROLE] User ${userId} not in server, skipping role add for ${className}`);
-        // Clean up their data since they're not in the server
         await cleanupLeftMember(userId);
         return;
       }
@@ -37,7 +40,6 @@ export async function addClassRole(userId, className) {
       return;
     }
     
-    // Check if they already have the role
     if (member.roles.cache.has(classRoleId)) {
       console.log(`[CLASS ROLE] ${member.user.username} already has ${className} role`);
       return;
@@ -47,7 +49,6 @@ export async function addClassRole(userId, className) {
     console.log(`[CLASS ROLE] Added ${className} role to ${member.user.username}`);
     
   } catch (error) {
-    // Don't spam logs with Unknown Member errors
     if (error.message === 'Unknown Member') {
       console.log(`[CLASS ROLE] User ${userId} left server, skipping role add for ${className}`);
       await cleanupLeftMember(userId);
@@ -63,16 +64,14 @@ export async function addClassRole(userId, className) {
  */
 export async function removeClassRole(userId, className) {
   try {
-    const guild = await global.client.guilds.fetch(config.discord.guildId);
+    const guild = await discordClient.guilds.fetch(config.discord.guildId);
     
-    // Try to fetch the member
     let member;
     try {
       member = await guild.members.fetch(userId);
     } catch (error) {
       if (error.message === 'Unknown Member') {
         console.log(`[CLASS ROLE] User ${userId} not in server, skipping role removal for ${className}`);
-        // Clean up their data since they're not in the server
         await cleanupLeftMember(userId);
         return;
       }
@@ -86,7 +85,6 @@ export async function removeClassRole(userId, className) {
       return;
     }
     
-    // Check if they have the role
     if (!member.roles.cache.has(classRoleId)) {
       console.log(`[CLASS ROLE] ${member.user.username} doesn't have ${className} role`);
       return;
@@ -96,7 +94,6 @@ export async function removeClassRole(userId, className) {
     console.log(`[CLASS ROLE] Removed ${className} role from ${member.user.username}`);
     
   } catch (error) {
-    // Don't spam logs with Unknown Member errors
     if (error.message === 'Unknown Member') {
       console.log(`[CLASS ROLE] User ${userId} left server, skipping role removal for ${className}`);
       await cleanupLeftMember(userId);
@@ -123,17 +120,15 @@ async function cleanupLeftMember(userId) {
     const characters = await CharacterRepo.findAllByUser(userId);
     
     if (characters.length === 0) {
-      return; // Nothing to clean up
+      return;
     }
     
     console.log(`[CLASS ROLE] Auto-cleanup: User ${userId} left, removing ${characters.length} character(s)`);
     
-    // Delete all characters
     for (const character of characters) {
       await CharacterRepo.delete(character.id);
     }
     
-    // Delete nickname preferences directly from database
     try {
       const db = await import('../database/index.js').then(m => m.default);
       await db.run('DELETE FROM nickname_preferences WHERE user_id = ?', [userId]);
@@ -148,7 +143,9 @@ async function cleanupLeftMember(userId) {
   }
 }
 
+// Export both ways to support different import styles
 export default {
+  init,
   addClassRole,
   removeClassRole,
   checkClassUsage
