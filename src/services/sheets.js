@@ -291,14 +291,14 @@ class GoogleSheetsService {
     
     const numScore = parseInt(score);
     
-    // Clear progressive gradient: Green → Lime → Yellow → Orange → Red → Purple
-    if (numScore >= 36000) return { red: 0.75, green: 0.25, blue: 0.90 }; // 💜 Purple (36k+)
-    if (numScore >= 32000) return { red: 0.95, green: 0.25, blue: 0.30 }; // ❤️ Red (32-36k)
-    if (numScore >= 28000) return { red: 1.0, green: 0.50, blue: 0.15 }; // 🧡 Orange (28-32k)
-    if (numScore >= 24000) return { red: 1.0, green: 0.85, blue: 0.15 }; // 💛 Yellow (24-28k)
-    if (numScore >= 20000) return { red: 0.70, green: 0.90, blue: 0.25 }; // 💚 Lime (20-24k)
-    if (numScore >= 10000) return { red: 0.25, green: 0.80, blue: 0.35 }; // 💚 Green (10-20k)
-    return { red: 0.60, green: 0.60, blue: 0.65 }; // ⚪ Gray (<10k)
+    // Progressive gradient pills: Green → Lime → Yellow → Orange → Red → Purple
+    if (numScore >= 36000) return { red: 0.88, green: 0.78, blue: 0.92 }; // Soft purple pill (36k+)
+    if (numScore >= 32000) return { red: 0.95, green: 0.78, blue: 0.78 }; // Soft red pill (32-36k)
+    if (numScore >= 28000) return { red: 0.95, green: 0.85, blue: 0.70 }; // Soft orange pill (28-32k)
+    if (numScore >= 24000) return { red: 0.95, green: 0.92, blue: 0.70 }; // Soft yellow pill (24-28k)
+    if (numScore >= 20000) return { red: 0.88, green: 0.92, blue: 0.75 }; // Soft lime pill (20-24k)
+    if (numScore >= 10000) return { red: 0.80, green: 0.90, blue: 0.80 }; // Soft green pill (10-20k)
+    return { red: 0.88, green: 0.88, blue: 0.90 }; // Soft gray pill (<10k)
   }
 
   formatAbilityScore(score) {
@@ -339,25 +339,25 @@ class GoogleSheetsService {
 
   getClassColor(className) {
     const classColors = {
-      'Beat Performer': { red: 0.75, green: 0.40, blue: 0.85 }, // Beautiful purple for Dissonance
-      'Frost Mage': { red: 0.40, green: 0.75, blue: 0.95 }, // Beautiful ice blue for Icicle
-      'Heavy Guardian': { red: 0.55, green: 0.70, blue: 0.35 }, // Beautiful olive green for Block
-      'Marksman': { red: 0.85, green: 0.55, blue: 0.30 }, // Beautiful warm orange
-      'Shield Knight': { red: 0.45, green: 0.70, blue: 0.95 }, // Beautiful shield blue for Shield
-      'Stormblade': { red: 0.80, green: 0.35, blue: 0.75 }, // Beautiful magenta for Moonstrike/Iaido
-      'Verdant Oracle': { red: 0.90, green: 0.75, blue: 0.35 }, // Beautiful gold for Lifebind/Smile
-      'Wind Knight': { red: 0.50, green: 0.85, blue: 0.95 } // Beautiful sky blue
+      'Beat Performer': { red: 0.85, green: 0.75, blue: 0.90 }, // Soft purple pill
+      'Frost Mage': { red: 0.75, green: 0.80, blue: 0.85 }, // Soft gray pill
+      'Heavy Guardian': { red: 0.80, green: 0.85, blue: 0.70 }, // Soft olive pill
+      'Marksman': { red: 0.85, green: 0.75, blue: 0.65 }, // Soft tan pill
+      'Shield Knight': { red: 0.75, green: 0.85, blue: 0.95 }, // Soft blue pill
+      'Stormblade': { red: 0.85, green: 0.75, blue: 0.70 }, // Soft brown pill
+      'Verdant Oracle': { red: 0.95, green: 0.90, blue: 0.70 }, // Soft gold pill
+      'Wind Knight': { red: 0.75, green: 0.90, blue: 0.95 } // Soft sky blue pill
     };
-    return classColors[className] || { red: 0.50, green: 0.50, blue: 0.55 };
+    return classColors[className] || { red: 0.85, green: 0.85, blue: 0.85 };
   }
 
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.35, green: 0.65, blue: 0.95 }, // BLUE for Tank 💙
-      'Support': { red: 0.35, green: 0.80, blue: 0.45 }, // GREEN for Support 💚
-      'DPS': { red: 0.95, green: 0.35, blue: 0.40 } // RED for DPS ❤️
+      'Tank': { red: 0.80, green: 0.88, blue: 0.95 }, // Soft blue pill for Tank
+      'Support': { red: 0.80, green: 0.92, blue: 0.85 }, // Soft green pill for Support
+      'DPS': { red: 0.95, green: 0.80, blue: 0.80 } // Soft red pill for DPS
     };
-    return roleColors[role] || { red: 0.50, green: 0.50, blue: 0.55 };
+    return roleColors[role] || { red: 0.85, green: 0.85, blue: 0.85 };
   }
 
   formatDate(dateString) {
@@ -1075,6 +1075,7 @@ class GoogleSheetsService {
 
     try {
       const requests = [];
+      const dropdownRequests = []; // Store dropdown validation requests separately
 
       // Column widths - EXTRA WIDE for Registered to prevent cutoff
       const columnWidths = [150, 140, 120, 125, 65, 180, 165, 120, 130, 210, 120, 170, 145];
@@ -1150,15 +1151,17 @@ class GoogleSheetsService {
           }
         });
         
+        // Get type text
+        const typeText = meta.isMain ? 'Main' : (meta.isAlt ? 'Alt' : 'Subclass');
+        
         // Discord name styling - light pastel background
-        const discordBg = { red: 0.97, green: 0.97, blue: 0.98 }; // Same light gray for all
-        this.addDropdownBadge(requests, sheetId, rowIndex, 0, { red: 0.30, green: 0.30, blue: 0.30 }, 'Discord', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 0, { red: 0.30, green: 0.30, blue: 0.30 }, 'Discord', false, meta.discordName);
 
         // IGN styling - light pastel background
-        this.addDropdownBadge(requests, sheetId, rowIndex, 1, { red: 0.30, green: 0.30, blue: 0.30 }, 'IGN', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 1, { red: 0.30, green: 0.30, blue: 0.30 }, 'IGN', false, member.ign);
 
         // UID styling - light pastel background
-        this.addDropdownBadge(requests, sheetId, rowIndex, 2, { red: 0.30, green: 0.30, blue: 0.30 }, 'UID', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 2, { red: 0.30, green: 0.30, blue: 0.30 }, 'UID', false, member.uid);
 
         // Type badge - VIBRANT distinct colors
         let typeBulletColor = { red: 0.50, green: 0.50, blue: 0.55 }; // Gray for Subclass
@@ -1167,33 +1170,33 @@ class GoogleSheetsService {
         } else if (meta.isAlt) {
           typeBulletColor = { red: 1.0, green: 0.45, blue: 0.0 }; // BRIGHT ORANGE for Alt 🧡
         }
-        this.addDropdownBadge(requests, sheetId, rowIndex, 3, typeBulletColor, 'Type', true);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 3, typeBulletColor, 'Type', true, typeText);
         
         // Icon cell - light pastel background
-        this.addDropdownBadge(requests, sheetId, rowIndex, 4, { red: 0.50, green: 0.50, blue: 0.50 }, 'Icon', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 4, { red: 0.50, green: 0.50, blue: 0.50 }, 'Icon', false, '');
         
         // Class/Subclass styling - BOTH get colored bullets
         const classColor = this.getClassColor(member.class);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 5, classColor, 'Class', true);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 5, classColor, 'Class', true, member.class);
         
         // Subclass - also gets colored bullet based on subclass or class
         const subclassColor = this.getClassColor(member.subclass || member.class);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 6, subclassColor, 'Subclass', true);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 6, subclassColor, 'Subclass', true, member.subclass);
         
         // Role badge - use INFERRED role for correct colors
         const roleColor = this.getRoleColor(meta.inferredRole);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 7, roleColor, 'Role', true);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 7, roleColor, 'Role', true, meta.inferredRole);
         
         // Ability score - progressive gradient colors
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
-          this.addDropdownBadge(requests, sheetId, rowIndex, 8, abilityColor, 'AS', true);
+          this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 8, abilityColor, 'AS', true, this.formatAbilityScore(member.ability_score));
         } else {
-          this.addDropdownBadge(requests, sheetId, rowIndex, 8, { red: 0.50, green: 0.50, blue: 0.55 }, 'AS', false);
+          this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 8, { red: 0.50, green: 0.50, blue: 0.55 }, 'AS', false, '');
         }
         
         // Battle Imagines - NO colored bullet, just dark text
-        this.addDropdownBadge(requests, sheetId, rowIndex, 9, { red: 0.30, green: 0.30, blue: 0.30 }, 'BI', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 9, { red: 0.30, green: 0.30, blue: 0.30 }, 'BI', false, member.battle_imagines);
         
         // Guild - Pink for iDolls, Gray for Visitor
         let guildColor = { red: 0.30, green: 0.30, blue: 0.30 }; // Default dark gray
@@ -1205,13 +1208,13 @@ class GoogleSheetsService {
           guildColor = { red: 0.55, green: 0.55, blue: 0.60 }; // GRAY for Visitor
           isGuildSpecial = true;
         }
-        this.addDropdownBadge(requests, sheetId, rowIndex, 10, guildColor, 'Guild', isGuildSpecial);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 10, guildColor, 'Guild', isGuildSpecial, member.guild);
         
         // Timezone - neutral dark text
-        this.addDropdownBadge(requests, sheetId, rowIndex, 11, { red: 0.30, green: 0.30, blue: 0.30 }, 'TZ', false);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 11, { red: 0.30, green: 0.30, blue: 0.30 }, 'TZ', false, meta.timezone);
         
         // Registered Date - RED bullet
-        this.addDropdownBadge(requests, sheetId, rowIndex, 12, { red: 0.95, green: 0.35, blue: 0.40 }, 'Date', true);
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 12, { red: 0.95, green: 0.35, blue: 0.40 }, 'Date', true, member.registered);
 
         // Borders - standard borders for all rows
         requests.push({
@@ -1309,14 +1312,33 @@ class GoogleSheetsService {
           }
         }
       }
+      
+      // Send dropdown validation requests separately
+      if (dropdownRequests.length > 0) {
+        console.log(`   🎯 Adding ${dropdownRequests.length} dropdown validations...`);
+        try {
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            requestBody: { requests: dropdownRequests }
+          });
+          console.log(`   ✅ Dropdowns added successfully!`);
+        } catch (error) {
+          console.error(`   ❌ Dropdown validation failed:`, error.message);
+        }
+      }
     } catch (error) {
       console.error('❌ [SHEETS] Design error:', error.message);
     }
   }
 
 
-  addDropdownBadge(requests, sheetId, rowIndex, colIndex, bulletColor, label, isSpecial = false) {
-    // Light background for ALL cells, dark text always
+  addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, colIndex, bulletColor, label, isSpecial = false, cellValue = '') {
+    // Colored pill background when isSpecial=true, light gray when false
+    const bgColor = isSpecial ? bulletColor : { red: 0.98, green: 0.98, blue: 0.99 };
+    
+    // Use dark text for all (pastel backgrounds need dark text for readability)
+    const textColor = { red: 0.25, green: 0.25, blue: 0.25 };
+    
     const cellFormat = {
       repeatCell: {
         range: {
@@ -1328,11 +1350,11 @@ class GoogleSheetsService {
         },
         cell: {
           userEnteredFormat: {
-            backgroundColor: { red: 0.98, green: 0.98, blue: 0.99 }, // Light gray background
+            backgroundColor: bgColor, // COLORED pill background!
             textFormat: {
               bold: true,
               fontSize: 10,
-              foregroundColor: { red: 0.20, green: 0.20, blue: 0.20 }, // Dark text
+              foregroundColor: textColor,
               fontFamily: 'Google Sans'
             },
             horizontalAlignment: 'CENTER',
@@ -1351,10 +1373,27 @@ class GoogleSheetsService {
     };
     requests.push(cellFormat);
     
-    // Store column info for later when we add colored bullets to values
-    if (isSpecial) {
-      this._coloredColumns = this._coloredColumns || {};
-      this._coloredColumns[colIndex] = bulletColor;
+    // Add data validation to show dropdown arrow (if cell has a value)
+    if (cellValue && cellValue !== '') {
+      dropdownRequests.push({
+        setDataValidation: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: rowIndex,
+            endRowIndex: rowIndex + 1,
+            startColumnIndex: colIndex,
+            endColumnIndex: colIndex + 1
+          },
+          rule: {
+            condition: {
+              type: 'ONE_OF_LIST',
+              values: [{ userEnteredValue: cellValue }]
+            },
+            showCustomUi: true,
+            strict: false
+          }
+        }
+      });
     }
   }
 
