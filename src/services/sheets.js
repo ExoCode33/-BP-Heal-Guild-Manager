@@ -291,13 +291,14 @@ class GoogleSheetsService {
     
     const numScore = parseInt(score);
     
-    // IMPRESSIVE gradient: Purple → Red → Orange → Yellow → Green
-    if (numScore >= 40000) return { red: 0.75, green: 0.0, blue: 0.95 }; // VIBRANT PURPLE 💜
-    if (numScore >= 30000) return { red: 1.0, green: 0.10, blue: 0.20 }; // VIBRANT RED ❤️
-    if (numScore >= 24000) return { red: 1.0, green: 0.50, blue: 0.0 }; // VIBRANT ORANGE 🧡
-    if (numScore >= 20000) return { red: 1.0, green: 0.80, blue: 0.0 }; // VIBRANT YELLOW 💛
-    if (numScore >= 10000) return { red: 0.10, green: 0.80, blue: 0.20 }; // VIBRANT GREEN 💚
-    return { red: 0.50, green: 0.50, blue: 0.55 }; // Gray for low scores
+    // Progressive gradient: Green → Yellow → Orange → Red → Purple
+    if (numScore >= 36000) return { red: 0.70, green: 0.30, blue: 0.85 }; // Purple (highest)
+    if (numScore >= 32000) return { red: 0.95, green: 0.30, blue: 0.35 }; // Red
+    if (numScore >= 28000) return { red: 0.95, green: 0.55, blue: 0.25 }; // Orange
+    if (numScore >= 24000) return { red: 0.95, green: 0.80, blue: 0.25 }; // Yellow
+    if (numScore >= 20000) return { red: 0.70, green: 0.85, blue: 0.30 }; // Yellow-Green
+    if (numScore >= 10000) return { red: 0.35, green: 0.80, blue: 0.40 }; // Green (lowest)
+    return { red: 0.50, green: 0.50, blue: 0.55 }; // Gray for very low scores
   }
 
   formatAbilityScore(score) {
@@ -338,23 +339,23 @@ class GoogleSheetsService {
 
   getClassColor(className) {
     const classColors = {
-      'Beat Performer': { red: 0.80, green: 0.10, blue: 0.90 }, // VIBRANT PURPLE 💜
-      'Frost Mage': { red: 0.10, green: 0.70, blue: 1.0 }, // VIBRANT CYAN 💙
-      'Heavy Guardian': { red: 0.60, green: 0.70, blue: 0.10 }, // VIBRANT LIME 💚
-      'Marksman': { red: 1.0, green: 0.50, blue: 0.0 }, // VIBRANT ORANGE 🧡
-      'Shield Knight': { red: 0.10, green: 0.50, blue: 1.0 }, // VIBRANT BLUE 💙
-      'Stormblade': { red: 0.90, green: 0.10, blue: 0.70 }, // VIBRANT MAGENTA 💗
-      'Verdant Oracle': { red: 1.0, green: 0.80, blue: 0.0 }, // VIBRANT GOLD 💛
-      'Wind Knight': { red: 0.20, green: 0.90, blue: 1.0 } // VIBRANT SKY BLUE 🩵
+      'Beat Performer': { red: 0.75, green: 0.40, blue: 0.85 }, // Beautiful purple for Dissonance
+      'Frost Mage': { red: 0.40, green: 0.75, blue: 0.95 }, // Beautiful ice blue for Icicle
+      'Heavy Guardian': { red: 0.55, green: 0.70, blue: 0.35 }, // Beautiful olive green for Block
+      'Marksman': { red: 0.85, green: 0.55, blue: 0.30 }, // Beautiful warm orange
+      'Shield Knight': { red: 0.45, green: 0.70, blue: 0.95 }, // Beautiful shield blue for Shield
+      'Stormblade': { red: 0.80, green: 0.35, blue: 0.75 }, // Beautiful magenta for Moonstrike/Iaido
+      'Verdant Oracle': { red: 0.90, green: 0.75, blue: 0.35 }, // Beautiful gold for Lifebind/Smile
+      'Wind Knight': { red: 0.50, green: 0.85, blue: 0.95 } // Beautiful sky blue
     };
     return classColors[className] || { red: 0.50, green: 0.50, blue: 0.55 };
   }
 
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.20, green: 0.50, blue: 1.0 }, // BRIGHT BLUE 💙
-      'DPS': { red: 1.0, green: 0.20, blue: 0.30 }, // BRIGHT RED ❤️
-      'Support': { red: 0.10, green: 0.80, blue: 0.30 } // BRIGHT GREEN 💚
+      'Tank': { red: 0.35, green: 0.65, blue: 0.95 }, // BLUE for Tank 💙
+      'Support': { red: 0.35, green: 0.80, blue: 0.45 }, // GREEN for Support 💚
+      'DPS': { red: 0.95, green: 0.35, blue: 0.40 } // RED for DPS ❤️
     };
     return roleColors[role] || { red: 0.50, green: 0.50, blue: 0.55 };
   }
@@ -1171,16 +1172,23 @@ class GoogleSheetsService {
         // Icon cell - light pastel background
         this.addDropdownBadge(requests, sheetId, rowIndex, 4, { red: 0.50, green: 0.50, blue: 0.50 }, 'Icon', false);
         
-        // Class/Subclass styling - pastel with colored bullets
+        // Class/Subclass styling - colored bullets
         const classColor = this.getClassColor(member.class);
         this.addDropdownBadge(requests, sheetId, rowIndex, 5, classColor, 'Class', true);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 6, classColor, 'Subclass', true);
+        
+        // Subclass - only color bullet if it's actually a subclass
+        if (meta.isSubclass) {
+          const subclassColor = this.getClassColor(member.subclass || member.class);
+          this.addDropdownBadge(requests, sheetId, rowIndex, 6, subclassColor, 'Subclass', true);
+        } else {
+          this.addDropdownBadge(requests, sheetId, rowIndex, 6, { red: 0.35, green: 0.35, blue: 0.35 }, 'Subclass', false);
+        }
         
         // Role badge - pastel with colored bullet
         const roleColor = this.getRoleColor(member.role);
         this.addDropdownBadge(requests, sheetId, rowIndex, 7, roleColor, 'Role', true);
         
-        // Ability score - VIBRANT gradient colors
+        // Ability score - progressive gradient colors
         if (member.ability_score && member.ability_score !== '') {
           const abilityColor = this.getAbilityScoreColor(member.ability_score);
           this.addDropdownBadge(requests, sheetId, rowIndex, 8, abilityColor, 'AS', true);
@@ -1188,11 +1196,23 @@ class GoogleSheetsService {
           this.addDropdownBadge(requests, sheetId, rowIndex, 8, { red: 0.50, green: 0.50, blue: 0.55 }, 'AS', false);
         }
         
-        // Battle Imagines, Guild, Timezone, Registered - VIBRANT accents
-        this.addDropdownBadge(requests, sheetId, rowIndex, 9, { red: 0.40, green: 0.40, blue: 0.40 }, 'BI', false);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 10, { red: 0.60, green: 0.20, blue: 0.85 }, 'Guild', true); // VIBRANT PURPLE 💜
-        this.addDropdownBadge(requests, sheetId, rowIndex, 11, { red: 0.40, green: 0.40, blue: 0.40 }, 'TZ', false);
-        this.addDropdownBadge(requests, sheetId, rowIndex, 12, { red: 1.0, green: 0.20, blue: 0.50 }, 'Date', true); // VIBRANT PINK 💗
+        // Battle Imagines - NEUTRAL gray (no color)
+        this.addDropdownBadge(requests, sheetId, rowIndex, 9, { red: 0.35, green: 0.35, blue: 0.35 }, 'BI', false);
+        
+        // Guild - Pink for iDolls, Gray for Visitor
+        let guildColor = { red: 0.35, green: 0.35, blue: 0.35 }; // Default gray
+        if (member.guild && member.guild.toLowerCase().includes('idoll')) {
+          guildColor = { red: 0.95, green: 0.50, blue: 0.75 }; // PINK for iDolls 💗
+        } else if (member.guild && member.guild.toLowerCase().includes('visitor')) {
+          guildColor = { red: 0.50, green: 0.50, blue: 0.55 }; // GRAY for Visitor
+        }
+        this.addDropdownBadge(requests, sheetId, rowIndex, 10, guildColor, 'Guild', true);
+        
+        // Timezone - neutral
+        this.addDropdownBadge(requests, sheetId, rowIndex, 11, { red: 0.35, green: 0.35, blue: 0.35 }, 'TZ', false);
+        
+        // Registered Date - RED for dates
+        this.addDropdownBadge(requests, sheetId, rowIndex, 12, { red: 0.95, green: 0.35, blue: 0.40 }, 'Date', true);
 
         // Borders - standard borders for all rows
         requests.push({
