@@ -291,14 +291,14 @@ class GoogleSheetsService {
     
     const numScore = parseInt(score);
     
-    // Progressive gradient pills: Green → Lime → Yellow → Orange → Red → Purple
-    if (numScore >= 36000) return { red: 0.88, green: 0.78, blue: 0.92 }; // Soft purple pill (36k+)
-    if (numScore >= 32000) return { red: 0.95, green: 0.78, blue: 0.78 }; // Soft red pill (32-36k)
-    if (numScore >= 28000) return { red: 0.95, green: 0.85, blue: 0.70 }; // Soft orange pill (28-32k)
-    if (numScore >= 24000) return { red: 0.95, green: 0.92, blue: 0.70 }; // Soft yellow pill (24-28k)
-    if (numScore >= 20000) return { red: 0.88, green: 0.92, blue: 0.75 }; // Soft lime pill (20-24k)
-    if (numScore >= 10000) return { red: 0.80, green: 0.90, blue: 0.80 }; // Soft green pill (10-20k)
-    return { red: 0.88, green: 0.88, blue: 0.90 }; // Soft gray pill (<10k)
+    // Vibrant progressive gradient text: Green → Lime → Yellow → Orange → Red → Purple
+    if (numScore >= 36000) return { red: 0.70, green: 0.25, blue: 0.85 }; // Vibrant purple text (36k+)
+    if (numScore >= 32000) return { red: 0.95, green: 0.25, blue: 0.30 }; // Vibrant red text (32-36k)
+    if (numScore >= 28000) return { red: 0.95, green: 0.50, blue: 0.15 }; // Vibrant orange text (28-32k)
+    if (numScore >= 24000) return { red: 0.95, green: 0.85, blue: 0.15 }; // Vibrant yellow text (24-28k)
+    if (numScore >= 20000) return { red: 0.65, green: 0.85, blue: 0.20 }; // Vibrant lime text (20-24k)
+    if (numScore >= 10000) return { red: 0.25, green: 0.75, blue: 0.30 }; // Vibrant green text (10-20k)
+    return { red: 0.55, green: 0.55, blue: 0.60 }; // Gray text (<10k)
   }
 
   formatAbilityScore(score) {
@@ -339,25 +339,25 @@ class GoogleSheetsService {
 
   getClassColor(className) {
     const classColors = {
-      'Beat Performer': { red: 0.85, green: 0.75, blue: 0.90 }, // Soft purple pill
-      'Frost Mage': { red: 0.75, green: 0.80, blue: 0.85 }, // Soft gray pill
-      'Heavy Guardian': { red: 0.80, green: 0.85, blue: 0.70 }, // Soft olive pill
-      'Marksman': { red: 0.85, green: 0.75, blue: 0.65 }, // Soft tan pill
-      'Shield Knight': { red: 0.75, green: 0.85, blue: 0.95 }, // Soft blue pill
-      'Stormblade': { red: 0.85, green: 0.75, blue: 0.70 }, // Soft brown pill
-      'Verdant Oracle': { red: 0.95, green: 0.90, blue: 0.70 }, // Soft gold pill
-      'Wind Knight': { red: 0.75, green: 0.90, blue: 0.95 } // Soft sky blue pill
+      'Beat Performer': { red: 0.65, green: 0.30, blue: 0.80 }, // Vibrant purple text
+      'Frost Mage': { red: 0.30, green: 0.65, blue: 0.90 }, // Vibrant cyan text
+      'Heavy Guardian': { red: 0.50, green: 0.65, blue: 0.25 }, // Vibrant olive text
+      'Marksman': { red: 0.85, green: 0.50, blue: 0.20 }, // Vibrant orange text
+      'Shield Knight': { red: 0.25, green: 0.60, blue: 0.90 }, // Vibrant blue text
+      'Stormblade': { red: 0.75, green: 0.25, blue: 0.70 }, // Vibrant magenta text
+      'Verdant Oracle': { red: 0.90, green: 0.70, blue: 0.20 }, // Vibrant gold text
+      'Wind Knight': { red: 0.30, green: 0.80, blue: 0.95 } // Vibrant sky blue text
     };
-    return classColors[className] || { red: 0.85, green: 0.85, blue: 0.85 };
+    return classColors[className] || { red: 0.50, green: 0.50, blue: 0.55 };
   }
 
   getRoleColor(role) {
     const roleColors = {
-      'Tank': { red: 0.80, green: 0.88, blue: 0.95 }, // Soft blue pill for Tank
-      'Support': { red: 0.80, green: 0.92, blue: 0.85 }, // Soft green pill for Support
-      'DPS': { red: 0.95, green: 0.80, blue: 0.80 } // Soft red pill for DPS
+      'Tank': { red: 0.25, green: 0.60, blue: 0.95 }, // Vibrant blue text for Tank
+      'Support': { red: 0.25, green: 0.75, blue: 0.40 }, // Vibrant green text for Support
+      'DPS': { red: 0.95, green: 0.30, blue: 0.35 } // Vibrant red text for DPS
     };
-    return roleColors[role] || { red: 0.85, green: 0.85, blue: 0.85 };
+    return roleColors[role] || { red: 0.50, green: 0.50, blue: 0.55 };
   }
 
   formatDate(dateString) {
@@ -1333,11 +1333,11 @@ class GoogleSheetsService {
 
 
   addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, colIndex, bulletColor, label, isSpecial = false, cellValue = '') {
-    // Colored pill background when isSpecial=true, light gray when false
-    const bgColor = isSpecial ? bulletColor : { red: 0.98, green: 0.98, blue: 0.99 };
+    // WHITE background for ALL cells - the "chip" is just colored text
+    const bgColor = { red: 1, green: 1, blue: 1 }; // WHITE background always!
     
-    // Use dark text for all (pastel backgrounds need dark text for readability)
-    const textColor = { red: 0.25, green: 0.25, blue: 0.25 };
+    // Colored text for the chip effect when isSpecial=true
+    const textColor = isSpecial ? bulletColor : { red: 0.25, green: 0.25, blue: 0.25 };
     
     const cellFormat = {
       repeatCell: {
@@ -1350,11 +1350,11 @@ class GoogleSheetsService {
         },
         cell: {
           userEnteredFormat: {
-            backgroundColor: bgColor, // COLORED pill background!
+            backgroundColor: bgColor, // WHITE background - chip is just text!
             textFormat: {
               bold: true,
               fontSize: 10,
-              foregroundColor: textColor,
+              foregroundColor: textColor, // COLORED TEXT for chip
               fontFamily: 'Google Sans'
             },
             horizontalAlignment: 'CENTER',
