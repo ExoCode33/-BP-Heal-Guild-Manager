@@ -342,7 +342,7 @@ class GoogleSheetsService {
       'Beat Performer': { red: 0.65, green: 0.30, blue: 0.80 }, // Vibrant purple
       'Frost Mage': { red: 0.30, green: 0.65, blue: 0.90 }, // Vibrant cyan
       'Heavy Guardian': { red: 0.50, green: 0.65, blue: 0.25 }, // Vibrant olive
-      'Marksman': { red: 0.85, green: 0.50, blue: 0.20 }, // Vibrant orange
+      'Marksman': { red: 0.25, green: 0.75, blue: 0.35 }, // Vibrant GREEN
       'Shield Knight': { red: 0.25, green: 0.60, blue: 0.90 }, // Vibrant blue
       'Stormblade': { red: 0.75, green: 0.25, blue: 0.70 }, // Vibrant magenta
       'Verdant Oracle': { red: 0.90, green: 0.70, blue: 0.20 }, // Vibrant gold
@@ -945,9 +945,9 @@ class GoogleSheetsService {
                     green: 1,
                     blue: 1
                   },
-                  fontSize: 10,
+                  fontSize: 11,
                   bold: true,
-                  fontFamily: 'Google Sans'
+                  fontFamily: 'Montserrat'
                 },
                 horizontalAlignment: 'CENTER',
                 verticalAlignment: 'MIDDLE',
@@ -1201,9 +1201,8 @@ class GoogleSheetsService {
         const classColor = this.getClassColor(member.class);
         this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 5, classColor, 'Class', true, member.class);
         
-        // Subclass - Colored text
-        const subclassColor = this.getClassColor(member.subclass || member.class);
-        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 6, subclassColor, 'Subclass', true, member.subclass);
+        // Subclass - Same color as class
+        this.addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, 6, classColor, 'Subclass', true, member.subclass);
         
         // Role - Colored text
         const roleColor = this.getRoleColor(meta.inferredRole);
@@ -1370,9 +1369,9 @@ class GoogleSheetsService {
             backgroundColor: { red: 1, green: 1, blue: 1 }, // WHITE background always
             textFormat: {
               bold: true,
-              fontSize: 10,
+              fontSize: 11, // SIZE 11
               foregroundColor: isColored ? textColor : { red: 0.25, green: 0.25, blue: 0.25 }, // Colored or dark text
-              fontFamily: 'Google Sans'
+              fontFamily: 'Montserrat' // MONTSERRAT font
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE',
@@ -1407,9 +1406,9 @@ class GoogleSheetsService {
             backgroundColor: bgColor,
             textFormat: {
               bold: true,
-              fontSize: 10,
+              fontSize: 11,
               foregroundColor: { red: 1, green: 1, blue: 1 },
-              fontFamily: 'Google Sans'
+              fontFamily: 'Montserrat'
             },
             horizontalAlignment: 'CENTER',
             verticalAlignment: 'MIDDLE',
@@ -1450,8 +1449,8 @@ class GoogleSheetsService {
           userEnteredFormat: {
             backgroundColor: rowBg,
             textFormat: {
-              fontSize: 10,
-              fontFamily: 'Google Sans',
+              fontSize: 11,
+              fontFamily: 'Montserrat',
               foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
             },
             horizontalAlignment: 'CENTER',
@@ -1478,8 +1477,8 @@ class GoogleSheetsService {
             backgroundColor: rowBg,
             textFormat: {
               bold: true,
-              fontSize: 10,
-              fontFamily: 'Google Sans',
+              fontSize: 11,
+              fontFamily: 'Montserrat',
               foregroundColor: textColor
             },
             horizontalAlignment: 'CENTER',
@@ -1516,8 +1515,8 @@ class GoogleSheetsService {
             backgroundColor: rowBg,
             textFormat: {
               bold: true,
-              fontSize: 10,
-              fontFamily: 'Google Sans',
+              fontSize: 11,
+              fontFamily: 'Montserrat',
               foregroundColor: { red: 0.20, green: 0.22, blue: 0.24 }
             },
             horizontalAlignment: 'CENTER',
@@ -1544,8 +1543,8 @@ class GoogleSheetsService {
             backgroundColor: rowBg,
             textFormat: {
               bold: true,
-              fontSize: 9,
-              fontFamily: 'Google Sans',
+              fontSize: 11,
+              fontFamily: 'Montserrat',
               foregroundColor: { red: 0.38, green: 0.42, blue: 0.45 }
             },
             horizontalAlignment: 'CENTER',
