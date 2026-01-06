@@ -123,7 +123,7 @@ export async function syncUserClassRoles(userId) {
     
     if (characters.length === 0) {
       console.log(`[CLASS ROLE] User ${userId} has no characters, skipping sync`);
-      return;
+      return { success: true, message: 'No characters' };
     }
     
     // Get all unique classes this user has
@@ -139,7 +139,7 @@ export async function syncUserClassRoles(userId) {
       if (error.message === 'Unknown Member') {
         console.log(`[CLASS ROLE] User ${userId} not in server during sync, cleaning up...`);
         await cleanupLeftMember(userId);
-        return;
+        return { success: true, message: 'User left server, cleaned up' };
       }
       throw error;
     }
@@ -160,12 +160,16 @@ export async function syncUserClassRoles(userId) {
       }
     }
     
+    return { success: true, message: 'Roles synced' };
+    
   } catch (error) {
     if (error.message === 'Unknown Member') {
       console.log(`[CLASS ROLE] User ${userId} left server during sync, cleaning up...`);
       await cleanupLeftMember(userId);
+      return { success: true, message: 'User left server, cleaned up' };
     } else {
       console.error(`[CLASS ROLE] Error syncing roles for ${userId}:`, error.message);
+      return { success: false, error: error.message };
     }
   }
 }
