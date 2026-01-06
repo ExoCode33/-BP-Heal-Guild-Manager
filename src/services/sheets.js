@@ -911,7 +911,7 @@ class GoogleSheetsService {
 
       // ✅ CONDITIONAL FORMATTING: Only apply if data actually changed
       if (needsFormatting) {
-        console.log(`🎨 [SHEETS] Applying formatting (data changed)...`);
+      
       // ✅ CONDITIONAL FORMATTING: Only apply if data actually changed
       if (needsFormatting) {
         console.log(`🎨 [SHEETS] Applying formatting (data changed)...`);
