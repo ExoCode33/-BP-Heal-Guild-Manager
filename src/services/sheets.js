@@ -640,21 +640,7 @@ class GoogleSheetsService {
       const rows = [];
       const rowMetadata = [];
 
-      // ✅ SORT CHARACTERS: First by Role (Support -> Tank -> DPS), then by Ability Score (descending)
-      const roleOrder = { 'Support': 1, 'Tank': 2, 'DPS': 3 };
-      
-      allCharactersWithSubclasses.sort((a, b) => {
-        // First sort by role
-        const roleA = roleOrder[a.role] || 999;
-        const roleB = roleOrder[b.role] || 999;
-        if (roleA !== roleB) return roleA - roleB;
-        
-        // Then sort by ability score (descending - highest first)
-        const scoreA = this.parseAbilityScore(a.ability_score);
-        const scoreB = this.parseAbilityScore(b.ability_score);
-        return scoreB - scoreA;
-      });
-
+      // ✅ Group characters by user first
       const userGroups = {};
       allCharactersWithSubclasses.forEach(char => {
         if (!userGroups[char.user_id]) {
@@ -663,7 +649,38 @@ class GoogleSheetsService {
         userGroups[char.user_id].push(char);
       });
 
+      // ✅ Create user group objects with main character info for sorting
+      const userGroupsArray = [];
       for (const [userId, userChars] of Object.entries(userGroups)) {
+        const mainChar = userChars.find(c => c.character_type === 'main');
+        if (mainChar) {
+          userGroupsArray.push({
+            userId,
+            mainChar,
+            allChars: userChars
+          });
+        }
+      }
+
+      // ✅ SORT USER GROUPS: By main character's Role (Support -> Tank -> DPS), then by Ability Score
+      const roleOrder = { 'Support': 1, 'Tank': 2, 'DPS': 3 };
+      
+      userGroupsArray.sort((a, b) => {
+        // First sort by main character's role
+        const roleA = roleOrder[a.mainChar.role] || 999;
+        const roleB = roleOrder[b.mainChar.role] || 999;
+        if (roleA !== roleB) return roleA - roleB;
+        
+        // Then sort by main character's ability score (descending - highest first)
+        const scoreA = this.parseAbilityScore(a.mainChar.ability_score);
+        const scoreB = this.parseAbilityScore(b.mainChar.ability_score);
+        return scoreB - scoreA;
+      });
+
+      // ✅ Build rows in sorted order, keeping each user's characters together
+      for (const userGroup of userGroupsArray) {
+        const userId = userGroup.userId;
+        const userChars = userGroup.allChars;
         const mainChar = userChars.find(c => c.character_type === 'main');
         const mainSubclasses = userChars.filter(c => c.character_type === 'main_subclass');
         const alts = userChars.filter(c => c.character_type === 'alt');
@@ -876,11 +893,9 @@ class GoogleSheetsService {
       await this.formatCleanSheet('Member List', headers.length, rows.length);
       await this.applyCleanDesign('Member List', rowMetadata, sheetId);
       
-      // ✅ Only add images/formulas for NEW rows
-      if (diff.rowsToAdd.length > 0) {
-        const newMetadata = rowMetadata.slice(currentData.length);
-        await this.addClassLogos('Member List', newMetadata, currentData.length + 2, sheetId);
-      }
+      // ✅ Always add images/formulas for ALL rows (since sorting changes positions)
+      console.log(`🖼️  [SHEETS] Adding class icons and timezone formulas for all rows...`);
+      await this.addClassLogos('Member List', rowMetadata, 2, sheetId);
       
       await this.enableAutoRecalculation();
 
