@@ -113,6 +113,64 @@ export async function checkClassUsage(userId, className) {
 }
 
 /**
+ * Sync a user's class roles based on their characters
+ * Called during startup to validate roles
+ */
+export async function syncUserClassRoles(userId) {
+  try {
+    // Get all user's characters
+    const characters = await CharacterRepo.findAllByUser(userId);
+    
+    if (characters.length === 0) {
+      console.log(`[CLASS ROLE] User ${userId} has no characters, skipping sync`);
+      return;
+    }
+    
+    // Get all unique classes this user has
+    const userClasses = [...new Set(characters.map(c => c.class))];
+    
+    // Try to fetch the member
+    const guild = await discordClient.guilds.fetch(config.discord.guildId);
+    let member;
+    
+    try {
+      member = await guild.members.fetch(userId);
+    } catch (error) {
+      if (error.message === 'Unknown Member') {
+        console.log(`[CLASS ROLE] User ${userId} not in server during sync, cleaning up...`);
+        await cleanupLeftMember(userId);
+        return;
+      }
+      throw error;
+    }
+    
+    // Sync each class
+    for (const className of userClasses) {
+      const classRoleId = config.classRoles?.[className];
+      
+      if (!classRoleId) {
+        console.log(`[CLASS ROLE] No role configured for class: ${className}`);
+        continue;
+      }
+      
+      // Add role if they don't have it
+      if (!member.roles.cache.has(classRoleId)) {
+        await member.roles.add(classRoleId);
+        console.log(`[CLASS ROLE] Synced ${className} role for ${member.user.username}`);
+      }
+    }
+    
+  } catch (error) {
+    if (error.message === 'Unknown Member') {
+      console.log(`[CLASS ROLE] User ${userId} left server during sync, cleaning up...`);
+      await cleanupLeftMember(userId);
+    } else {
+      console.error(`[CLASS ROLE] Error syncing roles for ${userId}:`, error.message);
+    }
+  }
+}
+
+/**
  * Clean up data for a member who left the server
  */
 async function cleanupLeftMember(userId) {
@@ -148,5 +206,6 @@ export default {
   init,
   addClassRole,
   removeClassRole,
-  checkClassUsage
+  checkClassUsage,
+  syncUserClassRoles
 };
