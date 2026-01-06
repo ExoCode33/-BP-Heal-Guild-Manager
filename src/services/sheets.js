@@ -1355,12 +1355,8 @@ class GoogleSheetsService {
 
 
   addDropdownBadge(requests, dropdownRequests, sheetId, rowIndex, colIndex, chipBgColor, label, hasChip = false, cellValue = '') {
-    // Always white cell background
-    // If hasChip=true: add colored background to the text (chip effect) with dropdown
-    // If hasChip=false: just normal dark text, no dropdown
-    
     if (hasChip) {
-      // CHIP STYLE: Colored background pill with black text
+      // CHIP WITH DROPDOWN: Colored background + black text + dropdown arrow
       const cellFormat = {
         repeatCell: {
           range: {
@@ -1372,44 +1368,7 @@ class GoogleSheetsService {
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 1, green: 1, blue: 1 }, // White cell background
-              textFormat: {
-                bold: true,
-                fontSize: 10,
-                foregroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, // BLACK text
-                fontFamily: 'Google Sans'
-              },
-              horizontalAlignment: 'CENTER',
-              verticalAlignment: 'MIDDLE',
-              padding: {
-                top: 8,
-                bottom: 8,
-                left: 14,
-                right: 14
-              },
-              wrapStrategy: 'OVERFLOW_CELL'
-            }
-          },
-          fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,wrapStrategy)'
-        }
-      };
-      requests.push(cellFormat);
-      
-      // Add colored background to just the text content (chip effect)
-      // We'll do this by setting backgroundColor in the cell's data validation styling
-      // Actually, we need to use a different approach - add background color to the cell itself
-      const chipFormat = {
-        repeatCell: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: rowIndex,
-            endRowIndex: rowIndex + 1,
-            startColumnIndex: colIndex,
-            endColumnIndex: colIndex + 1
-          },
-          cell: {
-            userEnteredFormat: {
-              backgroundColor: chipBgColor, // COLORED CHIP background
+              backgroundColor: chipBgColor, // COLORED background
               textFormat: {
                 bold: true,
                 fontSize: 10,
@@ -1430,7 +1389,7 @@ class GoogleSheetsService {
           fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,wrapStrategy)'
         }
       };
-      requests.push(chipFormat);
+      requests.push(cellFormat);
       
       // Add dropdown validation
       if (cellValue && cellValue !== '') {
@@ -1455,7 +1414,7 @@ class GoogleSheetsService {
         });
       }
     } else {
-      // NORMAL STYLE: White background with dark text, NO dropdown
+      // NO CHIP, NO DROPDOWN: White background + dark text + NO dropdown
       const cellFormat = {
         repeatCell: {
           range: {
@@ -1467,7 +1426,7 @@ class GoogleSheetsService {
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 1, green: 1, blue: 1 }, // White background
+              backgroundColor: { red: 1, green: 1, blue: 1 }, // WHITE background
               textFormat: {
                 bold: true,
                 fontSize: 10,
@@ -1489,6 +1448,7 @@ class GoogleSheetsService {
         }
       };
       requests.push(cellFormat);
+      // NO dropdown validation added
     }
   }
 
