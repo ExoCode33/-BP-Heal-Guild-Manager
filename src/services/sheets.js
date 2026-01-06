@@ -443,56 +443,81 @@ class GoogleSheetsService {
 
   async cleanBottomBorders(sheetId, lastDataRow) {
     try {
-      // Clear all borders below the last data row (up to row 1000)
+      console.log(`🧹 [SHEETS] Cleaning all formatting/content below row ${lastDataRow + 1}...`);
+      
+      if (lastDataRow >= 999) {
+        return; // Nothing to clean
+      }
+
+      // STEP 1: Clear all cell VALUES first (most important - removes the colored badges!)
+      await this.sheets.spreadsheets.values.clear({
+        spreadsheetId: this.spreadsheetId,
+        range: `Member List!A${lastDataRow + 2}:M1000`,
+      });
+      console.log(`   ✅ Cleared all values from row ${lastDataRow + 2} to 1000`);
+
+      // STEP 2: Clear all formatting
       const requests = [];
       
-      // Remove all borders from rows after the last data row
-      if (lastDataRow < 999) {
-        requests.push({
-          updateBorders: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: lastDataRow + 1,
-              endRowIndex: 1000,
-              startColumnIndex: 0,
-              endColumnIndex: 13
-            },
-            top: { style: 'NONE' },
-            bottom: { style: 'NONE' },
-            left: { style: 'NONE' },
-            right: { style: 'NONE' },
-            innerHorizontal: { style: 'NONE' },
-            innerVertical: { style: 'NONE' }
-          }
-        });
+      // Remove all borders
+      requests.push({
+        updateBorders: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: lastDataRow + 1,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: 13
+          },
+          top: { style: 'NONE' },
+          bottom: { style: 'NONE' },
+          left: { style: 'NONE' },
+          right: { style: 'NONE' },
+          innerHorizontal: { style: 'NONE' },
+          innerVertical: { style: 'NONE' }
+        }
+      });
 
-        // Also clear background colors
-        requests.push({
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: lastDataRow + 1,
-              endRowIndex: 1000,
-              startColumnIndex: 0,
-              endColumnIndex: 13
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: { red: 1, green: 1, blue: 1 }
+      // Reset all cell formatting to default (white background, no colors, no text formatting)
+      requests.push({
+        repeatCell: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: lastDataRow + 1,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: 13
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 1, green: 1, blue: 1 },
+              textFormat: {
+                foregroundColor: { red: 0, green: 0, blue: 0 },
+                fontSize: 10,
+                bold: false,
+                italic: false,
+                fontFamily: 'Arial'
+              },
+              horizontalAlignment: 'LEFT',
+              verticalAlignment: 'BOTTOM',
+              padding: {
+                top: 2,
+                bottom: 2,
+                left: 3,
+                right: 3
               }
-            },
-            fields: 'userEnteredFormat.backgroundColor'
-          }
-        });
-      }
+            }
+          },
+          fields: 'userEnteredFormat'
+        }
+      });
 
-      if (requests.length > 0) {
-        await this.sheets.spreadsheets.batchUpdate({
-          spreadsheetId: this.spreadsheetId,
-          requestBody: { requests }
-        });
-        console.log(`✅ [SHEETS] Cleaned bottom borders after row ${lastDataRow + 1}`);
-      }
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: { requests }
+      });
+      
+      console.log(`✅ [SHEETS] Completely cleaned rows ${lastDataRow + 2}-1000 (no more stray formatting!)`);
     } catch (error) {
       console.error('❌ [SHEETS] Error cleaning bottom borders:', error.message);
     }
