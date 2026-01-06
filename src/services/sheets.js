@@ -623,7 +623,6 @@ class GoogleSheetsService {
   }
 
   async syncToSheet(sheetName, characters) {
-  async syncToSheet(sheetName, characters) {
     try {
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
