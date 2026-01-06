@@ -375,16 +375,16 @@ class GoogleSheetsService {
   /**
    * Fetch current sheet data for comparison
    */
-  async getCurrentSheetData() {
+  async getCurrentSheetData(sheetName) {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: 'Member List!A2:M1000',
+        range: `${sheetName}!A2:M1000`,
       });
 
       return response.data.values || [];
     } catch (error) {
-      console.log('📋 [SHEETS] No existing data or error fetching:', error.message);
+      console.log(`📋 [SHEETS] No existing data or error fetching from "${sheetName}":`, error.message);
       return [];
     }
   }
@@ -471,7 +471,7 @@ class GoogleSheetsService {
   // ✅ NEW: CLEAN BOTTOM BORDERS (FIX FOR SCREENSHOT ISSUE)
   // ═══════════════════════════════════════════════════════════════════
 
-  async cleanBottomBorders(sheetId, lastDataRow) {
+  async cleanBottomBorders(sheetId, lastDataRow, sheetName) {
     try {
       console.log(`🧹 [SHEETS] Cleaning all formatting/content below row ${lastDataRow + 1}...`);
       
@@ -482,7 +482,7 @@ class GoogleSheetsService {
       // STEP 1: Clear all cell VALUES first (most important - removes the colored badges!)
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: `Member List!A${lastDataRow + 2}:M1000`,
+        range: `${sheetName}!A${lastDataRow + 2}:M1000`,
       });
       console.log(`   ✅ Cleared all values from row ${lastDataRow + 2} to 1000`);
 
@@ -588,22 +588,59 @@ class GoogleSheetsService {
     }
 
     try {
+      // Define all sheets to sync with their filter functions
+      const sheetsToSync = [
+        {
+          name: 'Total Members',
+          filter: (char) => true // All members
+        },
+        {
+          name: 'iDolls Members',
+          filter: (char) => char.guild && char.guild.toLowerCase().includes('idoll') // iDolls (includes Alts, excludes Visitors)
+        },
+        {
+          name: 'iDolls Alts',
+          filter: (char) => char.guild && char.guild.toLowerCase().includes('idoll') && char.isAlt // iDolls Alts only
+        },
+        {
+          name: 'Honored Guests',
+          filter: (char) => char.guild && char.guild.toLowerCase().includes('visitor') // Visitors only
+        }
+      ];
+
+      // Sync each sheet
+      for (const sheetConfig of sheetsToSync) {
+        console.log(`\n📋 [SHEETS] Syncing "${sheetConfig.name}"...`);
+        const filteredCharacters = allCharactersWithSubclasses.filter(sheetConfig.filter);
+        console.log(`   📊 Filtered to ${filteredCharacters.length} characters`);
+        await this.syncToSheet(sheetConfig.name, filteredCharacters);
+      }
+
+      console.log('\n✅ [SHEETS] All sheets synced successfully!');
+    } catch (error) {
+      console.error('❌ [SHEETS] Error in syncMemberList:', error.message);
+    }
+  }
+
+  async syncToSheet(sheetName, characters) {
+  async syncToSheet(sheetName, characters) {
+    try {
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
       });
       
-      let memberListSheet = spreadsheet.data.sheets.find(s => s.properties.title === 'Member List');
+      let targetSheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
       
-      // Create "Member List" sheet if it doesn't exist
-      if (!memberListSheet) {
-        console.log('📋 [SHEETS] "Member List" tab not found - creating it...');
+      // Create sheet if it doesn't exist
+      if (!targetSheet) {
+        console.log(`   📋 "${sheetName}" tab not found - creating it...`);
         const addSheetResponse = await this.sheets.spreadsheets.batchUpdate({
           spreadsheetId: this.spreadsheetId,
           requestBody: {
             requests: [{
               addSheet: {
                 properties: {
-                  title: 'Member List',
+                  title: sheetName,
                   gridProperties: {
                     rowCount: 1000,
                     columnCount: 13
@@ -615,12 +652,12 @@ class GoogleSheetsService {
         });
         
         const newSheetId = addSheetResponse.data.replies[0].addSheet.properties.sheetId;
-        console.log(`✅ [SHEETS] Created "Member List" tab with ID: ${newSheetId}`);
+        console.log(`   ✅ Created "${sheetName}" tab with ID: ${newSheetId}`);
         
-        memberListSheet = { properties: { sheetId: newSheetId, title: 'Member List' } };
+        targetSheet = { properties: { sheetId: newSheetId, title: sheetName } };
       }
 
-      const sheetId = memberListSheet.properties.sheetId;
+      const sheetId = targetSheet.properties.sheetId;
 
       const headers = [
         'Discord Name',
@@ -642,7 +679,7 @@ class GoogleSheetsService {
       try {
         const currentHeaders = await this.sheets.spreadsheets.values.get({
           spreadsheetId: this.spreadsheetId,
-          range: 'Member List!A1:M1',
+          range: `${sheetName}!A1:M1`,
         }).catch(() => ({ data: { values: [[]] } }));
 
         const existingHeaders = currentHeaders.data.values?.[0] || [];
@@ -652,7 +689,7 @@ class GoogleSheetsService {
           console.log('📝 [SHEETS] Writing/updating headers...');
           await this.sheets.spreadsheets.values.update({
             spreadsheetId: this.spreadsheetId,
-            range: 'Member List!A1:M1',
+            range: `${sheetName}!A1:M1`,
             valueInputOption: 'USER_ENTERED',
             resource: { values: [headers] },
           });
@@ -685,7 +722,7 @@ class GoogleSheetsService {
       // This separates subclasses from mains if they have different roles
       const roleOrder = { 'Support': 1, 'Tank': 2, 'DPS': 3 };
       
-      allCharactersWithSubclasses.sort((a, b) => {
+      characters.sort((a, b) => {
         // 1. First sort by role (infer if missing)
         const roleA = roleOrder[inferRole(a)] || 999;
         const roleB = roleOrder[inferRole(b)] || 999;
@@ -703,7 +740,7 @@ class GoogleSheetsService {
       });
 
       // ✅ Build rows in sorted order - each character is independent
-      for (const char of allCharactersWithSubclasses) {
+      for (const char of characters) {
         const userId = char.user_id;
         
         // Get user info
@@ -777,7 +814,7 @@ class GoogleSheetsService {
 
       // ✅ DIFF-BASED UPDATE
       console.log('🔍 [SHEETS] Fetching current sheet data for comparison...');
-      const currentData = await this.getCurrentSheetData();
+      const currentData = await this.getCurrentSheetData(sheetName);
       const diff = this.calculateDiff(currentData, rows);
 
       console.log(`📊 [SHEETS] Diff analysis:`);
@@ -798,7 +835,7 @@ class GoogleSheetsService {
         console.log(`🗑️  [SHEETS] Clearing deleted rows starting from row ${maxDeleteRow + 2}...`);
         await this.sheets.spreadsheets.values.clear({
           spreadsheetId: this.spreadsheetId,
-          range: `Member List!A${maxDeleteRow + 2}:M${currentData.length + 1}`,
+          range: `${sheetName}!A${maxDeleteRow + 2}:M${currentData.length + 1}`,
         });
       }
 
@@ -814,19 +851,19 @@ class GoogleSheetsService {
           // Update all columns EXCEPT E (icon) and L (timezone) - these stay untouched
           // Columns A-D
           batchData.push({
-            range: `Member List!A${rowNum}:D${rowNum}`,
+            range: `${sheetName}!A${rowNum}:D${rowNum}`,
             values: [update.data.slice(0, 4)]
           });
           
           // Columns F-K (skip E which is icon)
           batchData.push({
-            range: `Member List!F${rowNum}:K${rowNum}`,
+            range: `${sheetName}!F${rowNum}:K${rowNum}`,
             values: [update.data.slice(5, 11)]
           });
           
           // Column M (skip L which is timezone)
           batchData.push({
-            range: `Member List!M${rowNum}`,
+            range: `${sheetName}!M${rowNum}`,
             values: [[update.data[12]]]
           });
         }
@@ -852,7 +889,7 @@ class GoogleSheetsService {
         const startRow = currentData.length + 2;
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `Member List!A${startRow}`,
+          range: `${sheetName}!A${startRow}`,
           valueInputOption: 'USER_ENTERED',
           resource: {
             values: newRowsData,
@@ -862,19 +899,19 @@ class GoogleSheetsService {
 
       // ✅ ALWAYS APPLY FULL FORMATTING (needed because sorting changes row positions)
       console.log(`🎨 [SHEETS] Applying full formatting...`);
-      await this.formatCleanSheet('Member List', headers.length, rows.length);
-      await this.applyCleanDesign('Member List', rowMetadata, sheetId);
+      await this.formatCleanSheet(sheetName, headers.length, rows.length);
+      await this.applyCleanDesign(sheetName, rowMetadata, sheetId);
       
       // ✅ Always add images/formulas for ALL rows (since sorting changes positions)
       console.log(`🖼️  [SHEETS] Adding class icons and timezone formulas for all rows...`);
-      await this.addClassLogos('Member List', rowMetadata, 2, sheetId);
+      await this.addClassLogos(sheetName, rowMetadata, 2, sheetId);
       
       await this.enableAutoRecalculation();
 
       // ✅ ALWAYS CLEAN BOTTOM BORDERS (prevents stray formatting from persisting)
       // rows.length = number of data rows (e.g., 46)
       // cleanBottomBorders will clean from row (46 + 2) = 48 onwards
-      await this.cleanBottomBorders(sheetId, rows.length);
+      await this.cleanBottomBorders(sheetId, rows.length, sheetName);
 
       console.log(`✅ [SHEETS] Sync complete (smooth & clean!)`);
 
