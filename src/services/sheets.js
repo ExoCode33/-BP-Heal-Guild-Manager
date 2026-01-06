@@ -387,6 +387,33 @@ class GoogleSheetsService {
   }
 
   /**
+   * Parse ability score for sorting (returns numeric value)
+   */
+  parseAbilityScore(abilityScore) {
+    if (!abilityScore) return 0;
+    
+    const str = String(abilityScore).trim();
+    
+    // Handle ranges like "24-26k" -> take the max value (26000)
+    if (str.includes('-')) {
+      const parts = str.split('-');
+      const maxPart = parts[parts.length - 1];
+      return this.parseAbilityScore(maxPart);
+    }
+    
+    // Remove 'k' and convert to number
+    const numStr = str.replace(/[k,\s]/gi, '');
+    const num = parseFloat(numStr);
+    
+    // If it had 'k', multiply by 1000
+    if (str.toLowerCase().includes('k')) {
+      return num * 1000;
+    }
+    
+    return num || 0;
+  }
+
+  /**
    * Compare two rows and return if they're different
    * ✅ IMPROVED: Smarter comparison that ignores formula columns
    */
@@ -517,7 +544,30 @@ class GoogleSheetsService {
         requestBody: { requests }
       });
       
-      console.log(`✅ [SHEETS] Completely cleaned rows ${lastDataRow + 2}-1000 (no more stray formatting!)`);
+      // STEP 3: Add thick purple bottom border on the last data row
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [{
+            updateBorders: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: lastDataRow,
+                endRowIndex: lastDataRow + 1,
+                startColumnIndex: 0,
+                endColumnIndex: 13
+              },
+              bottom: {
+                style: 'SOLID_THICK',
+                width: 3,
+                color: { red: 0.32, green: 0.20, blue: 0.58 } // Purple
+              }
+            }
+          }]
+        }
+      });
+      
+      console.log(`✅ [SHEETS] Completely cleaned rows ${lastDataRow + 2}-1000 + added purple bottom border!`);
     } catch (error) {
       console.error('❌ [SHEETS] Error cleaning bottom borders:', error.message);
     }
@@ -589,6 +639,21 @@ class GoogleSheetsService {
       // ✅ Build new data
       const rows = [];
       const rowMetadata = [];
+
+      // ✅ SORT CHARACTERS: First by Role (Support -> Tank -> DPS), then by Ability Score (descending)
+      const roleOrder = { 'Support': 1, 'Tank': 2, 'DPS': 3 };
+      
+      allCharactersWithSubclasses.sort((a, b) => {
+        // First sort by role
+        const roleA = roleOrder[a.role] || 999;
+        const roleB = roleOrder[b.role] || 999;
+        if (roleA !== roleB) return roleA - roleB;
+        
+        // Then sort by ability score (descending - highest first)
+        const scoreA = this.parseAbilityScore(a.ability_score);
+        const scoreB = this.parseAbilityScore(b.ability_score);
+        return scoreB - scoreA;
+      });
 
       const userGroups = {};
       allCharactersWithSubclasses.forEach(char => {
