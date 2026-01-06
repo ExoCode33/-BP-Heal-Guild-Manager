@@ -745,7 +745,8 @@ class GoogleSheetsService {
           isSubclass: isSubclass,
           isMain: isMain,
           isAlt: isAlt,
-          isFirstOfUser: false // We'll calculate this later if needed for borders
+          isFirstOfUser: false, // We'll calculate this later if needed for borders
+          inferredRole: characterRole // ✅ Store inferred role for border comparison
         });
       }
 
@@ -1325,7 +1326,7 @@ class GoogleSheetsService {
         
         // Thick purple border when role changes (last row of each role section)
         const isLastOfRole = (i === rowMetadata.length - 1) || 
-                             (i + 1 < rowMetadata.length && meta.character.role !== rowMetadata[i + 1].character.role);
+                             (i + 1 < rowMetadata.length && meta.inferredRole !== rowMetadata[i + 1].inferredRole);
         
         if (isLastOfRole) {
           requests.push({
@@ -1337,10 +1338,25 @@ class GoogleSheetsService {
                 startColumnIndex: 0,
                 endColumnIndex: 13
               },
+              top: {
+                style: 'SOLID',
+                width: 1,
+                color: { red: 0.85, green: 0.85, blue: 0.87 }
+              },
               bottom: {
                 style: 'SOLID_THICK',
                 width: 3,
                 color: { red: 0.32, green: 0.20, blue: 0.58 }
+              },
+              left: {
+                style: 'SOLID',
+                width: 1,
+                color: { red: 0.85, green: 0.85, blue: 0.87 }
+              },
+              right: {
+                style: 'SOLID',
+                width: 1,
+                color: { red: 0.85, green: 0.85, blue: 0.87 }
               }
             }
           });
