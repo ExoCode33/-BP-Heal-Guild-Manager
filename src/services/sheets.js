@@ -614,12 +614,23 @@ class GoogleSheetsService {
         console.log(`\n📋 [SHEETS] Syncing "${sheetConfig.name}" (${i + 1}/${sheetsToSync.length})...`);
         const filteredCharacters = allCharactersWithSubclasses.filter(sheetConfig.filter);
         console.log(`   📊 Filtered to ${filteredCharacters.length} characters`);
-        await this.syncToSheet(sheetConfig.name, filteredCharacters);
         
-        // Add 3 second delay between sheets to avoid quota issues
+        try {
+          await this.syncToSheet(sheetConfig.name, filteredCharacters);
+        } catch (error) {
+          console.error(`❌ [SHEETS] Error syncing "${sheetConfig.name}":`, error.message);
+          
+          // If quota exceeded, wait longer before continuing
+          if (error.message.includes('Quota exceeded')) {
+            console.log(`   ⏸️  Quota exceeded - waiting 30 seconds before next sheet...`);
+            await new Promise(resolve => setTimeout(resolve, 30000));
+          }
+        }
+        
+        // Add 5 second delay between sheets (increased from 3)
         if (i < sheetsToSync.length - 1) {
-          console.log(`   ⏳ Waiting 3 seconds before next sheet...`);
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          console.log(`   ⏳ Waiting 5 seconds before next sheet...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       }
 
@@ -1072,12 +1083,35 @@ class GoogleSheetsService {
   // ═══════════════════════════════════════════════════════════════════
   
   /**
-   * Check if current time is at a 5-minute interval (XX:00, XX:05, XX:10, etc.)
+   * Check if current time is at an EXACT 5-minute interval (XX:00, XX:05, XX:10, etc.)
+   * Only returns true within the first 15 seconds of the interval to avoid repeated updates
    */
   shouldUpdateTimezones() {
     const now = new Date();
     const minutes = now.getMinutes();
-    return minutes % 5 === 0; // True at :00, :05, :10, :15, :20, etc.
+    const seconds = now.getSeconds();
+    
+    // Only update if:
+    // 1. Minutes are at 5-minute mark (0, 5, 10, 15, 20, etc.)
+    // 2. Seconds are within first 15 seconds (to avoid multiple calls in same minute)
+    return (minutes % 5 === 0) && (seconds <= 15);
+  }
+  
+  /**
+   * Get milliseconds until next 5-minute interval
+   */
+  getMillisecondsUntilNext5MinInterval() {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const milliseconds = now.getMilliseconds();
+    
+    // Calculate minutes until next 5-minute mark
+    const minutesUntilNext = 5 - (minutes % 5);
+    const secondsUntilNext = (minutesUntilNext * 60) - seconds;
+    const msUntilNext = (secondsUntilNext * 1000) - milliseconds;
+    
+    return msUntilNext;
   }
 
   async addClassLogos(sheetName, rowMetadata, startRowIndex = 2, sheetId) {
@@ -1085,12 +1119,18 @@ class GoogleSheetsService {
 
     try {
       const valueUpdates = [];
-      const shouldUpdateTZ = this.shouldUpdateTimezones(); // Check if we're at :00, :05, :10, etc.
+      const shouldUpdateTZ = this.shouldUpdateTimezones();
+      
+      const now = new Date();
+      const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
       
       if (shouldUpdateTZ) {
-        console.log(`   ⏰ [SHEETS] At 5-minute interval - updating timezones`);
+        console.log(`   ⏰ [SHEETS] At exact 5-minute interval (${timeStr}) - updating timezones`);
       } else {
-        console.log(`   ⏭️  [SHEETS] Not at 5-minute interval - skipping timezone updates`);
+        const msUntilNext = this.getMillisecondsUntilNext5MinInterval();
+        const minutesUntilNext = Math.floor(msUntilNext / 60000);
+        const secondsUntilNext = Math.floor((msUntilNext % 60000) / 1000);
+        console.log(`   ⏭️  [SHEETS] Current time ${timeStr} - waiting until next 5-min mark (${minutesUntilNext}m ${secondsUntilNext}s)`);
       }
       
       for (let i = 0; i < rowMetadata.length; i++) {
@@ -1107,7 +1147,7 @@ class GoogleSheetsService {
           });
         }
 
-        // Only update timezone formulas at 5-minute intervals
+        // Only update timezone formulas at EXACT 5-minute intervals
         if (shouldUpdateTZ && meta.timezone && meta.timezone !== '') {
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
           const offset = this.getTimezoneOffset(meta.timezone);
@@ -1122,9 +1162,13 @@ class GoogleSheetsService {
       }
 
       if (valueUpdates.length > 0) {
-        const batchSize = 20;
+        const batchSize = 15; // REDUCED from 20 to avoid quota issues
+        console.log(`   🖼️  Processing ${valueUpdates.length} formula updates in batches of ${batchSize}...`);
+        
         for (let i = 0; i < valueUpdates.length; i += batchSize) {
           const batch = valueUpdates.slice(i, i + batchSize);
+          const batchNum = Math.floor(i / batchSize) + 1;
+          const totalBatches = Math.ceil(valueUpdates.length / batchSize);
           
           const requests = batch.map(update => ({
             updateCells: {
@@ -1149,12 +1193,20 @@ class GoogleSheetsService {
               spreadsheetId: this.spreadsheetId,
               requestBody: { requests }
             });
+            console.log(`   ✅ Formula batch ${batchNum}/${totalBatches} complete`);
             
+            // Longer delay between formula batches (2 seconds instead of 800ms)
             if (i + batchSize < valueUpdates.length) {
-              await new Promise(resolve => setTimeout(resolve, 800));
+              await new Promise(resolve => setTimeout(resolve, 2000));
             }
           } catch (error) {
-            console.error(`❌ [SHEETS] Error adding formulas:`, error.message);
+            console.error(`❌ [SHEETS] Formula batch ${batchNum} error:`, error.message);
+            
+            // If quota exceeded, wait much longer
+            if (error.message.includes('Quota exceeded')) {
+              console.log(`   ⏸️  Quota exceeded - waiting 10 seconds...`);
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
           }
         }
       }
@@ -1382,7 +1434,7 @@ class GoogleSheetsService {
       }
 
       if (requests.length > 0) {
-        const batchSize = 100; // Increased from 50 to reduce total requests
+        const batchSize = 50; // REDUCED from 100 to avoid quota issues
         console.log(`   📦 Sending ${requests.length} formatting requests in ${Math.ceil(requests.length / batchSize)} batches...`);
         
         for (let i = 0; i < requests.length; i += batchSize) {
@@ -1398,10 +1450,17 @@ class GoogleSheetsService {
             console.log(`   ✅ Batch ${batchNum}/${totalBatches} complete`);
           } catch (error) {
             console.error(`   ❌ Batch ${batchNum} failed:`, error.message);
+            
+            // If quota exceeded, wait even longer
+            if (error.message.includes('Quota exceeded')) {
+              console.log(`   ⏸️  Quota exceeded - waiting 10 seconds before retry...`);
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
           }
           
+          // Longer delays between batches to avoid quota (5 seconds instead of 2)
           if (i + batchSize < requests.length) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between batches
+            await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
       }
