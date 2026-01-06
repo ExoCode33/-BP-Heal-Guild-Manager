@@ -1314,72 +1314,9 @@ class GoogleSheetsService {
     }
   }
 
-  addDropdownBadge(requests, sheetId, rowIndex, colIndex, bulletColor, textValue = '') {
-    // Dropdown-style cell with colored bullet (●) prefix and centered text
-    const cellFormat = {
-      repeatCell: {
-        range: {
-          sheetId: sheetId,
-          startRowIndex: rowIndex,
-          endRowIndex: rowIndex + 1,
-          startColumnIndex: colIndex,
-          endColumnIndex: colIndex + 1
-        },
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.98, green: 0.98, blue: 0.98 }, // Very light gray
-            textFormat: {
-              bold: false,
-              fontSize: 9,
-              foregroundColor: { red: 0.2, green: 0.2, blue: 0.2 }, // Dark gray text
-              fontFamily: 'Google Sans'
-            },
-            horizontalAlignment: 'CENTER',
-            verticalAlignment: 'MIDDLE',
-            padding: {
-              top: 6,
-              bottom: 6,
-              left: 6,
-              right: 20 // Extra space for dropdown arrow visual
-            },
-            wrapStrategy: 'CLIP'
-          }
-        },
-        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,wrapStrategy)'
-      }
-    };
-    requests.push(cellFormat);
-    
-    // Add colored bullet for specific columns
-    if (colIndex === 3 || colIndex === 7) { // Type and Role columns get colored bullets
-      const bulletFormat = {
-        repeatCell: {
-          range: {
-            sheetId: sheetId,
-            startRowIndex: rowIndex,
-            endRowIndex: rowIndex + 1,
-            startColumnIndex: colIndex,
-            endColumnIndex: colIndex + 1
-          },
-          cell: {
-            userEnteredFormat: {
-              textFormat: {
-                bold: true,
-                fontSize: 9,
-                foregroundColor: bulletColor,
-                fontFamily: 'Google Sans'
-              }
-            }
-          },
-          fields: 'userEnteredFormat.textFormat'
-        }
-      };
-      requests.push(bulletFormat);
-    }
-  }
 
   addDropdownBadge(requests, sheetId, rowIndex, colIndex, bulletColor, label, isSpecial = false) {
-    // Beautiful dropdown with NO line breaks
+    // Light background for ALL cells, dark text always
     const cellFormat = {
       repeatCell: {
         range: {
@@ -1391,11 +1328,11 @@ class GoogleSheetsService {
         },
         cell: {
           userEnteredFormat: {
-            backgroundColor: { red: 0.98, green: 0.98, blue: 0.99 }, // Very light background
+            backgroundColor: { red: 0.98, green: 0.98, blue: 0.99 }, // Light gray background
             textFormat: {
               bold: true,
               fontSize: 10,
-              foregroundColor: isSpecial ? bulletColor : { red: 0.20, green: 0.20, blue: 0.20 },
+              foregroundColor: { red: 0.20, green: 0.20, blue: 0.20 }, // Dark text
               fontFamily: 'Google Sans'
             },
             horizontalAlignment: 'CENTER',
@@ -1406,13 +1343,19 @@ class GoogleSheetsService {
               left: 12,
               right: 12
             },
-            wrapStrategy: 'OVERFLOW_CELL' // Single line, overflow if needed
+            wrapStrategy: 'OVERFLOW_CELL'
           }
         },
         fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding,wrapStrategy)'
       }
     };
     requests.push(cellFormat);
+    
+    // Store column info for later when we add colored bullets to values
+    if (isSpecial) {
+      this._coloredColumns = this._coloredColumns || {};
+      this._coloredColumns[colIndex] = bulletColor;
+    }
   }
 
   addPillBadge(requests, sheetId, rowIndex, colIndex, bgColor, isNumber = false) {
