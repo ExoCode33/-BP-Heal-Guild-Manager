@@ -117,17 +117,21 @@ export async function route(interaction) {
       });
     }
     // Registration - Main Character
-    else if (customId === `register_${userId}`) {
-      await registration.start(interaction, userId);
+    else if (customId.startsWith('register_')) {
+      const targetUserId = customId.replace('register_', '');
+      await registration.start(interaction, targetUserId);
     }
-    else if (customId === `confirm_replace_main_${userId}`) {
-      await registration.confirmReplaceMain(interaction, userId);
+    else if (customId.startsWith('confirm_replace_main_')) {
+      const targetUserId = customId.replace('confirm_replace_main_', '');
+      await registration.confirmReplaceMain(interaction, targetUserId);
     }
-    else if (customId === `cancel_replace_main_${userId}`) {
-      await registration.cancelReplaceMain(interaction, userId);
+    else if (customId.startsWith('cancel_replace_main_')) {
+      const targetUserId = customId.replace('cancel_replace_main_', '');
+      await registration.cancelReplaceMain(interaction, targetUserId);
     }
-    else if (customId === `retry_ign_uid_${userId}`) {
-      await registration.retryIGN(interaction, userId);
+    else if (customId.startsWith('retry_ign_uid_')) {
+      const targetUserId = customId.replace('retry_ign_uid_', '');
+      await registration.retryIGN(interaction, targetUserId);
     }
 
     // Registration - Subclass
@@ -137,8 +141,9 @@ export async function route(interaction) {
     }
 
     // Registration - Alt
-    else if (customId === `add_alt_${userId}`) {
-      await registration.startAltRegistration(interaction, userId);
+    else if (customId.startsWith('add_alt_')) {
+      const targetUserId = customId.replace('add_alt_', '');
+      await registration.startAltRegistration(interaction, targetUserId);
     }
 
     // ✅ Add Character Button
@@ -150,26 +155,33 @@ export async function route(interaction) {
     }
 
     // Registration - Back Buttons
-    else if (customId === `back_to_region_${userId}`) {
-      await registration.backToRegion(interaction, userId);
+    else if (customId.startsWith('back_to_region_')) {
+      const targetUserId = customId.replace('back_to_region_', '');
+      await registration.backToRegion(interaction, targetUserId);
     }
-    else if (customId === `back_to_country_${userId}`) {
-      await registration.backToCountry(interaction, userId);
+    else if (customId.startsWith('back_to_country_')) {
+      const targetUserId = customId.replace('back_to_country_', '');
+      await registration.backToCountry(interaction, targetUserId);
     }
-    else if (customId === `back_to_timezone_${userId}`) {
-      await registration.backToTimezone(interaction, userId);
+    else if (customId.startsWith('back_to_timezone_')) {
+      const targetUserId = customId.replace('back_to_timezone_', '');
+      await registration.backToTimezone(interaction, targetUserId);
     }
-    else if (customId === `back_to_class_${userId}`) {
-      await registration.backToClass(interaction, userId);
+    else if (customId.startsWith('back_to_class_')) {
+      const targetUserId = customId.replace('back_to_class_', '');
+      await registration.backToClass(interaction, targetUserId);
     }
-    else if (customId === `back_to_subclass_${userId}`) {
-      await registration.backToSubclass(interaction, userId);
+    else if (customId.startsWith('back_to_subclass_')) {
+      const targetUserId = customId.replace('back_to_subclass_', '');
+      await registration.backToSubclass(interaction, targetUserId);
     }
-    else if (customId === `back_to_score_${userId}`) {
-      await registration.backToScore(interaction, userId);
+    else if (customId.startsWith('back_to_score_')) {
+      const targetUserId = customId.replace('back_to_score_', '');
+      await registration.backToScore(interaction, targetUserId);
     }
-    else if (customId === `back_to_battle_imagine_${userId}`) {
-      await registration.backToBattleImagine(interaction, userId);
+    else if (customId.startsWith('back_to_battle_imagine_')) {
+      const targetUserId = customId.replace('back_to_battle_imagine_', '');
+      await registration.backToBattleImagine(interaction, targetUserId);
     }
 
     // Editing
@@ -242,7 +254,8 @@ export async function route(interaction) {
     // ═══════════════════════════════════════════════════════════════
     
     // Admin Settings - Back Button
-    else if (customId === `admin_settings_back_${userId}`) {
+    else if (customId.startsWith('admin_settings_back_')) {
+      const targetUserId = customId.replace('admin_settings_back_', '');
       const { handleSettingsBackButton } = await import('../services/adminSettings.js');
       await handleSettingsBackButton(interaction);
     }
@@ -310,35 +323,43 @@ export async function routeSelectMenu(interaction) {
 
   try {
     // Registration - Region, Country, Timezone
-    if (customId === `select_region_${userId}`) {
-      await registration.handleRegion(interaction, userId);
+    if (customId.startsWith('select_region_')) {
+      const targetUserId = customId.replace('select_region_', '');
+      await registration.handleRegion(interaction, targetUserId);
     }
-    else if (customId === `select_country_${userId}`) {
-      await registration.handleCountry(interaction, userId);
+    else if (customId.startsWith('select_country_')) {
+      const targetUserId = customId.replace('select_country_', '');
+      await registration.handleCountry(interaction, targetUserId);
     }
-    else if (customId === `select_timezone_${userId}`) {
-      await registration.handleTimezone(interaction, userId);
+    else if (customId.startsWith('select_timezone_')) {
+      const targetUserId = customId.replace('select_timezone_', '');
+      await registration.handleTimezone(interaction, targetUserId);
     }
 
     // Registration - Class, Subclass, Score
-    else if (customId === `select_class_${userId}`) {
-      await registration.handleClass(interaction, userId);
+    else if (customId.startsWith('select_class_')) {
+      const targetUserId = customId.replace('select_class_', '');
+      await registration.handleClass(interaction, targetUserId);
     }
-    else if (customId === `select_subclass_${userId}`) {
-      await registration.handleSubclass(interaction, userId);
+    else if (customId.startsWith('select_subclass_')) {
+      const targetUserId = customId.replace('select_subclass_', '');
+      await registration.handleSubclass(interaction, targetUserId);
     }
-    else if (customId === `select_ability_score_${userId}`) {
-      await registration.handleScore(interaction, userId);
+    else if (customId.startsWith('select_ability_score_')) {
+      const targetUserId = customId.replace('select_ability_score_', '');
+      await registration.handleScore(interaction, targetUserId);
     }
 
     // Registration - Battle Imagines
-    else if (customId === `select_battle_imagine_${userId}`) {
-      await registration.handleBattleImagine(interaction, userId);
+    else if (customId.startsWith('select_battle_imagine_')) {
+      const targetUserId = customId.replace('select_battle_imagine_', '');
+      await registration.handleBattleImagine(interaction, targetUserId);
     }
 
     // Registration - Guild
-    else if (customId === `select_guild_${userId}`) {
-      await registration.handleGuild(interaction, userId);
+    else if (customId.startsWith('select_guild_')) {
+      const targetUserId = customId.replace('select_guild_', '');
+      await registration.handleGuild(interaction, targetUserId);
     }
 
     // ✅ FIXED: Add Character Type Selection
@@ -417,33 +438,39 @@ export async function routeSelectMenu(interaction) {
     // ═══════════════════════════════════════════════════════════════
     
     // Admin Settings Main Menu
-    else if (customId === `admin_settings_menu_${userId}`) {
+    else if (customId.startsWith('admin_settings_menu_')) {
+      const targetUserId = customId.replace('admin_settings_menu_', '');
       const { handleSettingsMenuSelect } = await import('../services/adminSettings.js');
       await handleSettingsMenuSelect(interaction);
     }
 
     // Admin Logging Settings
-    else if (customId === `admin_logs_channel_${userId}`) {
+    else if (customId.startsWith('admin_logs_channel_')) {
+      const targetUserId = customId.replace('admin_logs_channel_', '');
       const { handleLogChannelSelect } = await import('../services/adminSettings.js');
       await handleLogChannelSelect(interaction);
     }
-    else if (customId === `admin_logs_batch_${userId}`) {
+    else if (customId.startsWith('admin_logs_batch_')) {
+      const targetUserId = customId.replace('admin_logs_batch_', '');
       const { handleLogBatchSelect } = await import('../services/adminSettings.js');
       await handleLogBatchSelect(interaction);
     }
-    else if (customId === `admin_logs_categories_${userId}`) {
+    else if (customId.startsWith('admin_logs_categories_')) {
+      const targetUserId = customId.replace('admin_logs_categories_', '');
       const { handleLogCategoriesSelect } = await import('../services/adminSettings.js');
       await handleLogCategoriesSelect(interaction);
     }
 
     // Admin Ephemeral Settings
-    else if (customId === `admin_ephemeral_${userId}`) {
+    else if (customId.startsWith('admin_ephemeral_')) {
+      const targetUserId = customId.replace('admin_ephemeral_', '');
       const { handleEphemeralSelect } = await import('../services/adminSettings.js');
       await handleEphemeralSelect(interaction);
     }
 
     // Admin Verification Settings
-    else if (customId === `admin_verification_channel_${userId}`) {
+    else if (customId.startsWith('admin_verification_channel_')) {
+      const targetUserId = customId.replace('admin_verification_channel_', '');
       const { handleVerificationChannelSelect } = await import('../services/adminSettings.js');
       await handleVerificationChannelSelect(interaction);
     }
@@ -489,8 +516,9 @@ export async function routeModal(interaction) {
 
   try {
     // Registration - IGN/UID Modal
-    if (customId === `ign_modal_${userId}`) {
-      await registration.handleIGN(interaction, userId);
+    if (customId.startsWith('ign_modal_')) {
+      const targetUserId = customId.replace('ign_modal_', '');
+      await registration.handleIGN(interaction, targetUserId);
     }
 
     // Editing - IGN Modal (supports admin editing other users)
