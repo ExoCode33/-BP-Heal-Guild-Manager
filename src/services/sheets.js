@@ -970,6 +970,9 @@ class GoogleSheetsService {
       // ✅ Build new data
       const rows = [];
       const rowMetadata = [];
+      
+      // Track if we've warned about missing client
+      let warnedAboutClient = false;
 
       // ✅ Helper: Infer role from class if role is missing
       const inferRole = (char) => {
@@ -1024,10 +1027,13 @@ class GoogleSheetsService {
         if (this.client) {
           try {
             const user = await this.client.users.fetch(userId);
-            discordName = user.username;
+            discordName = user.username || user.tag || userId;
           } catch (error) {
-            // Silently continue
+            // If fetch fails, keep the userId as fallback
           }
+        } else if (!warnedAboutClient) {
+          console.log(`   ⚠️  Discord client not initialized - showing user IDs instead of usernames`);
+          warnedAboutClient = true;
         }
         
         // Determine character type
