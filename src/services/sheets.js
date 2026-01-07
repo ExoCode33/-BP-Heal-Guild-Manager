@@ -973,6 +973,9 @@ class GoogleSheetsService {
       
       // Track if we've warned about missing client
       let warnedAboutClient = false;
+      
+      // ✅ Cache Discord usernames to avoid multiple fetches for same user
+      const usernameCache = new Map();
 
       // ✅ Helper: Infer role from class if role is missing
       const inferRole = (char) => {
@@ -1024,12 +1027,18 @@ class GoogleSheetsService {
         }
         
         let discordName = userId;
-        if (this.client) {
+        
+        // Check cache first
+        if (usernameCache.has(userId)) {
+          discordName = usernameCache.get(userId);
+        } else if (this.client) {
           try {
             const user = await this.client.users.fetch(userId);
             discordName = user.username || user.tag || userId;
+            usernameCache.set(userId, discordName); // Cache it
           } catch (error) {
-            // If fetch fails, keep the userId as fallback
+            // If fetch fails, keep the userId as fallback and cache it
+            usernameCache.set(userId, userId);
           }
         } else if (!warnedAboutClient) {
           console.log(`   ⚠️  Discord client not initialized - showing user IDs instead of usernames`);
