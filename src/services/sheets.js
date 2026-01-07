@@ -1747,25 +1747,40 @@ class GoogleSheetsService {
             }
           }));
           
-          try {
-            await this.sheets.spreadsheets.batchUpdate({
-              spreadsheetId: this.spreadsheetId,
-              requestBody: { requests }
-            });
-            successCount++;
-            
-            // Longer delay between formula batches (2 seconds instead of 800ms)
-            if (i + batchSize < valueUpdates.length) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
+          // ✅ Retry logic for 502 errors
+          let retries = 3;
+          let success = false;
+          
+          while (retries > 0 && !success) {
+            try {
+              await this.sheets.spreadsheets.batchUpdate({
+                spreadsheetId: this.spreadsheetId,
+                requestBody: { requests }
+              });
+              successCount++;
+              success = true;
+            } catch (error) {
+              retries--;
+              
+              // Check if it's a 502 or rate limit error
+              if (error.message.includes('502') || error.message.includes('Quota exceeded')) {
+                if (retries > 0) {
+                  const waitTime = (4 - retries) * 5000; // 5s, 10s, 15s
+                  console.log(`   ⏸️  Formula batch ${batchNum} failed (502), retrying in ${waitTime/1000}s... (${retries} retries left)`);
+                  await new Promise(resolve => setTimeout(resolve, waitTime));
+                } else {
+                  console.error(`   ❌ Formula batch ${batchNum} error (all retries failed):`, error.message);
+                }
+              } else {
+                console.error(`   ❌ Formula batch ${batchNum} error:`, error.message);
+                break; // Don't retry non-502 errors
+              }
             }
-          } catch (error) {
-            console.error(`   ❌ Formula batch ${batchNum} error:`, error.message);
-            
-            // If quota exceeded, wait much longer
-            if (error.message.includes('Quota exceeded')) {
-              console.log(`   ⏸️  Quota exceeded - waiting 10 seconds...`);
-              await new Promise(resolve => setTimeout(resolve, 10000));
-            }
+          }
+          
+          // Longer delay between formula batches (3 seconds instead of 2)
+          if (i + batchSize < valueUpdates.length) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
         
