@@ -824,11 +824,16 @@ class GoogleSheetsService {
         rows.push(row);
       }
 
-      // ✅ STEP 5: Clear existing data first, then write all data to sheet
-      // This ensures old columns are removed when timezone grouping changes
+      // ✅ STEP 5: Clear existing data dynamically, then write all data to sheet
+      // Calculate the exact range needed
+      const numColumns = headers.length;
+      const numRows = rows.length + 1; // +1 for header
+      const lastColumn = String.fromCharCode(64 + numColumns); // A=65, so 64+1=A, 64+10=J, etc.
+      
+      // Clear a larger area to remove old data, then we'll clean borders later
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A1:Z100`, // Clear a large range to remove old data
+        range: `${sheetName}!A1:Z100`,
       });
       
       const allData = [headers, ...rows];
@@ -844,6 +849,39 @@ class GoogleSheetsService {
 
       // ✅ STEP 6: Apply formatting (including time-based colors)
       await this.formatOverviewSheet(sheetName, sheetId, headers.length);
+
+      // ✅ STEP 6.5: Clean up excess columns (remove formatting beyond our data)
+      const lastDataColumn = headers.length - 1;
+      if (lastDataColumn < 25) { // If we have fewer than 26 columns (A-Z)
+        try {
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            requestBody: {
+              requests: [{
+                repeatCell: {
+                  range: {
+                    sheetId: sheetId,
+                    startRowIndex: 0,
+                    endRowIndex: 100,
+                    startColumnIndex: lastDataColumn + 1,
+                    endColumnIndex: 26 // Clear up to column Z
+                  },
+                  cell: {
+                    userEnteredFormat: {
+                      backgroundColor: { red: 1, green: 1, blue: 1 },
+                      textFormat: {},
+                      borders: {}
+                    }
+                  },
+                  fields: 'userEnteredFormat(backgroundColor,textFormat,borders)'
+                }
+              }]
+            }
+          });
+        } catch (error) {
+          console.log(`   ⚠️  Could not clean excess columns: ${error.message}`);
+        }
+      }
 
       // ✅ STEP 7: Apply time-based background colors to data cells
       console.log(`   🎨 Applying time-based colors...`);
