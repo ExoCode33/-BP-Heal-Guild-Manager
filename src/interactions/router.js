@@ -341,10 +341,11 @@ export async function routeSelectMenu(interaction) {
       await registration.handleGuild(interaction, userId);
     }
 
-    // ✅ Add Character Type Selection
-    else if (customId === `select_add_character_type_${userId}`) {
+    // ✅ FIXED: Add Character Type Selection
+    else if (customId.startsWith('select_add_character_type_')) {
+      const targetUserId = customId.replace('select_add_character_type_', '');
       const { handleAddCharacterType } = await import('./adding.js');
-      await handleAddCharacterType(interaction, userId);
+      await handleAddCharacterType(interaction, targetUserId);
     }
 
     // Editing - Character Selection
