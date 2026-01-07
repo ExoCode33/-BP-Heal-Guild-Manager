@@ -744,21 +744,40 @@ class GoogleSheetsService {
         }
       }
 
-      // ✅ STEP 2: Sort timezones by member count first, then by UTC offset (groups similar timezones when they have same member count)
-      const sortedTimezones = Array.from(timezoneMap.entries())
-        .map(([tz, count]) => ({ 
-          timezone: tz, 
-          count, 
-          offset: this.getTimezoneOffset(tz) 
-        }))
+      // ✅ STEP 2: Group timezones by UTC offset only, combining abbreviations
+      const offsetGroups = new Map(); // "-5" -> { offset, count, abbrs, sampleTz }
+      
+      for (const [tz, count] of timezoneMap.entries()) {
+        const offset = this.getTimezoneOffset(tz);
+        const abbr = this.getTimezoneAbbreviation(tz);
+        const key = offset.toString(); // Group by offset only
+        
+        if (offsetGroups.has(key)) {
+          // Add to existing group
+          const group = offsetGroups.get(key);
+          group.count += count;
+          if (!group.abbrs.includes(abbr)) {
+            group.abbrs.push(abbr);
+          }
+        } else {
+          // Create new group
+          offsetGroups.set(key, {
+            offset,
+            count,
+            abbrs: [abbr],
+            sampleTz: tz // Keep one timezone for region detection
+          });
+        }
+      }
+      
+      // Convert to array and sort by UTC offset
+      const sortedTimezones = Array.from(offsetGroups.values())
         .sort((a, b) => {
-          // Primary sort: by member count (descending - most members first)
-          if (a.count !== b.count) return b.count - a.count;
-          // Secondary sort: by UTC offset (groups similar timezones together when count is same)
+          // Sort by UTC offset (ascending - westmost first)
           return a.offset - b.offset;
         });
 
-      console.log(`   🌍 Found ${sortedTimezones.length} unique timezones (sorted by member count, then UTC offset)`);
+      console.log(`   🌍 Found ${sortedTimezones.length} unique UTC offset groups (sorted by offset)`);
 
       // ✅ Helper: Get region tag for timezone
       const getRegionTag = (timezone) => {
@@ -771,13 +790,13 @@ class GoogleSheetsService {
         return '';
       };
 
-      // ✅ STEP 3: Build header row with region tags (format: "15 ‧ EST ‧ NA")
+      // ✅ STEP 3: Build header row with combined timezone abbreviations (format: "15 ‧ JST/KST ‧ ASIA")
       const headers = ['UTC Time'];
-      sortedTimezones.forEach(({ timezone, count }) => {
-        const abbr = this.getTimezoneAbbreviation(timezone);
-        const region = getRegionTag(timezone);
+      sortedTimezones.forEach(({ abbrs, count, sampleTz }) => {
+        const region = getRegionTag(sampleTz);
         const regionTag = region ? ` ‧ ${region}` : '';
-        headers.push(`${count} ‧ ${abbr}${regionTag}`);
+        const combinedAbbrs = abbrs.join('/'); // Join multiple abbreviations with /
+        headers.push(`${count} ‧ ${combinedAbbrs}${regionTag}`);
       });
 
       // ✅ STEP 4: Build time conversion rows (01:00 to 00:00 - starting at 1am UTC)
@@ -786,8 +805,7 @@ class GoogleSheetsService {
         const utcHour = (i + 1) % 24; // Start at 1am, wrap around to 0am at the end
         const row = [`${String(utcHour).padStart(2, '0')}:00`];
         
-        sortedTimezones.forEach(({ timezone }) => {
-          const offset = this.getTimezoneOffset(timezone);
+        sortedTimezones.forEach(({ offset }) => {
           let localHour = utcHour + offset;
           
           // Handle day wraparound
@@ -825,8 +843,7 @@ class GoogleSheetsService {
         
         // For each timezone column
         for (let colIndex = 0; colIndex < sortedTimezones.length; colIndex++) {
-          const { timezone } = sortedTimezones[colIndex];
-          const offset = this.getTimezoneOffset(timezone);
+          const { offset } = sortedTimezones[colIndex];
           let localHour = utcHour + offset;
           
           // Handle day wraparound
