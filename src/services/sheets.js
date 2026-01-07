@@ -477,8 +477,6 @@ class GoogleSheetsService {
 
   async cleanBottomBorders(sheetId, lastDataRow, sheetName) {
     try {
-      console.log(`🧹 [SHEETS] Cleaning all formatting/content below row ${lastDataRow + 1}...`);
-      
       if (lastDataRow >= 999) {
         return; // Nothing to clean
       }
@@ -488,7 +486,6 @@ class GoogleSheetsService {
         spreadsheetId: this.spreadsheetId,
         range: `${sheetName}!A${lastDataRow + 2}:M1000`,
       });
-      console.log(`   ✅ Cleared all values from row ${lastDataRow + 2} to 1000`);
 
       // STEP 2: Clear all formatting
       const requests = [];
@@ -574,9 +571,9 @@ class GoogleSheetsService {
         }
       });
       
-      console.log(`✅ [SHEETS] Completely cleaned rows ${lastDataRow + 2}-1000 + added fuchsia pink bottom border!`);
+      console.log(`   🧹 Cleaned rows ${lastDataRow + 2}-1000`);
     } catch (error) {
-      console.error('❌ [SHEETS] Error cleaning bottom borders:', error.message);
+      console.error('   ❌ Cleanup error:', error.message);
     }
   }
 
@@ -628,6 +625,26 @@ class GoogleSheetsService {
         console.log(`\n📋 [SHEETS] Syncing "${sheetConfig.name}" (${i + 1}/${sheetsToSync.length})...`);
         const filteredCharacters = allCharactersWithSubclasses.filter(sheetConfig.filter);
         console.log(`   📊 Filtered to ${filteredCharacters.length} characters`);
+        
+        // Debug: Show details for iDolls Alts
+        if (sheetConfig.name === 'iDolls Alts') {
+          console.log(`   🔍 [DEBUG] Alt filter details:`);
+          if (filteredCharacters.length === 0) {
+            console.log(`   ❌ No alts found! Checking all characters...`);
+            const allIdolls = allCharactersWithSubclasses.filter(c => c.guild && c.guild.toLowerCase().includes('idoll'));
+            console.log(`   📊 Total iDolls characters: ${allIdolls.length}`);
+            const byType = {};
+            allIdolls.forEach(c => {
+              const type = c.character_type || 'NULL';
+              byType[type] = (byType[type] || 0) + 1;
+            });
+            console.log(`   📊 By type:`, byType);
+          } else {
+            filteredCharacters.forEach(char => {
+              console.log(`   ✅ ${char.ign} (type: ${char.character_type}, guild: ${char.guild})`);
+            });
+          }
+        }
         
         try {
           await this.syncToSheet(sheetConfig.name, filteredCharacters);
@@ -706,7 +723,7 @@ class GoogleSheetsService {
         'Ability Score',
         'Battle Imagines',
         'Guild',
-        'Timezone (Updates every 5 min)',
+        'Timezone',
         'Registered'
       ];
 
@@ -782,8 +799,15 @@ class GoogleSheetsService {
         let userTimezone = '';
         try {
           userTimezone = await TimezoneRepo.get(userId) || '';
+          
+          // Debug: Log timezone fetching for alt characters
+          if (char.character_type === 'alt') {
+            console.log(`   🕐 [DEBUG] Alt "${char.ign}" - User: ${userId} - Timezone: ${userTimezone || 'NONE'}`);
+          }
         } catch (error) {
-          // Silently continue
+          if (char.character_type === 'alt') {
+            console.log(`   ⚠️  [DEBUG] Alt "${char.ign}" - Error fetching timezone: ${error.message}`);
+          }
         }
         
         let discordName = userId;
@@ -848,21 +872,16 @@ class GoogleSheetsService {
       }
 
       // ✅ DIFF-BASED UPDATE
-      console.log('🔍 [SHEETS] Fetching current sheet data for comparison...');
       const currentData = await this.getCurrentSheetData(sheetName);
       const diff = this.calculateDiff(currentData, rows);
 
-      console.log(`📊 [SHEETS] Diff analysis:`);
-      console.log(`   ✅ Unchanged: ${diff.unchanged} rows`);
-      console.log(`   🔄 To update: ${diff.rowsToUpdate.length} rows`);
-      console.log(`   ➕ To add: ${diff.rowsToAdd.length} rows`);
-      console.log(`   ➖ To delete: ${diff.rowsToDelete.length} rows`);
-
-      // ✅ If nothing changed, skip update completely
+      // Skip if no changes
       if (diff.rowsToUpdate.length === 0 && diff.rowsToAdd.length === 0 && diff.rowsToDelete.length === 0) {
-        console.log('⏭️  [SHEETS] No changes detected - skipping update completely (no flickering!)');
+        console.log(`   ⏭️  No changes - skipping`);
         return;
       }
+      
+      console.log(`   🔄 Changes: ${diff.rowsToUpdate.length} updated, ${diff.rowsToAdd.length} added, ${diff.rowsToDelete.length} deleted`);
 
       // Track if we need to reformat (only if data changed)
       let needsFormatting = false;
@@ -870,7 +889,6 @@ class GoogleSheetsService {
       // ✅ Handle deleted rows
       if (diff.rowsToDelete.length > 0) {
         const maxDeleteRow = Math.max(...diff.rowsToDelete);
-        console.log(`🗑️  [SHEETS] Clearing deleted rows starting from row ${maxDeleteRow + 2}...`);
         await this.sheets.spreadsheets.values.clear({
           spreadsheetId: this.spreadsheetId,
           range: `${sheetName}!A${maxDeleteRow + 2}:M${currentData.length + 1}`,
@@ -880,8 +898,6 @@ class GoogleSheetsService {
 
       // ✅ IMPROVED: Update rows WITHOUT touching icon/timezone columns
       if (diff.rowsToUpdate.length > 0) {
-        console.log(`🔄 [SHEETS] Updating ${diff.rowsToUpdate.length} changed rows (preserving images)...`);
-        
         const batchData = [];
         
         for (const update of diff.rowsToUpdate) {
@@ -915,16 +931,14 @@ class GoogleSheetsService {
               data: batchData
             }
           });
-          console.log(`✅ [SHEETS] Batch updated ${diff.rowsToUpdate.length} rows (images preserved!)`);
-          needsFormatting = true; // Only updated rows need formatting
+          needsFormatting = true;
         } catch (error) {
-          console.error(`❌ [SHEETS] Batch update error:`, error.message);
+          console.error(`   ❌ Batch update error:`, error.message);
         }
       }
 
       // ✅ Handle new rows
       if (diff.rowsToAdd.length > 0) {
-        console.log(`➕ [SHEETS] Adding ${diff.rowsToAdd.length} new rows...`);
         const newRowsData = diff.rowsToAdd.map(r => r.data);
         const startRow = currentData.length + 2;
         await this.sheets.spreadsheets.values.update({
@@ -935,30 +949,19 @@ class GoogleSheetsService {
             values: newRowsData,
           },
         });
-        needsFormatting = true; // New rows need formatting
+        needsFormatting = true;
       }
 
       // ✅ CONDITIONAL FORMATTING: Only apply if data actually changed
       if (needsFormatting) {
-        console.log(`🎨 [SHEETS] Applying formatting (data changed)...`);
         await this.formatCleanSheet(sheetName, headers.length, rows.length);
         await this.applyCleanDesign(sheetName, rowMetadata, sheetId);
-        
-        // ✅ Always add images/formulas for ALL rows (since sorting changes positions)
-        console.log(`🖼️  [SHEETS] Adding class icons and timezone formulas for all rows...`);
         await this.addClassLogos(sheetName, rowMetadata, 2, sheetId);
-        
         await this.enableAutoRecalculation();
-
-        // ✅ ALWAYS CLEAN BOTTOM BORDERS (prevents stray formatting from persisting)
-        // rows.length = number of data rows (e.g., 46)
-        // cleanBottomBorders will clean from row (46 + 2) = 48 onwards
         await this.cleanBottomBorders(sheetId, rows.length, sheetName);
-      } else {
-        console.log(`⏭️  [SHEETS] No formatting needed - data unchanged`);
       }
 
-      console.log(`✅ [SHEETS] Sync complete (smooth & clean!)`);
+      console.log(`✅ [SHEETS] "${sheetName}" synced successfully`);
 
     } catch (error) {
       console.error('❌ [SHEETS] Sync error:', error.message);
@@ -1137,19 +1140,8 @@ class GoogleSheetsService {
 
     try {
       const valueUpdates = [];
-      const shouldUpdateTZ = this.shouldUpdateTimezones();
       
-      const now = new Date();
-      const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-      
-      if (shouldUpdateTZ) {
-        console.log(`   ⏰ [SHEETS] At exact 5-minute interval (${timeStr}) - updating timezones`);
-      } else {
-        const msUntilNext = this.getMillisecondsUntilNext5MinInterval();
-        const minutesUntilNext = Math.floor(msUntilNext / 60000);
-        const secondsUntilNext = Math.floor((msUntilNext % 60000) / 1000);
-        console.log(`   ⏭️  [SHEETS] Current time ${timeStr} - waiting until next 5-min mark (${minutesUntilNext}m ${secondsUntilNext}s)`);
-      }
+      console.log(`   🖼️  [SHEETS] Adding class icons and timezone formulas...`);
       
       for (let i = 0; i < rowMetadata.length; i++) {
         const rowIndex = startRowIndex + i;
@@ -1165,8 +1157,8 @@ class GoogleSheetsService {
           });
         }
 
-        // Only update timezone formulas at EXACT 5-minute intervals
-        if (shouldUpdateTZ && meta.timezone && meta.timezone !== '') {
+        // Always update timezone formulas (no 5-minute restriction)
+        if (meta.timezone && meta.timezone !== '') {
           const abbrev = this.getTimezoneAbbreviation(meta.timezone);
           const offset = this.getTimezoneOffset(meta.timezone);
           
@@ -1181,12 +1173,14 @@ class GoogleSheetsService {
 
       if (valueUpdates.length > 0) {
         const batchSize = 15; // REDUCED from 20 to avoid quota issues
-        console.log(`   🖼️  Processing ${valueUpdates.length} formula updates in batches of ${batchSize}...`);
+        const totalBatches = Math.ceil(valueUpdates.length / batchSize);
+        console.log(`   🖼️  Formulas: ${valueUpdates.length} updates → ${totalBatches} batches`);
+        
+        let successCount = 0;
         
         for (let i = 0; i < valueUpdates.length; i += batchSize) {
           const batch = valueUpdates.slice(i, i + batchSize);
           const batchNum = Math.floor(i / batchSize) + 1;
-          const totalBatches = Math.ceil(valueUpdates.length / batchSize);
           
           const requests = batch.map(update => ({
             updateCells: {
@@ -1211,14 +1205,14 @@ class GoogleSheetsService {
               spreadsheetId: this.spreadsheetId,
               requestBody: { requests }
             });
-            console.log(`   ✅ Formula batch ${batchNum}/${totalBatches} complete`);
+            successCount++;
             
             // Longer delay between formula batches (2 seconds instead of 800ms)
             if (i + batchSize < valueUpdates.length) {
               await new Promise(resolve => setTimeout(resolve, 2000));
             }
           } catch (error) {
-            console.error(`❌ [SHEETS] Formula batch ${batchNum} error:`, error.message);
+            console.error(`   ❌ Formula batch ${batchNum} error:`, error.message);
             
             // If quota exceeded, wait much longer
             if (error.message.includes('Quota exceeded')) {
@@ -1227,6 +1221,8 @@ class GoogleSheetsService {
             }
           }
         }
+        
+        console.log(`   ✅ Formulas complete: ${successCount}/${totalBatches} batches`);
       }
 
     } catch (error) {
@@ -1453,25 +1449,34 @@ class GoogleSheetsService {
 
       if (requests.length > 0) {
         const batchSize = 50; // REDUCED from 100 to avoid quota issues
-        console.log(`   📦 Sending ${requests.length} formatting requests in ${Math.ceil(requests.length / batchSize)} batches...`);
+        const totalBatches = Math.ceil(requests.length / batchSize);
+        console.log(`   📦 Formatting: ${requests.length} requests → ${totalBatches} batches`);
+        
+        let successCount = 0;
+        let failCount = 0;
         
         for (let i = 0; i < requests.length; i += batchSize) {
           const batch = requests.slice(i, i + batchSize);
           const batchNum = Math.floor(i / batchSize) + 1;
-          const totalBatches = Math.ceil(requests.length / batchSize);
           
           try {
             await this.sheets.spreadsheets.batchUpdate({
               spreadsheetId: this.spreadsheetId,
               requestBody: { requests: batch }
             });
-            console.log(`   ✅ Batch ${batchNum}/${totalBatches} complete`);
+            successCount++;
+            
+            // Only log progress every 4 batches or on last batch
+            if (batchNum % 4 === 0 || batchNum === totalBatches) {
+              console.log(`   ⏳ Progress: ${batchNum}/${totalBatches} batches`);
+            }
           } catch (error) {
+            failCount++;
             console.error(`   ❌ Batch ${batchNum} failed:`, error.message);
             
             // If quota exceeded, wait even longer
             if (error.message.includes('Quota exceeded')) {
-              console.log(`   ⏸️  Quota exceeded - waiting 10 seconds before retry...`);
+              console.log(`   ⏸️  Quota exceeded - waiting 10 seconds...`);
               await new Promise(resolve => setTimeout(resolve, 10000));
             }
           }
@@ -1481,19 +1486,20 @@ class GoogleSheetsService {
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
+        
+        console.log(`   ✅ Formatting complete: ${successCount}/${totalBatches} batches succeeded`);
       }
       
       // Send dropdown validation requests separately
       if (dropdownRequests.length > 0) {
-        console.log(`   🎯 Adding ${dropdownRequests.length} dropdown validations...`);
         try {
           await this.sheets.spreadsheets.batchUpdate({
             spreadsheetId: this.spreadsheetId,
             requestBody: { requests: dropdownRequests }
           });
-          console.log(`   ✅ Dropdowns added successfully!`);
+          console.log(`   ✅ Dropdowns: ${dropdownRequests.length} added`);
         } catch (error) {
-          console.error(`   ❌ Dropdown validation failed:`, error.message);
+          console.error(`   ❌ Dropdowns failed:`, error.message);
         }
       }
     } catch (error) {
