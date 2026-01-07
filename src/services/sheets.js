@@ -744,18 +744,40 @@ class GoogleSheetsService {
         }
       }
 
-      // ✅ STEP 2: Sort timezones by member count (descending)
+      // ✅ STEP 2: Sort timezones by member count first, then by UTC offset (groups similar timezones when they have same member count)
       const sortedTimezones = Array.from(timezoneMap.entries())
-        .sort((a, b) => b[1] - a[1]) // Sort by count, highest first
-        .map(([tz, count]) => ({ timezone: tz, count }));
+        .map(([tz, count]) => ({ 
+          timezone: tz, 
+          count, 
+          offset: this.getTimezoneOffset(tz) 
+        }))
+        .sort((a, b) => {
+          // Primary sort: by member count (descending - most members first)
+          if (a.count !== b.count) return b.count - a.count;
+          // Secondary sort: by UTC offset (groups similar timezones together when count is same)
+          return a.offset - b.offset;
+        });
 
-      console.log(`   🌍 Found ${sortedTimezones.length} unique timezones`);
+      console.log(`   🌍 Found ${sortedTimezones.length} unique timezones (sorted by member count, then UTC offset)`);
 
-      // ✅ STEP 3: Build header row
+      // ✅ Helper: Get region tag for timezone
+      const getRegionTag = (timezone) => {
+        if (timezone.startsWith('America/')) return 'NA';
+        if (timezone.startsWith('Europe/')) return 'EU';
+        if (timezone.startsWith('Asia/')) return 'ASIA';
+        if (timezone.startsWith('Australia/') || timezone.startsWith('Pacific/Auckland') || timezone.startsWith('Pacific/Fiji')) return 'OCE';
+        if (timezone.startsWith('Africa/')) return 'AFR';
+        if (timezone.startsWith('Pacific/')) return 'PAC';
+        return '';
+      };
+
+      // ✅ STEP 3: Build header row with region tags (format: "15 ‧ EST ‧ NA")
       const headers = ['UTC Time'];
       sortedTimezones.forEach(({ timezone, count }) => {
         const abbr = this.getTimezoneAbbreviation(timezone);
-        headers.push(`${abbr} (${count})`);
+        const region = getRegionTag(timezone);
+        const regionTag = region ? ` ‧ ${region}` : '';
+        headers.push(`${count} ‧ ${abbr}${regionTag}`);
       });
 
       // ✅ STEP 4: Build time conversion rows (01:00 to 00:00 - starting at 1am UTC)
