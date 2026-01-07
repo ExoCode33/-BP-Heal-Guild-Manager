@@ -305,6 +305,27 @@ class GoogleSheetsService {
     return { red: 0.55, green: 0.55, blue: 0.60 }; // Gray (<10k)
   }
 
+  /**
+   * Get cell background color based on local time (for Overview sheet)
+   * Pastel green = Prime time (18:00-23:59, 00:00-01:59)
+   * Pastel yellow = Less common (02:00-05:59, 12:00-13:59)
+   * Pastel red = Off hours (06:00-11:59, 14:00-17:59)
+   */
+  getTimePeriodColor(hour) {
+    // Prime gaming hours (6 PM - 2 AM)
+    if ((hour >= 18 && hour <= 23) || (hour >= 0 && hour <= 1)) {
+      return { red: 0.85, green: 0.95, blue: 0.85 }; // Pastel green
+    }
+    // Less common hours (2 AM - 6 AM, 12 PM - 2 PM)
+    else if ((hour >= 2 && hour <= 5) || (hour >= 12 && hour <= 13)) {
+      return { red: 0.98, green: 0.98, blue: 0.80 }; // Pastel yellow
+    }
+    // Off hours (6 AM - 12 PM, 2 PM - 6 PM)
+    else {
+      return { red: 0.98, green: 0.85, blue: 0.85 }; // Pastel red
+    }
+  }
+
   formatAbilityScore(score) {
     if (!score || score === '' || score === 0) return '';
     
@@ -781,8 +802,74 @@ class GoogleSheetsService {
         },
       });
 
-      // ✅ STEP 6: Apply formatting
+      // ✅ STEP 6: Apply formatting (including time-based colors)
       await this.formatOverviewSheet(sheetName, sheetId, headers.length);
+
+      // ✅ STEP 7: Apply time-based background colors to data cells
+      console.log(`   🎨 Applying time-based colors...`);
+      const colorRequests = [];
+
+      for (let utcHour = 0; utcHour < 24; utcHour++) {
+        const rowIndex = utcHour + 1; // +1 because row 0 is header
+        
+        // For each timezone column
+        for (let colIndex = 0; colIndex < sortedTimezones.length; colIndex++) {
+          const { timezone } = sortedTimezones[colIndex];
+          const offset = this.getTimezoneOffset(timezone);
+          let localHour = utcHour + offset;
+          
+          // Handle day wraparound
+          if (localHour < 0) localHour += 24;
+          if (localHour >= 24) localHour -= 24;
+          
+          // Get color based on local time
+          const bgColor = this.getTimePeriodColor(Math.floor(localHour));
+          
+          colorRequests.push({
+            repeatCell: {
+              range: {
+                sheetId: sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: colIndex + 1, // +1 to skip UTC column
+                endColumnIndex: colIndex + 2
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: bgColor,
+                  textFormat: {
+                    foregroundColor: {
+                      red: 0.2,
+                      green: 0.2,
+                      blue: 0.2
+                    },
+                    fontSize: 10,
+                    fontFamily: 'Montserrat'
+                  },
+                  horizontalAlignment: 'CENTER',
+                  verticalAlignment: 'MIDDLE'
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+            }
+          });
+        }
+      }
+
+      // Apply all color formatting in batches
+      const batchSize = 100;
+      for (let i = 0; i < colorRequests.length; i += batchSize) {
+        const batch = colorRequests.slice(i, i + batchSize);
+        await this.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests: batch }
+        });
+        
+        // Small delay to avoid quota
+        if (i + batchSize < colorRequests.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
       console.log(`✅ [SHEETS] "${sheetName}" synced successfully`);
 
@@ -1185,39 +1272,6 @@ class GoogleSheetsService {
                   },
                   fontSize: 10,
                   bold: true,
-                  fontFamily: 'Montserrat'
-                },
-                horizontalAlignment: 'CENTER',
-                verticalAlignment: 'MIDDLE'
-              }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
-          }
-        },
-        // Data cells formatting (time conversions)
-        {
-          repeatCell: {
-            range: {
-              sheetId: sheetId,
-              startRowIndex: 1,
-              endRowIndex: 25,
-              startColumnIndex: 1,
-              endColumnIndex: columnCount
-            },
-            cell: {
-              userEnteredFormat: {
-                backgroundColor: {
-                  red: 1,
-                  green: 1,
-                  blue: 1
-                }, // White background
-                textFormat: {
-                  foregroundColor: {
-                    red: 0.3,
-                    green: 0.3,
-                    blue: 0.3
-                  },
-                  fontSize: 10,
                   fontFamily: 'Montserrat'
                 },
                 horizontalAlignment: 'CENTER',
