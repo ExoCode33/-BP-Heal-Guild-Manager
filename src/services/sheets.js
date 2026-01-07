@@ -652,26 +652,6 @@ class GoogleSheetsService {
         const filteredCharacters = allCharactersWithSubclasses.filter(sheetConfig.filter);
         console.log(`   📊 Filtered to ${filteredCharacters.length} characters`);
         
-        // Debug: Show details for iDolls Alts
-        if (sheetConfig.name === 'iDolls Alts') {
-          console.log(`   🔍 [DEBUG] Alt filter details:`);
-          if (filteredCharacters.length === 0) {
-            console.log(`   ❌ No alts found! Checking all characters...`);
-            const allIdolls = allCharactersWithSubclasses.filter(c => c.guild && c.guild.toLowerCase().includes('idoll'));
-            console.log(`   📊 Total iDolls characters: ${allIdolls.length}`);
-            const byType = {};
-            allIdolls.forEach(c => {
-              const type = c.character_type || 'NULL';
-              byType[type] = (byType[type] || 0) + 1;
-            });
-            console.log(`   📊 By type:`, byType);
-          } else {
-            filteredCharacters.forEach(char => {
-              console.log(`   ✅ ${char.ign} (type: ${char.character_type}, guild: ${char.guild})`);
-            });
-          }
-        }
-        
         try {
           // Route to appropriate sync function
           if (sheetConfig.isOverview) {
@@ -778,9 +758,10 @@ class GoogleSheetsService {
         headers.push(`${abbr} (${count})`);
       });
 
-      // ✅ STEP 4: Build time conversion rows (00:00 to 23:00)
+      // ✅ STEP 4: Build time conversion rows (01:00 to 00:00 - starting at 1am UTC)
       const rows = [];
-      for (let utcHour = 0; utcHour < 24; utcHour++) {
+      for (let i = 0; i < 24; i++) {
+        const utcHour = (i + 1) % 24; // Start at 1am, wrap around to 0am at the end
         const row = [`${String(utcHour).padStart(2, '0')}:00`];
         
         sortedTimezones.forEach(({ timezone }) => {
@@ -816,8 +797,9 @@ class GoogleSheetsService {
       console.log(`   🎨 Applying time-based colors...`);
       const colorRequests = [];
 
-      for (let utcHour = 0; utcHour < 24; utcHour++) {
-        const rowIndex = utcHour + 1; // +1 because row 0 is header
+      for (let i = 0; i < 24; i++) {
+        const utcHour = (i + 1) % 24; // Start at 1am, wrap around to 0am at the end
+        const rowIndex = i + 1; // +1 because row 0 is header
         
         // For each timezone column
         for (let colIndex = 0; colIndex < sortedTimezones.length; colIndex++) {
@@ -1012,15 +994,8 @@ class GoogleSheetsService {
         let userTimezone = '';
         try {
           userTimezone = await TimezoneRepo.get(userId) || '';
-          
-          // Debug: Log timezone fetching for alt characters
-          if (char.character_type === 'alt') {
-            console.log(`   🕐 [DEBUG] Alt "${char.ign}" - User: ${userId} - Timezone: ${userTimezone || 'NONE'}`);
-          }
         } catch (error) {
-          if (char.character_type === 'alt') {
-            console.log(`   ⚠️  [DEBUG] Alt "${char.ign}" - Error fetching timezone: ${error.message}`);
-          }
+          // Skip if error
         }
         
         let discordName = userId;
