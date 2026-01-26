@@ -403,14 +403,15 @@ export async function routeSelectMenu(interaction) {
       await editing.handleGuildEdit(interaction, targetUserId);
     }
 
-    // Editing - Battle Imagines
-    else if (customId.startsWith('edit_select_bi_')) {
-      const targetUserId = customId.replace('edit_select_bi_', '');
-      await editing.selectBattleImagine(interaction, targetUserId);
-    }
+    // ✅ CRITICAL FIX: Battle Imagines - Check more specific pattern FIRST
+    // This prevents "edit_select_bi_tier_123" from matching "edit_select_bi_" first
     else if (customId.startsWith('edit_select_bi_tier_')) {
       const targetUserId = customId.replace('edit_select_bi_tier_', '');
       await editing.handleBattleImagineTierEdit(interaction, targetUserId);
+    }
+    else if (customId.startsWith('edit_select_bi_')) {
+      const targetUserId = customId.replace('edit_select_bi_', '');
+      await editing.selectBattleImagine(interaction, targetUserId);
     }
 
     // ✅ FIXED ORDER: More specific pattern FIRST (style handler before general nickname handler)
